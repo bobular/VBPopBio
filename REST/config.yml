@@ -1,0 +1,8 @@
+serializer: JSON
+plugins:
+      DBIC:
+        default:
+          dsn: dbi:Pg:dbname=ChadoTimo1
+          schema_class: Bio::Chado::VBPopBio
+
+
