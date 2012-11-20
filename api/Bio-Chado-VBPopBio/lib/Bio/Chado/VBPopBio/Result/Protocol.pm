@@ -23,28 +23,6 @@ Bio::Chado::VBPopBio::Result::Experiment::* namespace.
 
 =head1 SUBROUTINES/METHODS
 
-
-=head2 as_data_for_jsonref
-
-returns json-like data with dojox.json.ref references
-
-=cut
-
-sub as_data_for_jsonref {
-  my ($self, $seen) = @_;
-  my $id = 'pr'.$self->nd_protocol_id;
-  if ($seen->{$id}++) {
-    return { '$ref' => $id };
-  } else {
-    return {
-	    id => $id,
-	    name => $self->name,
-	    props => [ map { $_->as_data_for_jsonref($seen) } $self->nd_protocolprops ],
-	   };
-  }
-}
-
-
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

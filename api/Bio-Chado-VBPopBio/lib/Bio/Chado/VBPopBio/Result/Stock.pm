@@ -9,10 +9,12 @@ __PACKAGE__->subclass({
 		       organism => 'Bio::Chado::VBPopBio::Result::Organism',
 		       type => 'Bio::Chado::VBPopBio::Result::Cvterm',
 		      });
-__PACKAGE__->resultset_attributes({ order_by => stock_id });
+__PACKAGE__->resultset_attributes({ order_by => 'stock_id' });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use Carp;
+use POSIX;
+
 
 =head1 NAME
 
@@ -27,17 +29,17 @@ Stock object with extra convenience functions
 
 =head1 RELATIONSHIPS
 
-=head2 stock_projects
+=head2 project_stocks
 
-related virtual object/table: Bio::Chado::VBPopBio::Result::Linker::StockProject
+related virtual object/table: Bio::Chado::VBPopBio::Result::Linker::ProjectStock
 
 see also methods add_to_projects and projects
 
 =cut
 
 __PACKAGE__->has_many(
-  "stock_projects",
-  "Bio::Chado::VBPopBio::Result::Linker::StockProject",
+  "project_stocks",
+  "Bio::Chado::VBPopBio::Result::Linker::ProjectStock",
   { "foreign.stock_id" => "self.stock_id" },
   { cascade_copy => 0, cascade_delete => 0 },
 );
@@ -117,9 +119,9 @@ sub experiments_by_type {
 =head2 add_to_projects
 
 there is no project_stocks relationship in Chado so we have a nasty
-hack using stockprops and projectprops with a special type and a negative rank
+hack using projectprops with a special type and a negative rank
 
-returns the stockprop
+returns the projectprop
 
 =cut
 
@@ -129,19 +131,12 @@ sub add_to_projects {
   my $schema = $self->result_source->schema;
   my $link_type = $schema->types->project_stock_link;
 
-  my $projectprop = $schema->resultset('Projectprop')->find_or_create(
+  return $schema->resultset('Projectprop')->find_or_create(
 				       { project_id => $project->id,
 					 type => $link_type,
 					 value => undef,
 					 rank => -$self->id
 				       } );
-
-  return $self->find_or_create_related('stockprops',
-				       { type => $link_type,
-					 value => undef,
-					 rank => -$project->id
-				       } );
-
 }
 
 =head2 projects
@@ -154,7 +149,7 @@ sub projects {
   my ($self) = @_;
   my $link_type = $self->result_source->schema->types->project_stock_link;
 
-  return $self->search_related('stock_projects',
+  return $self->search_related('project_stocks',
 			       {
 				# no search terms
 			       },
@@ -310,7 +305,6 @@ sub multiprops {
     );
 }
 
-
 =head2 as_data_structure
 
 returns a json-like hashref of arrayrefs and hashrefs
@@ -318,44 +312,45 @@ returns a json-like hashref of arrayrefs and hashrefs
 =cut
 
 sub as_data_structure {
-  my ($self) = @_;
+  my ($self, $depth) = @_;
+  $depth = INT_MAX unless (defined $depth);
+
   return {
-	  $self->get_columns,
-	  'dbxref.accession' => defined $self->dbxref_id ? $self->dbxref->db->name.':'.$self->dbxref->accession : 'N/A',
-	  organism => $self->organism ? { $self->organism->get_columns } : 'NULL',
+      id => $self->stable_id, # use stable_id when ready
+      name => $self->name,
+      external_id => $self->external_id,
 
-	  props => [ map { $_->as_data_structure } $self->multiprops ],
+      # make sure $depth won't go over the set level		
+      # no depth checks for some contained objects, such as organism, cvterms etc
+      # need to provide Result::Organism::as_data_structure
 
-	  nd_experiments => [ map { $_->as_data_structure } $self->experiments ],
+      # organism => $self->organism ? { $self->organism->get_columns } : 'NULL',
+
+      ($depth > 0) ? (experiments => [ map { $_->as_data_structure } $self->experiments ]) : (),
+      
+
+#
+# for the RC1  replace each type of experiment with:
+#
+#	  phenotype_assays => [ 
+#	      map { $_->as_data_structure } $self->phenotype_assays
+#	  ],
+#
+#	  and same for genotype_assays, field_collections, species_identification_assays
+#
+
+
+#	  $self->get_columns,  # we don't want this
+#
+#	  'dbxref.accession' => defined $self->dbxref_id ? $self->dbxref->db->name.':'.$self->dbxref->accession : 'N/A',
+#
+#	  organism => $self->organism ? { $self->organism->get_columns } : 'NULL',
+#
+#	  props => [ map { $_->as_data_structure } $self->multiprops ],
+#
 	 };
 }
 
-
-=head2 as_data_for_jsonref
-
-returns a json-like hashref of arrayrefs and hashrefs
-
-this method is specifically for dojox.json.ref style json
-
-=cut
-
-sub as_data_for_jsonref {
-  my ($self, $seen) = @_;
-  my $id = 's'.$self->stock_id;
-  if ($seen->{$id}++) {
-    return { '$ref' => $id };
-  } else {
-    return {
-	    id => $id,
-	    name => $self->name,
-	    uniquename => $self->uniquename,
-	    type => $self->type->cv->name.':'.$self->type->name,
-	    organism => $self->organism ? $self->organism->as_data_for_jsonref($seen) : undef,
-	    props => [ map { $_->as_data_for_jsonref($seen) } $self->stockprops ],
-	    experiments => [ map { $_->as_data_for_jsonref($seen) } $self->nd_experiments ],
-	   };
-  }
-}
 
 
 =head1 AUTHOR

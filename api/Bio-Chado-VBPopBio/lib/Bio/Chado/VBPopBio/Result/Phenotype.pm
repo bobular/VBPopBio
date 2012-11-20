@@ -20,32 +20,6 @@ Phenotype object with extra convenience functions
 
 =head1 SUBROUTINES/METHODS
 
-=head2 as_data_for_jsonref
-
-returns a json-like hashref of arrayrefs and hashrefs
-
-this method is specifically for dojox.json.ref style json
-
-=cut
-
-sub as_data_for_jsonref {
-  my ($self, $seen) = @_;
-  my $id = 'pt'.$self->phenotype_id;
-  if ($seen->{$id}++) {
-    return { '$ref' => $id };
-  } else {
-#    $self->discard_changes unless ($self->has_column_loaded('uniquename'));
-    return {
-	    id => $id,
-	    uniquename => $self->uniquename,
-	    observable => display_cvterm($self->observable),
-	    attribute => display_cvterm($self->attr),
-	    cvalue => display_cvterm($self->cvalue),
-	    value => $self->value,
-	   };
-  }
-}
-
 =head2 display_cvterm
 
 Likely to be deprecated method to produce a single text string for the term

@@ -2,6 +2,7 @@ package Bio::Chado::VBPopBio::Result::Experiment;
 
 use strict;
 use Carp;
+use POSIX;
 use feature 'switch';
 use base 'Bio::Chado::Schema::Result::NaturalDiversity::NdExperiment';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass DynamicSubclass/);
@@ -16,6 +17,7 @@ __PACKAGE__->subclass({ nd_experiment_stocks => 'Bio::Chado::VBPopBio::Result::L
 		      });
 
 __PACKAGE__->typecast_column('type_id');
+__PACKAGE__->resultset_attributes({ order_by => 'nd_experiment_id' });
 
 =head1 NAME
 
@@ -496,53 +498,55 @@ returns a json-like hashref of arrayrefs and hashrefs
 =cut
 
 sub as_data_structure {
-  my ($self) = @_;
+  my ($self, $depth) = @_;
+  $depth = INT_MAX unless (defined $depth);
 
   return {
-	  $self->get_columns,
+	  name => 'I AM AN EXPERIMENT',
+          description => 'I SHOULD BE SUBCLASSED',
 
-	  'type.name' => $self->type->name,
+# 	  nd_geolocation => $self->nd_geolocation->as_data_structure,
+	  
 
- 	  nd_geolocation => $self->nd_geolocation->as_data_structure,
-
-	  genotypes => [ map {
-	    { $_->get_columns,
-		genotypeprops => [ map {
-		  { 'type.name' => $_->type->name,
-		      $_->get_columns,
-		    }
-		} $_->genotypeprops ],
-	      }
-	  } $self->genotypes,
-		       ],
-
-	  phenotypes => [ map {
-	    { $_->get_columns,
-		$_->observable ? ( 'observable.name' => $_->observable->name ) : (),
-		  $_->attr ? ( 'attr.name' => $_->attr->name ) : (),
-		    $_->cvalue ? ( 'cvalue.name' => $_->cvalue->name ) : (),
-		  }
-	  } $self->phenotypes,
-			],
-
-	  nd_experimentprops => [ map {
-	    { $_->get_columns,
-		'type.name' => $_->type->name,
-	      }
-	  } $self->nd_experimentprops,
-				],
-
-	  nd_protocols => [ map {
-	    { $_->get_columns,
-		protocolprops => [ map {
-		  { 'type.name' => $_->type->name,
-		      $_->get_columns,
-		  }
-		} $_->nd_protocolprops,
-				 ],
-			       }
-	  } $self->nd_protocols
-			  ],
+#	  genotypes => [ map {
+#	    { $_->get_columns,
+#		genotypeprops => [ map {
+#		  { 'type.name' => $_->type->name,
+#		      $_->get_columns,
+#		    }
+#		} $_->genotypeprops ],
+#	      }
+#	  } $self->genotypes,
+#		       ],
+#
+#	  phenotypes => [ map {
+#	    { $_->get_columns,
+#		$_->observable ? ( 'observable.name' => $_->observable->name ) : (),
+#		  $_->attr ? ( 'attr.name' => $_->attr->name ) : (),
+#		    $_->cvalue ? ( 'cvalue.name' => $_->cvalue->name ) : (),
+#		  }
+#	  } $self->phenotypes,
+#			],
+#
+#	  nd_experimentprops => [ map {
+#	    { $_->get_columns,
+#		'type.name' => $_->type->name,
+#	      }
+#	  } $self->nd_experimentprops,
+#				],
+#
+#	  nd_protocols => [ map {
+#	    { $_->get_columns,
+#		protocolprops => [ map {
+#		  { 'type.name' => $_->type->name,
+#		      $_->get_columns,
+#		  }
+#		} $_->nd_protocolprops,
+#				 ],
+#			       }
+#	  } $self->nd_protocols
+#			  ],
+           
 	 };
 }
 
@@ -551,30 +555,6 @@ sub as_data_structure {
 returns json-like data with dojox.json.ref references
 
 =cut
-
-sub as_data_for_jsonref {
-  my ($self, $seen) = @_;
-  my $id = 'e'.$self->nd_experiment_id;
-  if ($seen->{$id}++) {
-    return { '$ref' => $id };
-  } else {
-    return {
-	    id => $id,
-
-	    type => $self->type->name, # should be the next line
-	    # type => $self->type->cv->name.':'.$self->type->name,
-
-	    genotypes => [ map { $_->as_data_for_jsonref($seen) } $self->genotypes ],
-	    phenotypes => [ map { $_->as_data_for_jsonref($seen) } $self->phenotypes ],
-
-	    geolocation => $self->nd_geolocation->as_data_for_jsonref($seen),
-	    protocols => [ map { $_->as_data_for_jsonref($seen) } $self->nd_protocols ],
-
-	    props => [ map { $_->as_data_for_jsonref($seen) } $self->nd_experimentprops ],
-	 };
-  }
-}
-
 
 =head1 AUTHOR
 
