@@ -1,6 +1,7 @@
 package Bio::Chado::VBPopBio::Result::Project;
 
 use Carp;
+use POSIX;
 use feature 'switch';
 use base 'Bio::Chado::Schema::Result::Project::Project';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass/);
@@ -8,6 +9,7 @@ __PACKAGE__->subclass({
 		       nd_experiment_projects => 'Bio::Chado::VBPopBio::Result::Linker::ExperimentProject',
 		       projectprops => 'Bio::Chado::VBPopBio::Result::Projectprop',
 		      });
+__PACKAGE__->resultset_attributes({ order_by => 'project_id' });
 
 =head1 NAME
 
@@ -93,27 +95,6 @@ sub species_identification_assays {
   my ($self) = @_;
   return $self->experiments_by_type($self->result_source->schema->types->species_identification_assay);
 }
-
-### old method via nd_experiments - not fit for purpose
-### (remove me soon!)
-###
-###=head2 stocks
-###
-###Get all stocks (via nd_experiments) with no duplicates
-###
-###=cut
-###
-###sub stocks {
-###  my ($self) = @_;
-###  return $self->experiments->search_related('nd_experiment_stocks')->search_related('stock', { } , { distinct => 1 });
-###}
-
-=head2 experiments_by_type
-
-Helper method not intended for general use.
-See field_collections, phenotype_assays for usage.
-
-=cut
 
 sub experiments_by_type {
   my ($self, $type) = @_;
@@ -309,8 +290,6 @@ sub multiprops {
     );
 }
 
-
-
 =head2 add_to_stocks
 
 there is no project_stocks relationship in Chado so we have a nasty
@@ -341,6 +320,7 @@ sub add_to_stocks {
 					 rank => -$stock->id
 				       } );
 }
+
 
 =head2 stocks
 
@@ -384,16 +364,20 @@ returns a json-like hashref of arrayrefs and hashrefs
 =cut
 
 sub as_data_structure {
-  my ($self) = @_;
+  my ($self, $depth) = @_;
+  $depth = INT_MAX unless (defined $depth);
   return {
-	  $self->get_columns,
+	  name => $self->name,
+	  id => $self->stable_id,
+	  external_id => $self->external_id,
+	  description => $self->description,
 
-	  projectprops => [ map {
-	    { $_->get_columns,
-		type => { $_->type->get_columns },
-	      } } $self->projectprops
-			  ],
-	  stocks => [ map { $_->as_data_structure } $self->stocks ],
+#	  projectprops => [ map {
+#	    { $_->get_columns,
+#		type => { $_->type->get_columns },
+#	      } } $self->projectprops
+#			  ],
+	  ($depth > 0) ? (stocks => [ map { $_->as_data_structure($depth-1) } $self->stocks ]) : (),
 	 };
 }
 

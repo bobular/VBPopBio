@@ -9,10 +9,11 @@ __PACKAGE__->subclass({
 		       organism => 'Bio::Chado::VBPopBio::Result::Organism',
 		       type => 'Bio::Chado::VBPopBio::Result::Cvterm',
 		      });
-__PACKAGE__->resultset_attributes({ order_by => stock_id });
+__PACKAGE__->resultset_attributes({ order_by => 'stock_id' });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use Carp;
+use POSIX;
 
 =head1 NAME
 
@@ -318,44 +319,42 @@ returns a json-like hashref of arrayrefs and hashrefs
 =cut
 
 sub as_data_structure {
-  my ($self) = @_;
+  my ($self, $depth) = @_;
+  $depth = INT_MAX unless (defined $depth);
+
   return {
-	  $self->get_columns,
-	  'dbxref.accession' => defined $self->dbxref_id ? $self->dbxref->db->name.':'.$self->dbxref->accession : 'N/A',
-	  organism => $self->organism ? { $self->organism->get_columns } : 'NULL',
+      id => $self->stable_id, # use stable_id when ready
+      name => $self->name,
+      external_id => $self->external_id,
 
-	  props => [ map { $_->as_data_structure } $self->multiprops ],
+      # make sure $depth won't go over the set level		
+      # no depth checks for some contained objects, such as organism, cvterms etc
+      # need to provide Result::Organism::as_data_structure
 
-	  nd_experiments => [ map { $_->as_data_structure } $self->experiments ],
+      # organism => $self->organism ? { $self->organism->get_columns } : 'NULL',
+
+      ($depth > 0) ? (experiments => [ map { $_->as_data_structure } $self->experiments ]) : (),
+      
+#
+# for the RC1  replace each type of experiment with:
+#
+#	  phenotype_assays => [ 
+#	      map { $_->as_data_structure } $self->phenotype_assays
+#	  ],
+#
+#	  and same for genotype_assays, field_collections, species_identification_assays
+#
+#	  $self->get_columns,  # we don't want this
+#
+#	  'dbxref.accession' => defined $self->dbxref_id ? $self->dbxref->db->name.':'.$self->dbxref->accession : 'N/A',
+#
+#	  organism => $self->organism ? { $self->organism->get_columns } : 'NULL',
+#
+#	  props => [ map { $_->as_data_structure } $self->multiprops ],
+#
 	 };
 }
 
-
-=head2 as_data_for_jsonref
-
-returns a json-like hashref of arrayrefs and hashrefs
-
-this method is specifically for dojox.json.ref style json
-
-=cut
-
-sub as_data_for_jsonref {
-  my ($self, $seen) = @_;
-  my $id = 's'.$self->stock_id;
-  if ($seen->{$id}++) {
-    return { '$ref' => $id };
-  } else {
-    return {
-	    id => $id,
-	    name => $self->name,
-	    uniquename => $self->uniquename,
-	    type => $self->type->cv->name.':'.$self->type->name,
-	    organism => $self->organism ? $self->organism->as_data_for_jsonref($seen) : undef,
-	    props => [ map { $_->as_data_for_jsonref($seen) } $self->stockprops ],
-	    experiments => [ map { $_->as_data_for_jsonref($seen) } $self->nd_experiments ],
-	   };
-  }
-}
 
 
 =head1 AUTHOR

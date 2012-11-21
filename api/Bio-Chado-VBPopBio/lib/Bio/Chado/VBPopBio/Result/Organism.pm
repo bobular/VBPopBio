@@ -6,6 +6,7 @@ __PACKAGE__->subclass({
 		       stocks => 'Bio::Chado::VBPopBio::Result::Stock',
 #		       organismprops => 'Bio::Chado::VBPopBio::Result::Organismprop',
 });
+__PACKAGE__->resultset_attributes({ order_by => 'organism_id' });
 
 =head1 NAME
 
@@ -29,25 +30,18 @@ sub name {
 }
 
 
-=head2 as_data_for_jsonref
+=head2 as_data_structure
 
 returns a json-like hashref of arrayrefs and hashrefs
 
-this method is specifically for dojox.json.ref style json
-
 =cut
 
-sub as_data_for_jsonref {
-  my ($self, $seen) = @_;
-  my $id = 'o'.$self->organism_id;
-  if ($seen->{$id}++) {
-    return { '$ref' => $id };
-  } else {
-    return {
-	    id => $id,
-	    spp => $self->name,
-	   };
-  }
+sub as_data_structure {
+  my ($self) = @_;
+  return {
+      id => $self->id,
+      name => $self->name,
+  };
 }
 
 
