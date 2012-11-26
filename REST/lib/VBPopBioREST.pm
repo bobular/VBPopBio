@@ -8,7 +8,8 @@ our $VERSION = '0.1';
 
 
 
-### JUST FOR DEMO/TESTING
+### JUST FOR DEMO/TESTING ###
+# don't need /depth routes but maybe one day...
 get '/project/:id/depth/:depth' => sub {
     my $project = schema->projects->find_by_stable_id(params->{id});
     if (defined $project) {
@@ -17,13 +18,15 @@ get '/project/:id/depth/:depth' => sub {
 	return { error_message => "can't find project" };
     }
 };
+##############################
 
 get '/' => sub{
     return {message => "Testing Dancer for VBPopBio REST service"};
 };
 
-get '/project/:id' => sub {
-    my $project = schema->projects->find_by_stable_id(params->{id});
+get qr{/project/(\w+)} => sub {
+    my ($id) = splat;
+    my $project = schema->projects->find_by_stable_id($id);
     if (defined $project) {
 	return $project->as_data_structure(); # warning - returns EVERYTHING
     } else {
@@ -31,8 +34,9 @@ get '/project/:id' => sub {
     }
 };
 
-get '/project/:id/head' => sub {
-    my $project = schema->projects->find_by_stable_id(params->{id});
+get qr{/project/(\w+)/head} => sub {
+    my ($id) = splat;
+    my $project = schema->projects->find_by_stable_id($id);
     if (defined $project) {
 	return $project->as_data_structure(0);
     } else {
@@ -44,54 +48,49 @@ get '/project/:id/head' => sub {
 get qr{/projects(/head)?} => sub {
 
     my ($head) = splat;
+    my $depth = $head ? 0 : undef;
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;    
 
 
-    my $result = schema->projects->search(
+    my $results = schema->projects->search(
 	undef,
 	{
 	    rows => $l,
-	    offset => $o,	
+	    offset => $o,
+	    page => 1,
 	},
 	);
    
-    my $count = $result->count;
+    my $count = $results->count;
     
-    if (defined $result) {
-	return $result->as_data_structure(defined $head ? 0 : undef);
-    }else{
 	return {
-	    records => [ map { $_->as_data_structure } $result->all ],
-	    records_info($o, $l, $count)
-	};
-    }
+	    records => [ map { $_->as_data_structure($depth) } $results->all ],
+	    records_info($o, $l, $results)
+	}
+    
 };
 
 
 
 get qr{/stocks(/head)?} => sub {
     my ($head) = splat;
+    my $depth = $head ? 0 : undef;
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;    
-
-    my $result = schema->stocks->search(
+    
+    my $results = schema->stocks->search(
 	undef,
 	{
-	    
 	    rows => $l,
 	    offset => $o,
+	    page => 1,
 	},
 	);
    
-    my $count = $result->count;
-    if (defined $result) {
-	return $result->as_data_structure(defined $head ? 0 : undef);
-    }else{
-	return {
-	    records => [ map { $_->as_data_structure } $result->all ],
-	    records_info($o, $l, $count)
-	};
+    return {
+	records => [ map { $_->as_data_structure($depth) } $results->all ],
+	records_info($o, $l, $results),
     }
 };
 
@@ -106,36 +105,42 @@ get qr{/stock/(\w+)(/head)?} => sub {
 };
 
 
-get '/assay/:id' => sub {
-    my $assay = schema->experiments->find_by_stable_id(params->{id});
-    if (defined $assay) {
-	return $assay->as_data_structure;
-    } else {
-	return { error_message => "can't find assay" };
-    }
-};
-
-
-get '/assay/:id/head' => sub {
-    my $assay = schema->experiments->find_by_stable_id(params->{id});
-    if (defined $assay) {
-	return $assay->as_data_structure(0);
-    } else {
-	return { error_message => "can't find assay" };
-    }
-};
-
-
-get qr{/project/(\w+)(/stocks)?} => sub {
+get qr{/assay/(\w+)(/head)?} => sub {
     my ($id, $head) = splat;
-    my $project = schema->projects->find_by_stable_id(params($id));
-    if (defined $project) {
-	return $project = schema->stocks->as_data_structure(defined $head ? 0 : undef);
+    my $assay = schema->experiments->find_by_stable_id($id);
+    if (defined $assay) {
+	return $assay->as_data_structure(defined $head ? 0 : undef);
     } else {
-	return { error_message => "can't find project" };
+	return { error_message => "can't find assay" };
     }
 };
 
+
+get qr{/project/(\w+)(/stocks)(/head)?} => sub {
+    my ($id, $head) = splat;
+    my $project = schema->projects->find_by_stable_id($id);
+
+    my $l = params->{l} || 20;
+    my $o = params->{o} || 0;
+
+    
+    my $stocks = $project->stocks->search(
+      undef,
+	{
+	    rows => $l,
+	    offset => $o,
+	    page => 1,
+	},
+	);
+
+    my $count = $stocks->count;
+   
+    return {
+	records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $stocks->all ],
+	records_info($o, $l, $stocks)
+    };
+
+};
 #get '/organisms' => sub {
 #
 #    my $result = schema->organisms->search(
@@ -151,9 +156,9 @@ get qr{/project/(\w+)(/stocks)?} => sub {
 #
 #};
 
-get qr{/stock/(\w+)(/projects)?} => sub {
+get qr{/stock/(\w+)(/projects)(/head)?} => sub {
     my ($id, $head) = splat;
-    my $stock = schema->stocks->find_by_stable_id(params->{id});
+    my $stock = schema->stocks->find_by_stable_id($id);
 
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
@@ -163,7 +168,8 @@ get qr{/stock/(\w+)(/projects)?} => sub {
       undef,
 	{
 	    rows => $l,
-	    offset => $o,	
+	    offset => $o,
+	    page => 1,
 	},
 	);
 
@@ -171,14 +177,15 @@ get qr{/stock/(\w+)(/projects)?} => sub {
    
     return {
 	records => [ map { $_->as_data_structure } $projects->all ],
-	records_info($o, $l, $count)
+	records_info($o, $l, $projects)
     };
 
 };
 
 
-get '/stock/:id/assays' => sub {
-    my $stock = schema->stocks->find_by_stable_id(params->{id});
+get qr{/stock/(\w+)(/assays)} => sub {
+    my ($id) = splat;
+    my $stock = schema->stocks->find_by_stable_id($id);
 
   
     my $o = params->{o} || 0; 
@@ -189,7 +196,8 @@ get '/stock/:id/assays' => sub {
 	undef,
 	{
 	    rows => $l,
-	    offset => $o,	  
+	    offset => $o,
+	    page => 1,
 	},
 	);
 
@@ -198,7 +206,7 @@ get '/stock/:id/assays' => sub {
  
     return {
 	records => [ map { $_->as_data_structure } $experiments->all ],
-	records_info($o, $l, $count)
+	records_info($o, $l, $experiments)
     };
 };
 
@@ -207,12 +215,13 @@ get '/stock/:id/assays' => sub {
 # utility subroutines
 
 sub records_info {
-    my ($o, $l, $count) = @_;
+    my ($o, $l, $page) = @_;
 
     return (
 	start => $o + 1,
 	end => $l,
-	count => $count,
+	# have to do the following because $page->count returns page size
+	count => $page->pager->total_entries,
 	);
 }
 

@@ -10,7 +10,7 @@ use Dancer::Test;
 use JSON;
 
 my $project_id = 'VBP0000001';
-my $verbose = 0; # print JSON responses to terminal
+my $verbose = 1; # print JSON responses to terminal
 
 #
 # test project/ID/head
