@@ -1,6 +1,7 @@
 package VBPopBioREST;
 use Dancer::Plugin::DBIC 'schema';
 use Dancer ':syntax';
+#use lib '/home/maccallr/vectorbase/popgen/api-devel/Bio-Chado-Schema-git/Bio-Chado-Schema-0.10010/lib';
 use lib '../api/Bio-Chado-VBPopBio/lib';
 use Bio::Chado::VBPopBio;
 
@@ -46,13 +47,13 @@ get qr{/project/(\w+)/head} => sub {
 
 
 get qr{/projects(/head)?} => sub {
-
+    
     my ($head) = splat;
     my $depth = $head ? 0 : undef;
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;    
-
-
+    
+    
     my $results = schema->projects->search(
 	undef,
 	{
@@ -61,13 +62,13 @@ get qr{/projects(/head)?} => sub {
 	    page => 1,
 	},
 	);
-   
+    
     my $count = $results->count;
     
-	return {
+    return {
 	    records => [ map { $_->as_data_structure($depth) } $results->all ],
 	    records_info($o, $l, $results)
-	}
+    }
     
 };
 
@@ -96,12 +97,16 @@ get qr{/stocks(/head)?} => sub {
 
 get qr{/stock/(\w+)(/head)?} => sub {
     my ($id, $head) = splat;
-    my $stock = schema->stocks->find_by_stable_id($id);
-    if (defined $stock) {
+ 
+
+my $stock = schema->stocks->find_by_stable_id($id);
+if (defined $stock) {
 	return $stock->as_data_structure(defined $head ? 0 : undef);
     } else {
 	return { error_message => "can't find stock" };
     }
+
+ 
 };
 
 
@@ -115,31 +120,31 @@ get qr{/assay/(\w+)(/head)?} => sub {
     }
 };
 
-
-get qr{/project/(\w+)(/stocks)(/head)?} => sub {
+# Modified for the 005_stock.t test
+get qr{/project/(\w+)/stocks(/head)?} => sub {
     my ($id, $head) = splat;
     my $project = schema->projects->find_by_stable_id($id);
-
+    
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
-
+    
     
     my $stocks = $project->stocks->search(
-      undef,
+	undef,
 	{
 	    rows => $l,
 	    offset => $o,
 	    page => 1,
 	},
 	);
-
+    
     my $count = $stocks->count;
-   
+    
     return {
 	records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $stocks->all ],
 	records_info($o, $l, $stocks)
     };
-
+    
 };
 #get '/organisms' => sub {
 #
@@ -156,25 +161,25 @@ get qr{/project/(\w+)(/stocks)(/head)?} => sub {
 #
 #};
 
-get qr{/stock/(\w+)(/projects)(/head)?} => sub {
+get qr{/stock/(\w+)/projects(/head)?} => sub {
     my ($id, $head) = splat;
     my $stock = schema->stocks->find_by_stable_id($id);
-
+    
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
-
- 
+    
+    
     my $projects = $stock->projects->search(
-      undef,
+	undef,
 	{
 	    rows => $l,
 	    offset => $o,
 	    page => 1,
 	},
 	);
-
+    
     my $count = $projects->count;
-   
+    
     return {
 	records => [ map { $_->as_data_structure } $projects->all ],
 	records_info($o, $l, $projects)
@@ -183,15 +188,15 @@ get qr{/stock/(\w+)(/projects)(/head)?} => sub {
 };
 
 
-get qr{/stock/(\w+)(/assays)} => sub {
+get qr{/stock/(\w+)/assays} => sub {
     my ($id) = splat;
     my $stock = schema->stocks->find_by_stable_id($id);
-
+    
   
     my $o = params->{o} || 0; 
     my $l = params->{l} || 20;
-
-
+    
+    
     my $experiments = $stock->experiments->search(
 	undef,
 	{
@@ -200,10 +205,10 @@ get qr{/stock/(\w+)(/assays)} => sub {
 	    page => 1,
 	},
 	);
-
+    
     my $count = $experiments->count;
-  
- 
+    
+    
     return {
 	records => [ map { $_->as_data_structure } $experiments->all ],
 	records_info($o, $l, $experiments)
@@ -219,7 +224,8 @@ sub records_info {
 
     return (
 	start => $o + 1,
-	end => $l,
+	end => $o + $l, 
+	
 	# have to do the following because $page->count returns page size
 	count => $page->pager->total_entries,
 	);

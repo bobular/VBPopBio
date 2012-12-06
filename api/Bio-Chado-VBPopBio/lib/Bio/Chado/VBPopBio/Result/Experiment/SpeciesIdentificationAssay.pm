@@ -26,6 +26,19 @@ sub special {
   return 'I am very special';
 }
 
+sub as_data_structure {
+  my ($self, $depth) = @_;
+  $depth = INT_MAX unless (defined $depth);
+
+  return {
+	  $self->basic_info,
+          # let's only show locations for field_collections at the moment
+	  # geolocation => $self->nd_geolocation->as_data_structure,
+
+          species => "A. gambiae",
+	 };
+}
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

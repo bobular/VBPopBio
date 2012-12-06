@@ -372,7 +372,9 @@ sub as_data_structure {
       props => [ map { $_->as_data_structure } $self->multiprops ],
 
       # need to provide Result::Organism::as_data_structure:
-      # organism => $self->organism ? { $self->organism->as_data_structure } : 'NULL',
+      organism => $self->organism ? $self->organism->as_data_structure : 'NULL',
+
+      # organism_id => $self->organism_id,
 
       ($depth > 0) ? (
 		      field_collections => [ map { $_->as_data_structure($depth) } $self->field_collections ],

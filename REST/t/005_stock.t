@@ -1,4 +1,4 @@
-use Test::More tests => 14;
+use Test::More tests => 20;
 use strict;
 use warnings;
 use lib '../api/Bio-Chado-VBPopBio/lib';

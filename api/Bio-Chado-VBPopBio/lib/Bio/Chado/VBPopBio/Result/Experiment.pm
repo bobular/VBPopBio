@@ -669,6 +669,7 @@ sub basic_info {
   return (
 	  id => $self->stable_id,
 	  external_id => $self->external_id,
+          props => [ map { $_->as_data_structure } $self->multiprops ],
 	 );
 }
 
