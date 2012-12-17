@@ -31,13 +31,13 @@ sub as_data_structure {
   $depth = INT_MAX unless (defined $depth);
 
   return {
-	  $self->basic_info,
-          # let's only show locations for field_collections at the moment
-	  # geolocation => $self->nd_geolocation->as_data_structure,
-
-          genotypes => [ map { $_ } (1..10) ],
+      $self->basic_info,
+      genotypes => [ map { $_->as_data_structure } $self->genotypes->all ],
 	 };
 }
+
+
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

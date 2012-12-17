@@ -10,41 +10,35 @@ our $VERSION = '0.1';
 
 ### JUST FOR DEMO/TESTING ###
 # don't need /depth routes but maybe one day...
-get '/project/:id/depth/:depth' => sub {
-    my $project = schema->projects->find_by_stable_id(params->{id});
-    if (defined $project) {
-	return $project->as_data_structure(params->{depth});
-    } else {
-	return { error_message => "can't find project" };
-    }
-};
+#get '/project/:id/depth/:depth' => sub {
+#    my $project = schema->projects->find_by_stable_id(params->{id});
+#    if (defined $project) {
+#	return $project->as_data_structure(params->{depth});
+#    } else {
+#	return { error_message => "can't find project" };
+#    }
+#};
 ##############################
+
 
 get '/' => sub{
     return {message => "Testing Dancer for VBPopBio REST service"};
 };
 
-get qr{/project/(\w+)} => sub {
-    my ($id) = splat;
+
+# Project
+get qr{/project/(\w+)(/head)?} => sub {
+    my ($id, $head) = splat;
     my $project = schema->projects->find_by_stable_id($id);
+
     if (defined $project) {
-	return $project->as_data_structure(); # warning - returns EVERYTHING
+	return $project->as_data_structure(defined $head ? 0 : undef);
     } else {
 	return { error_message => "can't find project" };
     }
 };
 
-get qr{/project/(\w+)/head} => sub {
-    my ($id) = splat;
-    my $project = schema->projects->find_by_stable_id($id);
-    if (defined $project) {
-	return $project->as_data_structure(0);
-    } else {
-	return { error_message => "can't find project" };
-    }
-};
-
-
+#Projects
 get qr{/projects(/head)?} => sub {
     
     my ($head) = splat;
@@ -72,8 +66,8 @@ get qr{/projects(/head)?} => sub {
 };
 
 
-
-get qr{/stocks(/head)?} => sub {
+#Stocks
+get qr{/(?:stocks|samples)(/head)?} => sub {
     my ($head) = splat;
     my $depth = $head ? 0 : undef;
     my $l = params->{l} || 20;
@@ -87,31 +81,32 @@ get qr{/stocks(/head)?} => sub {
 	    page => 1,
 	},
 	);
-   
+    
     return {
 	records => [ map { $_->as_data_structure($depth) } $results->all ],
 	records_info($o, $l, $results),
     }
 };
 
-get qr{/stock/(\w+)(/head)?} => sub {
+#Stock
+get qr{/(?:stock|sample)/(\w+)(/head)?} => sub {
     my ($id, $head) = splat;
- 
+    my $stock = schema->stocks->find_by_stable_id($id);
 
-my $stock = schema->stocks->find_by_stable_id($id);
-if (defined $stock) {
+    if (defined $stock) {
 	return $stock->as_data_structure(defined $head ? 0 : undef);
     } else {
 	return { error_message => "can't find stock" };
     }
-
- 
+    
+    
 };
 
-
+#Assay
 get qr{/assay/(\w+)(/head)?} => sub {
     my ($id, $head) = splat;
     my $assay = schema->experiments->find_by_stable_id($id);
+
     if (defined $assay) {
 	return $assay->as_data_structure(defined $head ? 0 : undef);
     } else {
@@ -119,8 +114,8 @@ get qr{/assay/(\w+)(/head)?} => sub {
     }
 };
 
-# Modified for the 005_stock.t test
-get qr{/project/(\w+)/stocks(/head)?} => sub {
+#Project/stocks
+get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
     my ($id, $head) = splat;
     my $project = schema->projects->find_by_stable_id($id);
     
@@ -145,6 +140,8 @@ get qr{/project/(\w+)/stocks(/head)?} => sub {
     };
     
 };
+
+## JUST FOR DEMO/TESTING
 #get '/organisms' => sub {
 #
 #    my $result = schema->organisms->search(
@@ -160,7 +157,8 @@ get qr{/project/(\w+)/stocks(/head)?} => sub {
 #
 #};
 
-get qr{/stock/(\w+)/projects(/head)?} => sub {
+#Stock/projects
+get qr{/(?:stock|sample)/(\w+)/projects(/head)?} => sub {
     my ($id, $head) = splat;
     my $stock = schema->stocks->find_by_stable_id($id);
     
@@ -183,15 +181,15 @@ get qr{/stock/(\w+)/projects(/head)?} => sub {
 	records => [ map { $_->as_data_structure } $projects->all ],
 	records_info($o, $l, $projects)
     };
-
+    
 };
 
-
-get qr{/stock/(\w+)/assays} => sub {
+#Stock/assays
+get qr{/(?:stock|sample)/(\w+)/assays} => sub {
     my ($id) = splat;
     my $stock = schema->stocks->find_by_stable_id($id);
     
-  
+    
     my $o = params->{o} || 0; 
     my $l = params->{l} || 20;
     
@@ -220,10 +218,11 @@ get qr{/stock/(\w+)/assays} => sub {
 
 sub records_info {
     my ($o, $l, $page) = @_;
-
+    my $end = $o + $page->count;
+    
     return (
-	start => $o + 1,
-	end => $o + $l, 
+	start => $o + 1, 
+	end => $end,
 	
 	# have to do the following because $page->count returns page size
 	count => $page->pager->total_entries,
