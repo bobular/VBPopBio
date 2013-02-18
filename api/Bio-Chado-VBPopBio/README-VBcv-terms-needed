@@ -1,5 +1,7 @@
 assumed species = A species assignment that has been made without a formal species identification assay.
 
+### I had a heated discussion with Kitsos for this. He strongly opposes the idea to have such a term.PT
+
 species assay result = The result of a species identification assay as a species name.
 
    then there will be several 'species evidence codes' which we'll
@@ -8,7 +10,12 @@ species assay result = The result of a species identification assay as a species
    (for example if assay results said it was A. arabiensis AND
    A. gambiae M form)...
 
+### The same is true for the 'species evidence codes'.PT
+
 reproductive status = e.g. virgin, mated, blood-fed, gravid (sorry can't think of a good description)
+
+### I have included it in VB_cv but soon it will be placed in IDOMAL. So expect an ID change soon. I renamed
+the term as "reproductive status of mosquito".PT
 
 submission date = The date on which the data was submitted to VectorBase.
 
@@ -22,6 +29,9 @@ household ID = An identifying (but ideally anonymized) name or code for a househ
   are characteristics of the collection site and not the collection itself (act of collection).
 
 species identification assay = see genotype assay, phenotype assay already in VBcv
+
+### species identification method already in MIRO (MIRO:30000005). I think it can be used instead of
+the requested 'species identification assay'
 
 project external ID = An ID of the format YYYY-AuthorSurname-Keyword(s) - should be unique with respect to all VectorBase population data submissions.
 
