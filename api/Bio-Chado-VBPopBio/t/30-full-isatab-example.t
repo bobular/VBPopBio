@@ -1,4 +1,4 @@
-use Test::More tests => 10;
+use Test::More tests => 11;
 
 use strict;
 use JSON;
@@ -34,6 +34,8 @@ $schema->txn_do_deferred(
 		  my $geo = $fc->geolocation;
 		  isa_ok($geo, "Bio::Chado::VBPopBio::Result::Geolocation", "geo is correct class");
 
+
+		  is($fc->protocols->first->uri, 'http://whqlibdoc.who.int/offset/WHO_OFFSET_13_(part2).pdf', "field collection protocol URI");
 
 		  is($stock->genotype_assays->count, 3, "stock has three genotype_assays");
 

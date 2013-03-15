@@ -257,6 +257,20 @@ sub description {
 					     });
 }
 
+=head2 uri
+
+=cut
+
+sub uri {
+  my $self = shift;
+  return $self->schema->cvterms->create_with({ name => 'URI',
+					       cv => 'VBcv',
+					       db => 'VBcv',
+					       description => 'Used to add URIs to items in Chado via properties.',
+					     });
+}
+
+
 =head2 comment
 
 =cut

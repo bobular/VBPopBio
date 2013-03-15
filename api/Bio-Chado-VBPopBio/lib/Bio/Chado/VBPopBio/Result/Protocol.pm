@@ -165,6 +165,30 @@ sub description {
     );
 }
 
+=head uri
+
+get/setter for uri (stored via rank==0 prop)
+
+usage
+
+  $protocol->uri("this is some text");
+  print $protocol->uri;
+
+
+returns the text in both cases
+
+=cut
+
+sub uri {
+  my ($self, $uri) = @_;
+  return Extra->attribute
+    ( value => $uri,
+      prop_type => $self->result_source->schema->types->uri,
+      prop_relation_name => 'nd_protocolprops',
+      row => $self,
+    );
+}
+
 =head2 as_data_structure
 
 return a hashref of hashrefs and arrays for JSON serialisation
@@ -176,6 +200,7 @@ sub as_data_structure {
 
   return { name => $self->name,
 	   description => $self->description,
+	   uri => $self->uri,
 	   type => $self->type->as_data_structure,
 	   props => [ map { $_->as_data_structure } $self->multiprops ],
 	 };

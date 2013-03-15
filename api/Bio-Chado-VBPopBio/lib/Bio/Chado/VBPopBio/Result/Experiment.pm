@@ -344,6 +344,11 @@ sub add_to_protocols_from_isatab {
 	  $protocol->description($protocol_info->{study_protocol_description});
 	}
 
+	# set the URI
+	if (defined $protocol_info->{study_protocol_uri}) {
+	  $protocol->uri($protocol_info->{study_protocol_uri});
+	}
+
 	if (defined $protocol_info->{study_protocol_component_lookup}) {
 	  while (my ($name, $data) = each %{$protocol_info->{study_protocol_component_lookup}}) {
 	    # just add the component type as a single term multiprop
@@ -760,7 +765,6 @@ sub description {
       row => $self,
     );
 }
-
 
 =head2 as_data_structure
 

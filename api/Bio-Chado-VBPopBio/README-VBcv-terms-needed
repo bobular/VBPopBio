@@ -75,3 +75,4 @@ protocol parameter group 3 = see above
 
 vcf_file = A cvterm used internally within Chado to store VCF file names for genotype assays.
 
+URI = Used to add URIs to items in Chado via properties
