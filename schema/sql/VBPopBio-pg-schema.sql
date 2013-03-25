@@ -3563,7 +3563,7 @@ ALTER SEQUENCE phenstatement_phenstatement_id_seq OWNED BY phenstatement.phensta
 CREATE TABLE project (
     project_id integer NOT NULL,
     name character varying(255) NOT NULL,
-    description character varying(255) NOT NULL
+    description character varying(4096) NOT NULL
 );
 
 
