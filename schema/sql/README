@@ -1,3 +1,5 @@
 This is how we dumped it
 
 pg_dump --schema-only --disable-triggers --no-owner $CHADO_DB_NAME > VBPopBio-pg-schema.sql
+
+You only need to use the patches if you are starting from "vanilla" Chado from GMOD.
