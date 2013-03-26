@@ -439,7 +439,7 @@ sub add_to_protocols_from_isatab {
 	      $param_type_cvterm = $types->placeholder;
 	    }
 	  } else {
-	    $schema->defer_exception("Protocol parameter '$param_name' has no ontology term");
+	    $schema->defer_exception_once("Protocol parameter '$param_name' has no ontology term");
 	    $param_type_cvterm = $types->placeholder;
 	  }
 

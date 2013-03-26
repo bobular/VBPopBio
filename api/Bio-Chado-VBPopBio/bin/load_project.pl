@@ -8,6 +8,7 @@
 #   --dry-run              : rolls back transaction and doesn't insert into db permanently
 #   --json filename        : prints pretty JSON for the whole project to the file
 #   --sample-info filename : prints sample external ids, stable ids, and comments to TSV
+#   --limit 50             : only process first 50 samples (--dry-run implied)
 #
 
 use strict;
@@ -26,11 +27,15 @@ my $dry_run;
 my $json_file;
 my $json = JSON->new->pretty;
 my $samples_file;
+my $limit;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "json=s"=>\$json_file,
 	   "sample-info|samples=s"=>\$samples_file,
+	   "limit=i"=>\$limit,
     );
+
+$dry_run = 1 if ($limit);
 
 my ($isatab_dir) = @ARGV;
 
@@ -38,7 +43,8 @@ $schema->txn_do_deferred
   ( sub {
 
       my $num_projects_before = $projects->count;
-      my $project = $projects->create_from_isatab({ directory => $isatab_dir });
+      my $project = $projects->create_from_isatab({ directory => $isatab_dir,
+						    sample_limit => $limit, });
 
       if ($json_file) {
 	if (open(my $jfile, ">$json_file")) {

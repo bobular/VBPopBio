@@ -153,6 +153,7 @@ sub create_from_isatab {
 
   my $stocks = $schema->stocks;
   my %stocks;
+ SOURCE:
   while (my ($source_id, $source_data) = each %{$study->{sources}}) {
 
     # we are currently ignoring all source annotations
@@ -163,6 +164,9 @@ sub create_from_isatab {
       my $stock = $stocks->find_or_create_from_isatab($sample_id, $sample_data, $project, $ontologies, $study);
       $stocks{$sample_id} = $stock;
       $project->add_to_stocks($stock);
+
+      # this might be used for dry-run testing (see bin/load_project.pl)
+      last SOURCE if ($opts->{sample_limit} && keys %stocks >= $opts->{sample_limit});
     }
   }
 
