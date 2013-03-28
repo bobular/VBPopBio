@@ -1,0 +1,16 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+ <head>
+  <link rel="stylesheet" href="[% root %]css/main.css" type="text/css" />
+  [% FOREACH script IN js %]
+    [% IF script.match('^https?://') %]
+      <script type="text/javascript" src="[% script %]"></script>
+    [% ELSE %]
+      <script type="text/javascript" src="[% root_static %][% script %]"></script>
+    [% END %]
+  [% END %]
+  <title>[% title %]</title>
+ </head>
+<body id="vbpg">
+<div id="vbpg_page">
+<div id="vbpg_content">

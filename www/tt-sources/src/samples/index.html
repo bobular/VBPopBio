@@ -1,0 +1,33 @@
+[% INCLUDE header.html
+   title = 'VectorBase Population Browser - Samples'
+   js = [
+'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', 'js/config.js', 'js/phenovis-0.01.js', 'js/frontend.js' ]
+%]
+
+<div id="samples">
+
+  <h1 class="vbpg_progress"></h1>
+
+[% INCLUDE 'list/samples.html' id='sample_list' %]
+
+</div>
+  
+<script type="text/javascript">
+	var samples = $('sample_list');
+	var spinner = samples.down('.vbpg_progress');
+	var url = 'stocks';
+	var limits = {
+	  offset: 0,
+	  limit: 50
+	};
+
+	getPagedObjects(url,
+									limits,
+									spinner,
+									function(page) {
+										fillInPagedListValues(page, samples, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
+									});
+
+</script>
+
+[% INCLUDE footer.html %]

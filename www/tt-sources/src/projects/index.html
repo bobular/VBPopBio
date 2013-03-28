@@ -1,0 +1,32 @@
+[% INCLUDE header.html
+title = 'VectorBase Population Browser - Projects'
+js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', 'js/config.js', 'js/phenovis-0.01.js', 'js/frontend.js' ]
+%]
+
+<div id="projects">
+
+  <h1 class="vbpg_progress"></h1>
+
+  [% INCLUDE 'list/projects.html' id='project_list' %]
+
+   </div>
+
+<script type="text/javascript">
+  var projects = $('project_list');
+  var spinner = projects.down('.vbpg_progress');
+  var url = 'projects';
+  var limits = {
+  offset: 0,
+  limit: 50
+  };
+
+  getPagedObjects(url,
+  limits,
+  spinner,
+  function(page) {
+  fillInPagedListValues(page, projects, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
+  });
+
+   </script>
+
+[% INCLUDE footer.html %]

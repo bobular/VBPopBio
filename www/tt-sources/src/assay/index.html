@@ -1,0 +1,108 @@
+[% INCLUDE header.html
+   title = 'VectorBase Population Browser - Assay'
+   js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', 'js/config.js', 
+'js/phenovis-0.01.js', 'js/frontend.js' 'js/protovis-d3.2.js' 'https://maps.google.com/maps/api/js?sensor=false' ]
+%]
+
+<div id="assay">
+
+  <h1 class="vbpg_progress"></h1>
+
+  <div class="vbpg_object_info assay hide_on_load" id="assay_info">
+    <h1><span class="object_value scalar capitalize" id="type"></span>: <span class="object_value scalar" id="name"></span> (<span class="object_value scalar" id="id"></span>)</h1>
+
+    <dl class="dunno" id="assayinfo">
+      <dt>Description</dt>
+      <dd class="object_value scalar" id="description"></dd>
+      <dt>Performed by</dt>
+      <dd class="object_value comma_separated" id="performers"></dd>
+    </dl>
+
+    <div class="vbpg_props_list hide_on_load" id="assayprops">
+      <ul>
+        <li class="list_row_template">
+        <span class="prop_cvterms"></span> = <span class="prop_value"></span>
+        </li>
+      </ul>
+    </div>
+ </div>
+
+  <div class="vbpg_object_info hide_on_load" id="assay_geolocation_info">
+    <h2>Collection site</h2>
+    <div id="mini_map_panel"></div>
+		<div id="assay_geolocation_text">
+    <dl>
+      <dt>Name</dt>
+      <dd class="object_value scalar" id="description"></dd>
+	  
+      <dt>Coordinates</dt>
+      <dd class="object_value clear_if_missing" id="latitude"><a class="auto_link" title="Google Maps (external site)" href="http://maps.google.com/maps?hl=en&tab=wl&z=8&q=####+(Collection+site)"><span class="object_value scalar" id="latitude"></span>,<span class="object_value scalar" id="longitude"></span></a> (<span class="object_value scalar" id="geodetic_datum"></span>)</dd>
+	  
+      <dt>Altitude</dt>
+      <dd class="object_value clear_if_missing" id="altitude"><span class="object_value scalar" id="altitude"></span></dd>
+    </dl>
+	  
+    <div class="vbpg_object_info hide_on_load" id="assay_geolocationprops">
+      <dl class="list_row_template">
+        <dt class="object_value cvterm capitalize" id="type"></dt>
+        <dd class="object_value scalar" id="value"></dd>
+      </dl> 
+    </div>
+		</div>
+  </div>
+
+  <div class="vbpg_object_list hide_on_load" id="assay_phenotypes">
+    <h2>Phenotypes</h3>
+    <table>
+    <tr class="list_row_template">
+      <td>
+        <span class="object_value scalar" id="observable.name"></span>
+        <span class="object_value scalar" id="attribute.name"></span>
+        <span class="object_value scalar" id="value"></span>
+        <span class="object_value scalar" id="cvalue.name"></span>
+      </td>
+    </tr>
+    </table>
+  </div>
+
+  <div class="vbpg_object_list hide_on_load" id="assay_genotypes">
+    <h2>Genotypes</h3>
+    <table>
+    <tr><th>Name</th><th>Properties</th></tr>
+    <tr class="list_row_template">
+      <td class="object_value scalar" id="name"></td>
+      <td class="nested_object_list" id="props">
+        <span class="list_row_template"><span class="object_value cvterm" id="type"></span><span class="object_value clear_if_missing" id="value">=<span class="object_value scalar" id="value"></span></span><br/></span>
+      </td>
+    </tr>
+    </table>
+  </div>
+
+  <div class="vbpg_object_info hide_on_load" id="assay_protocol">
+    <h2>Protocol</h3>
+    <dl>
+      <dt class="object_value cvterm capitalize" id="props[0].type"></dt><dd class="object_value scalar" id="props[0].value"></dd>
+    </dl>
+  </div>
+
+  <!-- to do: phenotypes, genotypes -->
+
+[% INCLUDE 'list/samples.html' id='assay_stocks' %]
+
+[% INCLUDE 'list/projects.html' id='assay_projects' %]
+
+</div>
+  
+<script type="text/javascript">
+  params = document.location.search.toQueryParams();
+  if (params.id && params.id.match("^VBA[0-9]+$")) {
+    var spinner = $('assay').down('.vbpg_progress');
+    getObject('assay/'+params.id, spinner, 
+              function(assay){ updateAssayFull(assay, $('assay')); }
+             );
+  } else {
+     $('assay').down('div.vbpg_progress').update("Please provide   the <tt>id</tt> URL parameter.").setStyle({ textAlign: 'center', width: '100%', background: 'pink' });
+  }
+</script>
+
+[% INCLUDE footer.html %]

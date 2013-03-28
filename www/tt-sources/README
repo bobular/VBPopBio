@@ -1,0 +1,33 @@
+This directory contains Template Toolkit source files for generating the
+VectorBase popgen HTML/Javascript front end.
+( http://search.cpan.org/~abw/Template-Toolkit/ )
+
+
+HTML, CSS and JS sources are in src/
+
+EXCEPT FOR src/js/phenovis-0.01.js which you can get from
+https://github.com/sethnr/phenovis (then: ant vb_frontend)
+or https://svn.vectorbase.org:8800/popdb/trunk/turnkey-site/htdocs/js/phenovis-0.01.js
+
+
+include files (such as header, footer) are in lib/
+
+To generate the content, type this FROM THIS DIRECTORY
+
+  ttree -a -f ttree-XXX.cfg
+
+Where XXX is the flavour of rollout you require
+(e.g. XXX=dev -> content lands in ../apache/dev/htdocs)
+
+The -a forces it to ignore timestamps and update everything.
+
+There's one more config file, lib/config-XXX.tt, which you will probably want
+to edit to set the server/json roots etc.
+
+See also README-turnkey-site for updating that.
+
+Or try Bob's ~/bin/on-change-run script, for auto-updating:
+
+  on-change-run ttree -a -f ttree-dev.cfg
+
+

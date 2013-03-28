@@ -1,0 +1,5 @@
+[% root = 'http://base.vectorbase.org:3030/' 
+   root_static = 'http://base.vectorbase.org:3030/'
+   vb_root = 'http://www.vectorbase.org/'
+   json_root = 'http://base.vectorbase.org:3030/REST/'
+%]

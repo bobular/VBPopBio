@@ -1,0 +1,54 @@
+[% INCLUDE header.html
+   title = 'VectorBase Population Browser - Sample'
+   js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', 'js/config.js', 'js/phenovis-0.01.js', 'js/frontend.js' ]
+%]
+
+<div id="sample">
+
+  <h1 class="vbpg_progress"></h1>
+
+  <div class="vbpg_object_info sample hide_on_load" id="sample_info">
+    <h1>Sample: <span class="object_value scalar" id="name"></span></h1>
+    <dl>
+      <dt>Species</dt>
+      <dd class="object_value scalar species_name" id="organism.spp"></dd>
+  
+      <dt>Sample type</dt>
+      <dd class="object_value cvterm" id="type"></dd>
+    </dl>
+  </div>
+
+  <!-- to do: props -->
+  
+  <div class="vbpg_object_list assay hide_on_load" id="sample_assays">
+    <h2>Assays</h2>
+    <table>
+      <tr>
+        <th>Name</th>
+        <th>Summary</th>
+      </tr>
+      <tr class="list_row_template assay">
+        <td><a class="object_id href" id="type" title="Assay page" href="[% root %]assay/?id=####"><span class="object_value scalar capitalize" id="type"></span> (<span class="object_value scalar" id="id"></span>)</a></td>
+        <td class="object_value scalar" id="summary"></td>
+      </tr>
+    </table>
+  </div>
+
+[% INCLUDE 'list/projects.html' id='sample_projects' %]
+
+</div>
+  
+<script type="text/javascript">
+  params = document.location.search.toQueryParams();
+  if (params.id && params.id.match("^[0-9]+$")) {
+    var spinner = $('sample').down('.vbpg_progress');
+	  getObject('stock/'+params.id, spinner,
+                    function(stock){ updateSampleFull(stock, $('sample')); }
+                   );
+
+  } else {
+     $('sample').down('div.vbpg_progress').update("Please provide	the <tt>id</tt> URL parameter.").setStyle({ textAlign: 'center', width: '100%', background: 'pink' });
+  }
+</script>
+
+[% INCLUDE footer.html %]

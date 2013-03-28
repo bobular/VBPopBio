@@ -1,0 +1,48 @@
+[% INCLUDE header.html
+   title = 'VectorBase Population Browser - Project'
+   js = [
+'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', 'js/config.js', 'js/phenovis-0.01.js', 'js/frontend.js', 'js/protovis-d3.2.js', 'https://maps.google.com/maps/api/js?sensor=false' ]
+%]
+<div id="project_load_status"></div>
+
+<div id="project">
+
+  <h1 class="vbpg_progress"></h1>
+
+  <div class="vbpg_object_info project hide_on_load" id="project_info">
+    <h1>Project: <span class="object_value scalar" id="name"></span></h1>
+    <dl>
+      <dt>Project description</dt>
+      <dd class="object_value scalar" id="description"></dd>
+    </dl>
+  </div>
+
+  <div class="vbpg_object_list visualisation hide_on_load" id="project_visualisations">
+    <h2>Visualisations</h2>
+    <div class="list_row_template">
+			<h3 class="object_value scalar" id="title"></h3>
+			<div class="vis_container">
+  			<div class="vis_panel"><img src="[% root_static %]vbpg_images/bigrotation2.gif" width="32" height="32"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- to do: props, pubs, contacts, metaproject relationships? -->
+  
+[% INCLUDE 'list/samples.html' id='project_stocks' %]
+
+</div>
+  
+<script type="text/javascript">
+  params = document.location.search.toQueryParams();
+  if (params.id && params.id.match("^[0-9]+$")) {
+    var spinner = $('project').down('.vbpg_progress');
+	  getObject('project/'+params.id+'/head', spinner,
+                function(project){updateProjectFull(project, $('project')); }
+               );
+  } else {
+     $('project').down('div.vbpg_progress').update("Please provide	the <tt>id</tt> URL parameter.").setStyle({ textAlign: 'center', width: '100%', background: 'pink' });
+  }
+</script>
+
+[% INCLUDE footer.html %]
