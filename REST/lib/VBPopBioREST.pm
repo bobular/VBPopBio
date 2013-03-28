@@ -213,6 +213,12 @@ get qr{/(?:stock|sample)/(\w+)/assays} => sub {
 };
 
 
+any qr{.*} => sub {
+        warning "Cannot resolve request path '".request->path."'";
+        return { not_found => request->path };
+    };
+
+
 #####################
 # utility subroutines
 
@@ -229,5 +235,6 @@ sub records_info {
 	);
 }
 
-true;
+
+1;
 

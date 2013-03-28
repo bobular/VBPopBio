@@ -2,7 +2,10 @@ serializer: JSON
 plugins:
       DBIC:
         default:
-          dsn: dbi:Pg:dbname=ChadoTimo1
+          dsn: dbi:Pg:dbname=chado_webtest_01
           schema_class: Bio::Chado::VBPopBio
+
+logger: 'file'
+log: 'debug'
 
 
