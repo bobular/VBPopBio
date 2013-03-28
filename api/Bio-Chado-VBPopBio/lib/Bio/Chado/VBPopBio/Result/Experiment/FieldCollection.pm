@@ -33,7 +33,6 @@ sub as_data_structure {
   return {
 	  $self->basic_info,
 	  geolocation => $self->nd_geolocation->as_data_structure,
-
 	 };
 }
 

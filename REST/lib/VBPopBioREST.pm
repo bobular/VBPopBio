@@ -161,11 +161,9 @@ get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
 get qr{/(?:stock|sample)/(\w+)/projects(/head)?} => sub {
     my ($id, $head) = splat;
     my $stock = schema->stocks->find_by_stable_id($id);
-    
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
-    
-    
+
     my $projects = $stock->projects->search(
 	undef,
 	{
@@ -174,14 +172,13 @@ get qr{/(?:stock|sample)/(\w+)/projects(/head)?} => sub {
 	    page => 1,
 	},
 	);
-    
+
     my $count = $projects->count;
-    
+
     return {
-	records => [ map { $_->as_data_structure } $projects->all ],
+	records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $projects->all ],
 	records_info($o, $l, $projects)
     };
-    
 };
 
 #Stock/assays

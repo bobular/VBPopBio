@@ -798,6 +798,7 @@ sub basic_info {
           props => [ map { $_->as_data_structure } $self->multiprops ],
 	  protocols => [ map { $_->as_data_structure } $self->protocols ],
 	  performers => [ map { $_->as_data_structure } $self->contacts ],
+	  type => $self->type->name,
 	 );
 }
 

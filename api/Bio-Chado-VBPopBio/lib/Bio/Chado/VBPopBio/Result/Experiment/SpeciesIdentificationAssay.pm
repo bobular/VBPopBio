@@ -27,6 +27,7 @@ sub as_data_structure {
 
   return {
 	  $self->basic_info,
+	  type => 'species identification assay',
 	 };
 }
 
