@@ -161,9 +161,8 @@ sub create_from_isatab {
       if (keys %{$source_data->{characteristics}} || keys %{$source_data->{protocols}});
 
     while (my ($sample_id, $sample_data) = each %{$source_data->{samples}}) {
-      my $stock = $stocks->find_or_create_from_isatab($sample_id, $sample_data, $project, $ontologies, $study);
-      $stocks{$sample_id} = $stock;
-      $project->add_to_stocks($stock);
+      $stocks{$sample_id} ||= $stocks->find_or_create_from_isatab($sample_id, $sample_data, $project, $ontologies, $study);
+      $stocks{$sample_id}->add_to_projects($project);
 
       # this might be used for dry-run testing (see bin/load_project.pl)
       last SOURCE if ($opts->{sample_limit} && keys %stocks >= $opts->{sample_limit});
