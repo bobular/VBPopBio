@@ -214,6 +214,20 @@ sub species_identification_assay {
 					      });
 }
 
+=head2 sample_manipulation
+
+=cut
+
+sub sample_manipulation {
+  my $self = shift;
+  return $self->schema->cvterms->create_with({ name => 'sample manipulation',
+					       cv => 'VBcv',
+					       db => 'VBcv',
+					       description => 'A laboratory or field-based event during which a sample or population is transformed into another sample or population.',
+					     });
+}
+
+
 =head2 species_assay_result
 
 =cut

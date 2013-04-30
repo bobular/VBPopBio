@@ -1,0 +1,3 @@
+"Source Name"	"Sample Name"	Description	"Comment [derived from]"	"Material Type"	"Term Source REF"	"Term Accession Number"	"Comment [species]"	"Characteristics [sex (EFO:0000695)]"	"Term Source REF"	"Term Accession Number"	"Characteristics [developmental stage (EFO:0000399)]"	"Term Source REF"	"Term Accession Number"	"Characteristics [age (EFO:0000246)]"	Unit	"Term Source REF"	"Term Accession Number"
+NewSource	NewSample01	"First sample of many"	VBS0000001	"whole organism"	EFO	0002906		male	PATO	0000384	adult	IDOMAL	0000655	1	day	UO	0000033
+NewSource	NewSample02	"Second sample of many"	VBS0000002	"whole organism"	EFO	0002906		male	PATO	0000384	embryo	IDOMAL	0000646	1	day	UO	0000033

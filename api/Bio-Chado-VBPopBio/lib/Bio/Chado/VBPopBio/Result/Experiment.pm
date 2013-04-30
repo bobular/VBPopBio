@@ -228,6 +228,9 @@ sub classify {
     when ('species identification method') {
       bless $self, 'Bio::Chado::VBPopBio::Result::Experiment::SpeciesIdentificationAssay';
     }
+    when ('sample manipulation') {
+      bless $self, 'Bio::Chado::VBPopBio::Result::Experiment::SampleManipulation';
+    }
     default {
       # do nothing
     }

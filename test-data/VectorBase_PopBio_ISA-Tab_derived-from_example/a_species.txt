@@ -1,0 +1,3 @@
+"Sample Name"	"Assay Name"	Description	"Protocol REF"	Performer	Date	"Characteristics [species assay result (VBcv:0000149)]"	"Term Source REF"	"Term Accession Number"
+NewSample01	NewSample01.spid1	"This was a really nice assay."	SPECIES	ronaldo@gmail.com		"Anopheles gambiae molecular form M"	MIRO	40003235
+NewSample02	NewSample02.spid1	"This went a bit wrong."	SPECIES	ronaldo@gmail.com		"Anopheles albimanus"	MIRO	40000071

@@ -10,7 +10,7 @@ Bio::Chado::VBPopBio::Result::Experiment::SpeciesIdentificationAssay
 
 =head1 SYNOPSIS
 
-Genotype assay
+Species identification assay
 
 
 =head1 SUBROUTINES/METHODS

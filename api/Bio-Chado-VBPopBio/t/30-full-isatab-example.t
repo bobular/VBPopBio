@@ -16,7 +16,7 @@ $schema->txn_do_deferred(
 
 		  # make some human readable text from the project and related objects:
 		  my $project_json = $json->encode($project->as_data_structure);
-		  diag("Project '", $project->name, "' was created temporarily as:\n$project_json") if ($verbose);
+#		  diag("Project '", $project->name, "' was created temporarily as:\n$project_json") if ($verbose);
 
 		  # if (open(TEMP, ">temp-project.json")) { print TEMP $project_json."\n";  close(TEMP); }
 
@@ -61,6 +61,12 @@ $schema->txn_do_deferred(
 #		  is($project->phenotype_assays->count, 0, "0 phenotype assays");
 #		  is($project->stocks->first->nd_experiments->count, 3, "3 assays for one stock");
 #
+
+
+		  my $project2 = $projects->create_from_isatab({ directory=>'../../test-data/VectorBase_PopBio_ISA-Tab_derived-from_example' });
+
+		  my $project2_json = $json->encode($project2->as_data_structure);
+		  diag("Project2 '", $project2->name, "' was created temporarily as:\n$project2_json") if ($verbose);
 
 		  is(scalar(@{$schema->{deferred_exceptions}}), 0, "no deferred exceptions");
 		  # we were just pretending!

@@ -141,6 +141,17 @@ sub species_identification_assays {
   return $self->experiments_by_type($self->result_source->schema->types->species_identification_assay);
 }
 
+=head2 sample_manipulations
+
+Get all sample manipulation events (based on nd_experiment.type)
+
+=cut
+
+sub sample_manipulations {
+  my ($self) = @_;
+  return $self->experiments_by_type($self->result_source->schema->types->sample_manipulation);
+}
+
 
 =head2 experiments_by_type
 
@@ -386,6 +397,7 @@ sub as_data_structure {
 		      species_identification_assays => [ map { $_->as_data_structure($depth) } $self->species_identification_assays ],
 		      genotype_assays => [ map { $_->as_data_structure($depth) } $self->genotype_assays ],
 		      phenotype_assays => [ map { $_->as_data_structure($depth) } $self->phenotype_assays ],
+		      manipulations => [ map { $_->as_data_structure($depth) } $self->sample_manipulations ]
 		     )
 	  : (),
 

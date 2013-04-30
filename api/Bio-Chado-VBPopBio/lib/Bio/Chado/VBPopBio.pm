@@ -134,6 +134,17 @@ sub species_identification_assays {
   return $self->resultset('Experiment::SpeciesIdentificationAssay');
 }
 
+=head2 sample_manipulations
+
+Get resultset of C<Experiment::SpeciesIdentificationAssay> objects only.
+
+=cut
+
+sub sample_manipulations {
+  my $self = shift;
+  return $self->resultset('Experiment::SampleManipulation');
+}
+
 =head2 projects
 
 =cut

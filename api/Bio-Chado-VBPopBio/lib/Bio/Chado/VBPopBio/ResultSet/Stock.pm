@@ -90,6 +90,29 @@ sub find_or_create_from_isatab {
       characteristics => $sample_data->{characteristics} ) if ($sample_data->{characteristics});
 
   #
+  # before adding comments, deal with the
+  # "simple sample derivation" column "Comment [derived from]"
+  #
+  if (defined (my $progenitor_id = delete $sample_data->{comments}{"derived from"})) {
+    # do nothing yet
+    my $progenitor = $self->find_by_stable_id($progenitor_id);
+    if (defined $progenitor) {
+      my $manipulation = $schema->sample_manipulations->create();
+      # fake an Assay Name so we can get a stable ID
+      $manipulation->external_id("$sample_name derived from $progenitor_id");
+      my $stable_id = $manipulation->stable_id($project);
+      # link the stocks
+      $manipulation->add_to_stocks($progenitor, { type => $schema->types->assay_uses_sample });
+      $manipulation->add_to_stocks($stock, { type => $schema->types->assay_creates_sample });
+      # link to projects
+      $manipulation->add_to_projects($project);
+      $progenitor->add_to_projects($project);
+    } else {
+      $schema->defer_exception("Can't find 'derived from' sample $progenitor_id for $sample_name");
+    }
+  }
+
+  #
   # Deal with "Comments [a topic]" columns
   # by adding multiprops for them
   #
