@@ -106,7 +106,9 @@ sub find_or_create_from_isatab {
       $manipulation->add_to_stocks($stock, { type => $schema->types->assay_creates_sample });
       # link to projects
       $manipulation->add_to_projects($project);
-      $progenitor->add_to_projects($project);
+      # but do we add the progenitor sample to the project?
+      # on reflection, maybe not...
+      # $progenitor->add_to_projects($project);
     } else {
       $schema->defer_exception("Can't find 'derived from' sample $progenitor_id for $sample_name");
     }

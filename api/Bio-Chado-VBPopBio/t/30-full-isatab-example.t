@@ -1,4 +1,4 @@
-use Test::More tests => 11;
+use Test::More tests => 15;
 
 use strict;
 use JSON;
@@ -8,14 +8,14 @@ my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit
 my $projects = $schema->projects;
 
 my $json = JSON->new->pretty;
-my $verbose = 1; # print out JSON (or not)
+my $verbose = 0; # print out JSON (or not)
 
 $schema->txn_do_deferred(
 		sub {
 		  my $project = $projects->create_from_isatab({ directory=>'../../test-data/VectorBase_PopBio_ISA-Tab_full_example' });
 
 		  # make some human readable text from the project and related objects:
-		  my $project_json = $json->encode($project->as_data_structure);
+#		  my $project_json = $json->encode($project->as_data_structure);
 #		  diag("Project '", $project->name, "' was created temporarily as:\n$project_json") if ($verbose);
 
 		  # if (open(TEMP, ">temp-project.json")) { print TEMP $project_json."\n";  close(TEMP); }
@@ -64,8 +64,20 @@ $schema->txn_do_deferred(
 
 
 		  my $project2 = $projects->create_from_isatab({ directory=>'../../test-data/VectorBase_PopBio_ISA-Tab_derived-from_example' });
-
 		  my $project2_json = $json->encode($project2->as_data_structure);
+
+		  # reload project1 to see changes made by project2 (samples now have manipulations)
+		  my $project1 = $projects->find_by_stable_id('VBP0000001');
+		  my $project1_json = $json->encode($project1->as_data_structure);
+
+
+		  is($project1->stocks->first->sample_manipulations->count, 1, "project 1 stocks have manipulations");
+		  is($project1->stocks->first->sample_manipulations->first->stocks_created->first->stable_id, $project2->stocks->first->stable_id, "project 1's stock creates project 2's stock");
+		  is($project2->stocks->first->sample_manipulations->first->stocks_used->first->stable_id, $project1->stocks->first->stable_id, "and the same the other way round");
+
+		  is($project1->stocks->count, 2, "project 1 still only has 2 stocks");
+
+		  diag("Project1 '", $project1->name, "' was created temporarily as:\n$project1_json") if ($verbose);
 		  diag("Project2 '", $project2->name, "' was created temporarily as:\n$project2_json") if ($verbose);
 
 		  is(scalar(@{$schema->{deferred_exceptions}}), 0, "no deferred exceptions");

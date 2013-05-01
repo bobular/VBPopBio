@@ -397,7 +397,7 @@ sub as_data_structure {
 		      species_identification_assays => [ map { $_->as_data_structure($depth) } $self->species_identification_assays ],
 		      genotype_assays => [ map { $_->as_data_structure($depth) } $self->genotype_assays ],
 		      phenotype_assays => [ map { $_->as_data_structure($depth) } $self->phenotype_assays ],
-		      manipulations => [ map { $_->as_data_structure($depth) } $self->sample_manipulations ]
+		      sample_manipulations => [ map { $_->as_data_structure($depth) } $self->sample_manipulations ]
 		     )
 	  : (),
 
