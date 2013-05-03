@@ -8,6 +8,7 @@ __PACKAGE__->subclass({
 		       attr => 'Bio::Chado::VBPopBio::Result::Cvterm',
 		       observable => 'Bio::Chado::VBPopBio::Result::Cvterm',
 		       cvalue => 'Bio::Chado::VBPopBio::Result::Cvterm',
+		       phenotypeprops => 'Bio::Chado::VBPopBio::Result::Phenotypeprop',
 		      });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
@@ -95,9 +96,9 @@ sub as_data_structure {
 	  observable => $self->observable->as_data_structure,
 	  defined $self->attr ? (attribute => $self->attr->as_data_structure) : (),
 	  value => {
-		    defined $self->value ? (text => $self->value) : (),
-		    defined $self->cvalue ? (cvterm => $self->cvalue->as_data_structure) : (),
-		    defined $self->assay ? (unit => $self->assay->as_data_structure) : (),
+		    text => $self->value,
+		    term => defined $self->cvalue ? $self->cvalue->as_data_structure : undef,
+		    unit => defined $self->assay ? $self->assay->as_data_structure : undef,
 		   },
 	  props => [ map { $_->as_data_structure } $self->multiprops ],
 	 };

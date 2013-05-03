@@ -1,3 +1,3 @@
-"Sample Name"	"Assay Name"	Description	"Protocol REF"	Performer	Date	"Characteristics [average depth of sequence coverage (OBI:0001618)]"	"Raw Data File"
-Sample01	Sample01.seq1		PROTO6			10	sample01.vcf
-Sample02	Sample02.seq1		PROTO6			9	sample02.vcf
+"Sample Name"	"Assay Name"	Description	"Protocol REF"	Performer	Date	"Characteristics [reference_genome (SO:0001505)]"	"Characteristics [average depth of sequence coverage (OBI:0001618)]"	"Raw Data File"
+Sample01	Sample01.seq1		PROTO6			Anopheles_gambiae	10	sample01.vcf
+Sample02	Sample02.seq1		PROTO6			Anopheles_gambiae	9	sample02.vcf

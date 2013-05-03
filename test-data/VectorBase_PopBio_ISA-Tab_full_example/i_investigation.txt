@@ -1,8 +1,8 @@
 "ONTOLOGY SOURCE REFERENCE"
-"Term Source Name"	MO	EFO	OBI	UO	GAZ	NCBITaxon	PATO	MIRO	efo	IDOMAL	VariO	HELLO	SO
+"Term Source Name"	MO	EFO	OBI	UO	GAZ	NCBITaxon	PATO	MIRO	efo	IDOMAL	VariO	SO
 "Term Source File"	http://mged.sourceforge.net/ontologies/MGEDontology.php
-"Term Source Version"	1.3.0.1	49584	47893	49778	46911	47845	47893	49766	49584	47619	49250	12345	49414
-"Term Source Description"	"The Microarray Ontology"	"Experimental Factor Ontology"	"Ontology for Biomedical Investigations"	"Units of measurement"	Gazetteer	"NCBI organismal classification"	"Ontology for Biomedical Investigations"	"Mosquito insecticide resistance"	"Experimental Factor Ontology"	"Malaria Ontology"	"Variation Ontology"	"Place holder"	"Sequence types and features"
+"Term Source Version"	1.3.0.1	49584	47893	50119	47282	47845	47893	49766	49584	47619	49250	49414
+"Term Source Description"	"The Microarray Ontology"	"Experimental Factor Ontology"	"Ontology for Biomedical Investigations"	"Units of measurement"	Gazetteer	"NCBI organismal classification"	"Ontology for Biomedical Investigations"	"Mosquito insecticide resistance"	"Experimental Factor Ontology"	"Malaria Ontology"	"Variation Ontology"	"Sequence types and features"
 
 STUDY
 "Study Identifier"	2012-VectorBase-full-example

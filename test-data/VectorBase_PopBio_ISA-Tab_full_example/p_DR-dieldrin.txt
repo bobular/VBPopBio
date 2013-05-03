@@ -1,3 +1,3 @@
-"Assay Name"	"Phenotype Name"	Observable	"Term Source REF"	"Term Accession Number"	Attribute	"Term Source REF"	"Term Accession Number"	Value	"Term Source REF"	"Term Accession Number"	Unit	"Term Source REF"	"Term Accession Number"
-Sample01.dr.dieldrin	"LC50: 0.8% dieldrin"	"resistance to single insecticide"	MIRO	00000021	LC50	VBcv	0000725	0.8			"mass percentage"	UO	0000163
+"Assay Name"	"Phenotype Name"	Observable	"Term Source REF"	"Term Accession Number"	Attribute	"Term Source REF"	"Term Accession Number"	Value	"Term Source REF"	"Term Accession Number"	Unit	"Term Source REF"	"Term Accession Number"	"Characteristics [quantitative confidence value (OBI:0000071)]"	Unit	"Term Source REF"	"Term Accession Number"
+Sample01.dr.dieldrin	"LC50: 0.8% dieldrin"	"resistance to single insecticide"	MIRO	00000021	LC50	VBcv	0000725	0.8			"mass percentage"	UO	0000163	99	percent	UO	0000187
 Sample02.dr.dieldrin	"LC50: unknown% dieldrin"	"resistance to single insecticide"	MIRO	00000021	LC50	VBcv	0000725	unknown
