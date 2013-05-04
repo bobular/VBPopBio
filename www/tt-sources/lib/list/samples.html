@@ -3,12 +3,26 @@
     [% INCLUDE 'spinner-pager.html' %]
     <table class="hide_on_load hide_on_update">
       <tr>
-        <th>Name</th>
-        <th>Species</th>
+        <th>name</th>
+        <th>species/material type</th>
+        <th>properties</th>
       </tr>
       <tr class="list_row_template sample">
         <td><a class="object_id href" title="Sample page" href="[% root %]sample/?id=####"><span class="object_value scalar" id="name"></span></a></td>
-        <td class="object_value scalar species_name" id="organism.spp"></td>
+        <td>
+          <span class="object_value cvterm species_name" id="species"></span><br /><br />
+          <span class="object_value cvterm" id="type"></span>
+        </td>
+	<td class="nested_props_list">
+          <!-- extra properties -->
+          <table>
+            <tr class="sample_prop list_row_template">
+              <th class="prop_type row_heading" delimiter=", "></th>
+              <td class="prop_value"></td>
+            </tr>
+          </table>
+        </td>
+
       </tr>
     </table>
     [% INCLUDE pager.html %]

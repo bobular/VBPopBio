@@ -77,22 +77,20 @@ function updateAssayFull(assay, element) {
     // now fill in top level info
     fillInObjectValues(assay, element.down('#assay_info')).removeClassName('hide_on_load');
 
+    if (assay.protocols.size()) {
+	var protocols_div = element.down("#assay_protocols");
+	fillInListValues(assay.protocols, protocols_div).removeClassName('hide_on_load');
+	deactivate(protocols_div);
+    }
+
+
+    /***** field collection *****/
     if (assay.type == 'field collection') {
 	var geoloc_div = element.down('#assay_geolocation_info');
 	var geolocprops_div = geoloc_div.down('#assay_geolocationprops');
 
-	// tidy up props
-
-	assay.geolocation.props.each(function(prop){
-	    if (prop.type.match(/^GAZ:/)) {
-		prop.value = displayCvterm(prop.type);
-		prop.type = 'NULL:Gazetteer ontology term';
-	    }
-	});
-
-
 	// do nested one first
-	fillInListValues(assay.geolocation.props, geolocprops_div, 'no_shading').removeClassName('hide_on_load');
+	fillInProps(assay.geolocation.props, geolocprops_div, 'no_shading').removeClassName('hide_on_load');
 	deactivate(geolocprops_div);
 
 	fillInObjectValues(assay.geolocation, geoloc_div).removeClassName('hide_on_load');
@@ -102,12 +100,12 @@ function updateAssayFull(assay, element) {
 	    if (assay.geolocation &&
 		assay.geolocation.latitude &&
 		assay.geolocation.longitude &&
-		assay.geolocation.description) {
+		assay.geolocation.name) {
 		var vis = {
 		    "type": "geoplot",
 		    "x": "$.geolocation.latitude",
 		    "y": "$.geolocation.longitude",
-		    "z": "$.geolocation.description",
+		    "z": "$.geolocation.name",
 		    "e": "$.geolocation"
 		};
 		renderVisualisation(assay, vis, map_panel);
@@ -117,33 +115,25 @@ function updateAssayFull(assay, element) {
 	}
     }
 
-    // protocol
-    if (assay.protocols.size() > 1) console.log("warning, this assay has more than one protocol");
-    if (assay.protocols.size()) {
-	var protocol = assay.protocols.first();
-	fillInObjectValues(protocol, element.down('#assay_protocol')).removeClassName('hide_on_load');
-	
-    }
-
     // phenotypes
-    if (assay.phenotypes.size()) {
+    if (assay.type == 'phenotype assay' && assay.phenotypes.size()) {
 	var pheno_div = element.down('#assay_phenotypes');
 	fillInListValues(assay.phenotypes, pheno_div).removeClassName('hide_on_load');
     }
 
     // genotypes
-    if (assay.genotypes.size()) {
+    if (assay.type == 'genotype assay' && assay.genotypes.size()) {
 	var geno_div = element.down('#assay_genotypes');
 	fillInListValues(assay.genotypes, geno_div).removeClassName('hide_on_load');
     }
 
     var estocks = element.down('#assay_stocks');
     var spinner = estocks.down('.vbpg_progress');
-    var url = 'assay/'+assay.id+'/stocks';
+    var url = 'assay/'+assay.id+'/stocks/head';
 
     var eprojects =  element.down('#assay_projects');
     var spinner2 = eprojects.down('.vbpg_progress');
-    var url2 = 'assay/'+assay.id+'/projects';
+    var url2 = 'assay/'+assay.id+'/projects/head';
 
     var limits = {
 	offset: 0,
@@ -425,6 +415,11 @@ function fillInObjectValues(object, element) {
 	deactivate(e);
     });
 
+    element.select('.nested_props_list').each(function(e){
+	fillInProps(object.props, e);
+	deactivate(e);
+    });
+
     // now dow the non-list expansions
     element.select('.object_value.scalar').each(function(e){
 	e.update(jsonPath(object, '$.'+e.id) || '');
@@ -439,7 +434,7 @@ function fillInObjectValues(object, element) {
     });
 
     element.select('.object_value.cvterm').each(function(e){
-	e.update(displayCvterm(jsonPath(object, '$.'+e.id).first())); // displayCvterm can't handle a list of one
+	e.update(renderCvterm(jsonPath(object, '$.'+e.id).first())); // renderCvterm can't handle a list of one
     });
     
     // this one only does s/####/object.id/e on the element's href attribute
@@ -475,6 +470,13 @@ function fillInObjectValues(object, element) {
 	var value = jsonPath(object, '$.'+e.id);
 	if (!value || Object.toHTML(value).blank()) e.update();
     });
+
+
+    // add n/a if empty
+    element.select('.na_if_empty').each(function(e){if (e.empty()) { e.update('n/a'); }});
+
+    // add <br> after if NOT empty
+    element.select('.linebreak_after').each(function(e){if (!e.empty()) { e.insert({ after: "<br />"}) }});
 
     // now clear the element classes so that the updated content cannot be overwritten
     return element;
@@ -551,16 +553,52 @@ function fillInProps(list, element, no_even_odd_shading) {
 }
 
 /*
- * takes an element and updates the content of the child element of class 'prop_cvterms_p
+ * takes an element and updates the content of the child element of class 'prop'
+ * with specially formatted multiprop information
+ * (e.g. handling units)
  *
- *
+ * two sub-elements are filled in:
+ *   class=prop_type holds the type of information (column heading from isa-tab)
+ *   class=prop_value holds the value
+ * the prop_type element can have attribute delimiter="xx"
  */
 
 function fillInProp(prop, element) {
-    var cvterms_element = element.select('.prop_cvterms').first();
-    cvterms_element.update(prop.cvterms);
-    var value_element = element.select('.prop_value').first();
-    value_element.update(prop.value);
+    var type_element = element.down('.prop_type');
+    var value_element = element.down('.prop_value');
+    // separate the units cvterms away from the normal terms
+    var units = prop.cvterms.filter(function(term){return term.accession.match(/^UO:/)});
+    var cvterms = prop.cvterms.reject(function(term){return term.accession.match(/^UO:/)});
+    var delimiter = type_element.readAttribute('delimiter') || ', ';
+    // now build the text to be displayed
+
+    var comment_type;
+    if (prop.value) {
+	if (units.size()) {
+	    value_element.update(prop.value + " ("+renderCvterm(units.first())+")");
+	} else {
+	    if (cvterms.first().name == 'comment') {
+		// special treatment for comments
+		// save the content of square brackets for the left hand side
+		var match=prop.value.match(/\[(.+?)\]/);
+		if (match.size() > 1) {
+		    comment_type = match[1];
+		}
+		value_element.update(prop.value.replace(/\[.+?\]\s+/, ""));
+	    } else {
+		value_element.update(prop.value);
+	    }
+	}
+    } else if (cvterms.size() > 1) {
+	// display the last cvterm as the value
+	value_element.update(renderCvterm(cvterms.pop()));
+    }
+    // now fill in the type element
+    if (comment_type != null) {
+	type_element.update("comment ["+comment_type+"]");
+    } else {
+	type_element.update(cvterms.collect(function(term){return renderCvterm(term)}).join(delimiter));
+    }
     return element;
 }
 
@@ -635,7 +673,25 @@ function fillInPagedListValues(page, element, url, limits) {
     return element;
 }
 
-/* formats a cv.name:cvterm.name string for display
+/*****
+ * will probably return a smart span (with accession info and some suitable class) for a general javascript mouseover action
+ * if non-numeric accession, just show plain text.
+ */
+
+function renderCvterm(term) {
+    if (term != null) {
+	if (term.accession.match(/^\w+:\d+$/)) {
+	    return '<span class="cvterm" accession="'+term.accession+'">'+term.name+'</span>';
+	} else {
+	    return term.name;
+	}
+    } else {
+	return '';
+    }
+}
+
+/* DEPRECATED????? see renderCvterm
+ * formats a cv.name:cvterm.name string for display
  * or returns empty string on failure
  *
  * one day it will return a link or something!
@@ -649,32 +705,6 @@ function displayCvterm(type) {
 	}
     }
     return "";
-}
-
-/*
- * turn shared-rank props (where one prop is from VBcv (valueless) and another is from another ontology) into a single prop with
- * type=VBcv:term and value = displayCvterm(other_term)
- *
- * the shared-rank props are currently used for insecticides and concentrations
- *
- * returns the new props if they were successfully created
- */
-
-function reorganiseAssayProps(props) {
-    var newprops = [];
-    if (props && props.size()) {
-	props.filter(function(prop){ return prop.type.match(/^VBcv:/) && prop.value.blank(); }).each(
-	    function(typeprop) {
-		var valueprop = props.find(function(p) { return p.rank == typeprop.rank && p.type !== typeprop.type });
-		if (valueprop) newprops.push( { type: typeprop.type,
-						value: valueprop.value || displayCvterm(valueprop.type),
-						rank: typeprop.rank
-					      });
-
-	    });
-    }
-
-    return newprops.size() ? newprops : props;
 }
 
 
@@ -773,7 +803,7 @@ function assembleProject (project, progress_div) {
     var maxStocks = 1000; //any large number
     var stocks = new Array();
     //  alert(stocks.length);
-    var limits = { 'offset': 0, 'limit': 50, 'returnType': 'full'};
+    var limits = { 'offset': 0, 'limit': 50 };
     getPagedObjects('project/'+project.id+'/stocks/', limits, null, addToProject);
     if (progress_div) progress_div.update("Loading samples...");
 
@@ -821,7 +851,7 @@ function getPagedObjects(url, limits, spinner, callback) {
     if (spinner) spinner.update(new Element('img', { src: config.ROOT_STATIC+'vbpg_images/bigrotation2.gif', width: 32, height: 32 }));
 
     // should process limits into url params here:
-    var params = '?o='+limits.offset+'&l='+limits.limit+'&return='+limits.returnType;
+    var params = '?o='+limits.offset+'&l='+limits.limit;
     if (limits.return_full) params = params + '&return=full';
 
 

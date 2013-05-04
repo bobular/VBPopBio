@@ -6,92 +6,149 @@
 
 <div id="assay">
 
-  <h1 class="vbpg_progress"></h1>
+  <div class="vbpg_progress"></div>
 
   <div class="vbpg_object_info assay hide_on_load" id="assay_info">
-    <h1><span class="object_value scalar capitalize" id="type"></span>: <span class="object_value scalar" id="name"></span> (<span class="object_value scalar" id="id"></span>)</h1>
+    <h1><span class="object_value scalar capitalize" id="type"></span>: <span class="object_value scalar" id="name"></span></h1>
 
-    <dl class="dunno" id="assayinfo">
-      <dt>Description</dt>
-      <dd class="object_value scalar" id="description"></dd>
-      <dt>Performed by</dt>
-      <dd class="object_value comma_separated" id="performers"></dd>
-    </dl>
+    <table>
+      <tr>
+	<th class="row_heading">VectorBase stable ID</th>
+	<td class="object_value scalar" id="id"></td>
+      </tr>
+      <tr>
+	<th class="row_heading">description</th>
+	<td class="object_value scalar na_if_empty" id="description"></td>
+      </tr>
+      <tr>
+	<th class="row_heading">performed by</dt>
+        <td class="object_value comma_separated na_if_empty" id="performers"></td>
+      </tr>
+    </table>
+    <table class="hide_on_load" id="assayprops">
+      <tr class="list_row_template">
+        <th class="row_heading prop_type" delimiter=", "></th>
+        <td class="prop_value"></td>
+      </tr>
+    </table>
+  
+  </div> <!-- assay_info -->
 
-    <div class="vbpg_props_list hide_on_load" id="assayprops">
-      <ul>
-        <li class="list_row_template">
-        <span class="prop_cvterms"></span> = <span class="prop_value"></span>
-        </li>
-      </ul>
+  <!-- Protocols -->
+  <div class="vbpg_object_info hide_on_load" id="assay_protocols">
+    <h2>Protocols</h2>
+    <div class="assay_protocol list_row_template">
+      <div class="assay_protocol_name object_value scalar" id="name"></div>
+      <table>
+        <tr>
+          <th class="row_heading">description</th>
+          <td class="object_value scalar na_if_empty" id="description"></td>
+        </tr>
+        <tr>
+          <th class="row_heading">type</th>
+          <td class="object_value cvterm" id="type"></td>
+        </tr>
+        <tr>
+          <th class="row_heading">external link</th>
+          <td><a class="auto_link" href="####"><span class="object_value scalar" id="uri"></span></a></td>
+        </tr>
+      </table>
     </div>
- </div>
+  </div>
 
+  <!-- Collection site -->
   <div class="vbpg_object_info hide_on_load" id="assay_geolocation_info">
     <h2>Collection site</h2>
     <div id="mini_map_panel"></div>
-		<div id="assay_geolocation_text">
-    <dl>
-      <dt>Name</dt>
-      <dd class="object_value scalar" id="description"></dd>
-	  
-      <dt>Coordinates</dt>
-      <dd class="object_value clear_if_missing" id="latitude"><a class="auto_link" title="Google Maps (external site)" href="http://maps.google.com/maps?hl=en&tab=wl&z=8&q=####+(Collection+site)"><span class="object_value scalar" id="latitude"></span>,<span class="object_value scalar" id="longitude"></span></a> (<span class="object_value scalar" id="geodetic_datum"></span>)</dd>
-	  
-      <dt>Altitude</dt>
-      <dd class="object_value clear_if_missing" id="altitude"><span class="object_value scalar" id="altitude"></span></dd>
-    </dl>
-	  
-    <div class="vbpg_object_info hide_on_load" id="assay_geolocationprops">
-      <dl class="list_row_template">
-        <dt class="object_value cvterm capitalize" id="type"></dt>
-        <dd class="object_value scalar" id="value"></dd>
-      </dl> 
-    </div>
-		</div>
-  </div>
+    <div id="assay_geolocation_text">
+      <table>
+        <tr>
+          <th class="row_heading">name</th>
+          <td class="object_value scalar" id="name"></td>
+        </tr>
+        <tr>
+          <th class="row_heading">coordinates</th>
+          <td class="object_value clear_if_missing" id="latitude"><a class="auto_link" title="Google Maps (external site)" href="http://maps.google.com/maps?hl=en&tab=wl&z=8&q=####+(Collection+site)"><span class="object_value scalar" id="latitude"></span>,<span class="object_value scalar" id="longitude"></span></a> (<span class="object_value scalar" id="geodetic_datum"></span>)</td>
+        </tr>
+        <tr>
+          <th class="row_heading">altitude</th>
+          <td class="object_value scalar" id="altitude"></td>
+        </tr>
+      </table>
+      <table class="hide_on_load" id="assay_geolocationprops">
+        <tr class="list_row_template">
+          <th class="row_heading prop_type" delimiter=", "></th>
+          <td class="prop_value"></td>
+        </tr> 
+      </table>
+    </div><!-- assay_geolocation_text -->
+    <br clear="all"/>
+  </div> <!-- assay_geolocation_info -->
 
+
+  <!-- Phenotypes -->
   <div class="vbpg_object_list hide_on_load" id="assay_phenotypes">
     <h2>Phenotypes</h3>
     <table>
+    <tr>
+      <th>name</th>
+      <th>formal 'ontologised' description</th>
+      <th>additional properties</th>
+    </tr>
     <tr class="list_row_template">
+      <td class="object_value scalar" id="name"></td>
       <td>
-        <span class="object_value scalar" id="observable.name"></span>
-        <span class="object_value scalar" id="attribute.name"></span>
-        <span class="object_value scalar" id="value"></span>
-        <span class="object_value scalar" id="cvalue.name"></span>
+        <span class="object_value cvterm linebreak_after" id="observable"></span>
+        <span class="object_value cvterm linebreak_after" id="attribute"></span>
+        <span class="object_value cvterm" id="value.term"></span>
+        <span class="object_value scalar" id="value.text"></span>
+        <span class="object_value cvterm" id="value.unit"></span>
+      </td>
+      <td class="nested_props_list">
+        <!-- extra properties -->
+        <table>
+          <tr class="phenotype_prop list_row_template">
+            <th class="prop_type row_heading" delimiter=", "></th>
+            <td class="prop_value"></td>
+          </tr>
+        </table>
       </td>
     </tr>
     </table>
   </div>
 
+
+
+  <!-- Genotypes -->
   <div class="vbpg_object_list hide_on_load" id="assay_genotypes">
     <h2>Genotypes</h3>
     <table>
-    <tr><th>Name</th><th>Properties</th></tr>
-    <tr class="list_row_template">
-      <td class="object_value scalar" id="name"></td>
-      <td class="nested_object_list" id="props">
-        <span class="list_row_template"><span class="object_value cvterm" id="type"></span><span class="object_value clear_if_missing" id="value">=<span class="object_value scalar" id="value"></span></span><br/></span>
-      </td>
-    </tr>
+      <tr>
+        <th class="row_heading">name</th>
+        <th class="row_heading">description</th>
+        <th class="row_heading">properties</th>
+      </tr>
+      <tr class="list_row_template">
+        <td class="object_value scalar" id="name"></td>
+        <td class="object_value scalar" id="description"></td>
+        <td class="nested_props_list" id="props">
+          <table>
+            <tr class="phenotype_prop list_row_template">
+              <th class="prop_type row_heading" delimiter=", "></th>
+              <td class="prop_value"></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
     </table>
   </div>
 
-  <div class="vbpg_object_info hide_on_load" id="assay_protocol">
-    <h2>Protocol</h3>
-    <dl>
-      <dt class="object_value cvterm capitalize" id="props[0].type"></dt><dd class="object_value scalar" id="props[0].value"></dd>
-    </dl>
-  </div>
-
-  <!-- to do: phenotypes, genotypes -->
 
 [% INCLUDE 'list/samples.html' id='assay_stocks' %]
 
 [% INCLUDE 'list/projects.html' id='assay_projects' %]
 
-</div>
+</div> <!-- assay -->
   
 <script type="text/javascript">
   params = document.location.search.toQueryParams();
