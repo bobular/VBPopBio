@@ -55,9 +55,7 @@ get qr{/projects(/head)?} => sub {
 	    page => 1,
 	},
 	);
-    
-    my $count = $results->count;
-    
+
     return {
 	    records => [ map { $_->as_data_structure($depth) } $results->all ],
 	    records_info($o, $l, $results)
@@ -98,8 +96,6 @@ get qr{/(?:stock|sample)/(\w+)(/head)?} => sub {
     } else {
 	return { error_message => "can't find stock" };
     }
-    
-    
 };
 
 #Assay
@@ -118,11 +114,9 @@ get qr{/assay/(\w+)(/head)?} => sub {
 get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
     my ($id, $head) = splat;
     my $project = schema->projects->find_by_stable_id($id);
-    
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
-    
-    
+
     my $stocks = $project->stocks->search(
 	undef,
 	{
@@ -131,15 +125,57 @@ get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
 	    page => 1,
 	},
 	);
-    
-    my $count = $stocks->count;
-    
+
     return {
 	records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $stocks->all ],
 	records_info($o, $l, $stocks)
     };
-    
 };
+
+#assay/stocks
+get qr{/assay/(\w+)/(?:stocks|samples)(/head)?} => sub {
+    my ($id, $head) = splat;
+    my $assay = schema->experiments->find_by_stable_id($id);
+    my $l = params->{l} || 20;
+    my $o = params->{o} || 0;
+
+    my $stocks = $assay->stocks->search(
+	undef,
+	{
+	    rows => $l,
+	    offset => $o,
+	    page => 1,
+	},
+	);
+
+    return {
+	records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $stocks->all ],
+	records_info($o, $l, $stocks)
+    };
+};
+
+#assay/projects
+get qr{/assay/(\w+)/projects(/head)?} => sub {
+    my ($id, $head) = splat;
+    my $assay = schema->experiments->find_by_stable_id($id);
+    my $l = params->{l} || 20;
+    my $o = params->{o} || 0;
+
+    my $projects = $assay->projects->search(
+	undef,
+	{
+	    rows => $l,
+	    offset => $o,
+	    page => 1,
+	},
+	);
+
+    return {
+	records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $projects->all ],
+	records_info($o, $l, $projects)
+    };
+};
+
 
 ## JUST FOR DEMO/TESTING
 #get '/organisms' => sub {

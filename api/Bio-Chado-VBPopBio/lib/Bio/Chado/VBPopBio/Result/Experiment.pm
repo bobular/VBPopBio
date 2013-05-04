@@ -7,6 +7,7 @@ use feature 'switch';
 use base 'Bio::Chado::Schema::Result::NaturalDiversity::NdExperiment';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass DynamicSubclass/);
 __PACKAGE__->subclass({ nd_experiment_stocks => 'Bio::Chado::VBPopBio::Result::Linker::ExperimentStock',
+                        nd_experiment_projects => 'Bio::Chado::VBPopBio::Result::Linker::ExperimentProject',
 		        nd_geolocation => 'Bio::Chado::VBPopBio::Result::Geolocation',
 			nd_experimentprops => 'Bio::Chado::VBPopBio::Result::Experimentprop',
 		        nd_experiment_protocols => 'Bio::Chado::VBPopBio::Result::Linker::ExperimentProtocol',

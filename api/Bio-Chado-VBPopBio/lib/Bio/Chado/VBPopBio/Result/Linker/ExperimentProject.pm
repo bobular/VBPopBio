@@ -4,7 +4,7 @@ use base 'Bio::Chado::Schema::Result::NaturalDiversity::NdExperimentProject';
 __PACKAGE__->load_components('+Bio::Chado::VBPopBio::Util::Subclass');
 __PACKAGE__->subclass({
 		       nd_experiment => 'Bio::Chado::VBPopBio::Result::Experiment',
-		       project => 'Bio::Chado::Schema::Result::Project::Project',
+		       project => 'Bio::Chado::VBPopBio::Result::Project',
 		      });
 
 =head1 NAME
