@@ -15,6 +15,32 @@ Phenotype assay
 
 =head1 SUBROUTINES/METHODS
 
+=head2 result_summary
+
+returns a brief HTML summary of the assay results
+
+=cut
+
+sub result_summary {
+  my ($self) = @_;
+  my $schema = $self->result_source->schema;
+
+  my $method = 'unknown method';
+  if ($self->protocols->count) {
+    $method = $self->protocols->first->type->name;
+  }
+
+  my $max_shown = 4;
+  my $nphenotypes = $self->phenotypes->count;
+  # but just get the first three
+  my @phenotypes = $self->phenotypes->slice(0,$max_shown-1);
+  my $text = join "; ", map { $_->name } @phenotypes;
+  if ($nphenotypes > $max_shown) {
+    $text .= sprintf "; and %d more phenotypes", $nphenotypes-$max_shown;
+  }
+  return "$text ($method)";
+}
+
 =head2 as_data_structure
 
 return data for jsonification

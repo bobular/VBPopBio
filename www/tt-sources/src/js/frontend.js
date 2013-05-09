@@ -29,16 +29,27 @@
 
 function updateSampleFull(stock, element) {
     fillInObjectValues(stock, element.down('#sample_info')).removeClassName('hide_on_load');
-    summariseAssays(stock.assays, true);
-    fillInListValues(stock.assays, element.down('#sample_assays')).removeClassName('hide_on_load');
 
     var sprojects = element.down('#sample_projects');
+    var url = 'sample/'+stock.id+'/projects/head';
+    var sassays = element.down('#sample_assays');
+    var url2 = 'sample/'+stock.id+'/assays';
+
     var spinner = sprojects.down('.vbpg_progress');
-    var url = 'stock/'+stock.id+'/projects';
+    var spinner2 = sassays.down('.vbpg_progress');
+
     var limits = {
 	offset: 0,
 	limit: 20
     };
+
+
+    getPagedObjects(url2,
+                    limits,
+                    spinner2,
+                    function(page) {
+			fillInPagedListValues(page, sassays, url2, limits).down('.hide_on_load').removeClassName('hide_on_load');
+                    });
 
     getPagedObjects(url,
 		    limits,
@@ -63,18 +74,7 @@ function updateSampleFull(stock, element) {
 
 function updateAssayFull(assay, element) {
     var species_div = element.down('#species_results');
-    var aprops_div = element.down('#assayprops');
 
-    // render the assayprops normally
-    // ensure start and end dates are in correct order
-
-    fillInProps(assay.props, aprops_div, 'no_shading').removeClassName('hide_on_load');
-
-    // deactivate nested magic divs
-    deactivate(aprops_div);
-//    deactivate(species_div);
-
-    // now fill in top level info
     fillInObjectValues(assay, element.down('#assay_info')).removeClassName('hide_on_load');
 
     if (assay.protocols.size()) {
@@ -83,16 +83,9 @@ function updateAssayFull(assay, element) {
 	deactivate(protocols_div);
     }
 
-
     /***** field collection *****/
     if (assay.type == 'field collection') {
 	var geoloc_div = element.down('#assay_geolocation_info');
-	var geolocprops_div = geoloc_div.down('#assay_geolocationprops');
-
-	// do nested one first
-	fillInProps(assay.geolocation.props, geolocprops_div, 'no_shading').removeClassName('hide_on_load');
-	deactivate(geolocprops_div);
-
 	fillInObjectValues(assay.geolocation, geoloc_div).removeClassName('hide_on_load');
 
 	var map_panel = $('mini_map_panel');
@@ -201,7 +194,7 @@ function updateProjectFull(project, element, sandbox) {
 
     var pstocks = element.down('#project_stocks');
     var spinner = pstocks.down('.vbpg_progress');
-    var url = 'project/'+project.id+'/stocks';
+    var url = 'project/'+project.id+'/samples/head';
     var limits = {
 	offset: 0,
 	limit: 20,
@@ -416,7 +409,7 @@ function fillInObjectValues(object, element) {
     });
 
     element.select('.nested_props_list').each(function(e){
-	fillInProps(object.props, e);
+	fillInProps(object.props, e, e.hasClassName('no_shading'));
 	deactivate(e);
     });
 
@@ -709,7 +702,7 @@ function displayCvterm(type) {
 
 
 /*
- * single line text for assay props
+ * single line text for assay props PROBABLY DEPRECATED
  *
  * e.g. for insecticide assays show the insecticide (concentration)
  */
@@ -761,7 +754,7 @@ function displayPhenotype(phenotype) {
 
 function getObject(url, spinner, callback) {
 
-    if (spinner) spinner.update(new Element('img', { src: config.ROOT_STATIC+'vbpg_images/bigrotation2.gif', width: 32, height: 32 }));
+    if (spinner) spinner.update(new Element('img', { src: config.ROOT_STATIC+'vbpg_images/bigrotation2.gif' }));
 
     new Ajax.Request(config.REST+url, {
 	method:'get',
@@ -848,7 +841,7 @@ function assembleProject (project, progress_div) {
 
 function getPagedObjects(url, limits, spinner, callback) {
 
-    if (spinner) spinner.update(new Element('img', { src: config.ROOT_STATIC+'vbpg_images/bigrotation2.gif', width: 32, height: 32 }));
+    if (spinner) spinner.update(new Element('img', { src: config.ROOT_STATIC+'vbpg_images/bigrotation2.gif' }));
 
     // should process limits into url params here:
     var params = '?o='+limits.offset+'&l='+limits.limit;
@@ -892,7 +885,7 @@ function getObjectsByIds(object_ids, object_type, max_concurrent, spinner, callb
 
     // start the spinner
     if (spinner) {
-	spinner.update(new Element('img', { src: config.ROOT+'vbpg_images/bigrotation2.gif', width: 32, height: 32 }));
+	spinner.update(new Element('img', { src: config.ROOT+'vbpg_images/bigrotation2.gif' }));
     }
 
     // get first of (possibly) many objects

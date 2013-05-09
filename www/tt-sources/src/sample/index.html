@@ -9,30 +9,29 @@
 
   <div class="vbpg_object_info sample hide_on_load" id="sample_info">
     <h1>Sample: <span class="object_value scalar" id="name"></span></h1>
-    <dl>
-      <dt>Species</dt>
-      <dd class="object_value scalar species_name" id="organism.spp"></dd>
-  
-      <dt>Sample type</dt>
-      <dd class="object_value cvterm" id="type"></dd>
-    </dl>
-  </div>
-
-  <!-- to do: props -->
-  
-  <div class="vbpg_object_list assay hide_on_load" id="sample_assays">
-    <h2>Assays</h2>
     <table>
       <tr>
-        <th>Name</th>
-        <th>Summary</th>
+	<th class="row_heading">VectorBase stable ID</th>
+	<td class="object_value scalar" id="id"></td>
       </tr>
-      <tr class="list_row_template assay">
-        <td><a class="object_id href" id="type" title="Assay page" href="[% root %]assay/?id=####"><span class="object_value scalar capitalize" id="type"></span> (<span class="object_value scalar" id="id"></span>)</a></td>
-        <td class="object_value scalar" id="summary"></td>
+      <tr>
+	<th class="row_heading">description</th>
+	<td class="object_value scalar na_if_empty" id="description"></td>
+      </tr>
+      <tr>
+        <th class="row_heading">species</th>
+        <td class="object_value cvterm species_name" id="species"></td>
+      </tr>
+    </table>
+    <table class="nested_props_list no_shading">
+      <tr class="list_row_template">
+        <th class="row_heading prop_type" delimiter=", "></th>
+        <td class="prop_value"></td>
       </tr>
     </table>
   </div>
+
+[% INCLUDE 'list/assays.html' id='sample_assays' %]
 
 [% INCLUDE 'list/projects.html' id='sample_projects' %]
 
@@ -40,9 +39,9 @@
   
 <script type="text/javascript">
   params = document.location.search.toQueryParams();
-  if (params.id && params.id.match("^[0-9]+$")) {
+  if (params.id && params.id.match("^VBS[0-9]{7}$")) {
     var spinner = $('sample').down('.vbpg_progress');
-	  getObject('stock/'+params.id, spinner,
+	  getObject('sample/'+params.id+'/head', spinner,
                     function(stock){ updateSampleFull(stock, $('sample')); }
                    );
 

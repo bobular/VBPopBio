@@ -35,7 +35,7 @@
   
 <script type="text/javascript">
   params = document.location.search.toQueryParams();
-  if (params.id && params.id.match("^[0-9]+$")) {
+  if (params.id && params.id.match("^VBP[0-9]{7}$")) {
     var spinner = $('project').down('.vbpg_progress');
 	  getObject('project/'+params.id+'/head', spinner,
                 function(project){updateProjectFull(project, $('project')); }

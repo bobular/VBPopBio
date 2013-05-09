@@ -1,0 +1,20 @@
+  <div class="vbpg_object_list assay" id="[% id %]">
+    <h2>Assays</h2>
+    [% INCLUDE 'spinner-pager.html' %]
+    <table class="hide_on_load hide_on_update">
+      <tr>
+        <th>assay</th>
+        <th>summary</th>
+      </tr>
+      <tr class="list_row_template sample">
+        <td>
+          <span class="object_value scalar capitalize" id="type"></span><br />
+          <a class="object_id href" title="Assay page" href="[% root %]assay/?id=####"><span class="object_value scalar" id="name"></span></a><br />
+          <span class="object_value scalar" id="id"></span></td>
+        <td>
+          <span class="object_value scalar" id="result_summary"></span><br />
+        </td>
+      </tr>
+    </table>
+    [% INCLUDE pager.html %]
+  </div>

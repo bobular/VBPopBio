@@ -49,16 +49,18 @@ sub add_multiprop {
 
 =head2 multiprops
 
-get an arrayref of multiprops
+return an array of multiprops
+optional filter cvterm (identity matching)
 
 =cut
 
 sub multiprops {
-  my ($self) = @_;
+  my ($self, $filter) = @_;
 
   return Multiprops->get_multiprops
     ( row => $self,
       prop_relation_name => 'nd_geolocationprops',
+      filter => $filter,
     );
 }
 

@@ -348,7 +348,7 @@ sub add_multiprop {
 
 =head2 multiprops
 
-get a arrayref of multiprops
+return an array of multiprops
 
 =cut
 

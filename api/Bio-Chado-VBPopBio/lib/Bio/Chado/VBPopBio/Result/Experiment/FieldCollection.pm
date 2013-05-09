@@ -16,6 +16,34 @@ Field collection
 
 =head1 SUBROUTINES/METHODS
 
+=head2 result_summary
+
+returns a brief HTML summary of the assay results
+
+=cut
+
+sub result_summary {
+  my ($self) = @_;
+  my $schema = $self->result_source->schema;
+
+  my $method = 'unknown method';
+  if ($self->protocols->count) {
+    $method = $self->protocols->first->type->name;
+  }
+  my $geoloc = $self->geolocation;
+  my $collection_site_term = $schema->types->collection_site;
+  my ($gazprop) = $geoloc->multiprops($collection_site_term);
+  if ($gazprop) {
+    my $gazname = $gazprop->cvterms->[1]->name;
+    return "$gazname ($method)";
+  } else {
+    # return a concatenated list of all free-text geoloc multiprops:
+    my $textname = join "; ", map $_->value, grep $_->value, $geoloc->multiprops;
+    return "$textname ($method)";
+  }
+}
+
+
 =head2 as_data_structure
 
 provide data for JSONification

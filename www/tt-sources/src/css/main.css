@@ -7,13 +7,13 @@
  *
  */
 
-
 body#vbpg {
   color: black;
   font-family: arial,sans-serif;
 }
 
-.vbpg_progress { }
+.vbpg_progress { 
+}
 
 #project_load_status {
     position: fixed;
@@ -27,11 +27,18 @@ body#vbpg {
 }
 
 /* optional fixed-height container for spinner */
-.vbpg_progress_container {
-/*    float: left; 
-    min-height: 32px;
-    width: 0px; */
-
+div.vbpg_progress_container {
+    position: absolute;
+    left: 400px;
+    height: 24px;
+    width: 24px;
+}
+div.vbpg_progress img {
+    height: 24px;
+    width: 24px;
+}
+div.vbpg_progress {
+    margin-top: -42px;
 }
 
 .list_row_template { display: none; }
@@ -146,16 +153,6 @@ table tr th.project_name { width: 400px; }
     color: #ddd;
 }
 
-/* to show that what's on the screen is not current any more
- * (after clicking 'next' or 'previous')
- */
-
-.vbpg_pager_pending {
-    color: #eee;
-}
-div#vbpg_page .vbpg_pager_pending a {
-    color: #eee;
-}
 
 .todo {
     border: 3px dotted #e0e0e0;
@@ -214,3 +211,21 @@ div.assay_protocol_name {
 .sample_prop {
   font-size: 85%;
 }
+
+
+
+
+/* to show that what's on the screen is not current any more
+ * (after clicking 'next' or 'previous')
+ *
+ * HAS TO BE NEAR END OF THIS FILE
+ */
+
+.vbpg_pager_pending {
+    visibility: hidden;
+}
+/*
+div#vbpg_page .vbpg_pager_pending a {
+    color: #eee;
+}
+*/

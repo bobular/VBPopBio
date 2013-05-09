@@ -198,6 +198,8 @@ Get all stocks for this experiment.
 
 =head2 properties
 
+DEPRECATED?
+
 =cut
 
 sub properties {
@@ -730,7 +732,7 @@ sub add_multiprop {
 
 =head2 multiprops
 
-get a arrayref of multiprops
+return an array of multiprops
 optional filter cvterm (identity matching)
 
 =cut
@@ -746,7 +748,7 @@ sub multiprops {
 }
 
 
-=head description
+=head2 description
 
 get/setter for description (stored via rank==0 prop)
 
@@ -768,6 +770,20 @@ sub description {
       prop_relation_name => 'nd_experimentprops',
       row => $self,
     );
+}
+
+=head2 result_summary
+
+abstract base/warning method
+
+returns a brief text summary of the assay results
+
+=cut
+
+sub result_summary {
+  my ($self) = @_;
+  warn "result_summary() not implemented for ".ref($self);
+  return "not implemented yet!";
 }
 
 =head2 as_data_structure
@@ -799,6 +815,7 @@ sub basic_info {
 	  id => $self->stable_id,
 	  name => $self->external_id,
 	  description => $self->description,
+	  result_summary => $self->result_summary,
           props => [ map { $_->as_data_structure } $self->multiprops ],
 	  protocols => [ map { $_->as_data_structure } $self->protocols ],
 	  performers => [ map { $_->as_data_structure } $self->contacts ],

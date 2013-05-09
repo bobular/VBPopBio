@@ -386,26 +386,17 @@ sub vcf_file {
 					     });
 }
 
-=head2 protocol_parameter_group
+=head2 collection_site
 
-TAKES AN ARGUMENT!
-integer 1 .. 3
+The ISA-Tab column heading/key under which the GAZ term (if known) is stored.
 
 =cut
 
-sub protocol_parameter_group {
-  my ($self, $int) = @_;
-warn "protocol_parameter_group is deprecated!\n";
-  my $schema = $self->schema;
-  unless ($int =~ /^[123]$/) {
-    $schema->defer_exception_once("Protocol parameter group number '$int' not valid");
-    return $self->placeholder;
-  }
-  return $schema->cvterms->create_with({ name => "protocol parameter group $int",
-					 cv => 'VBcv',
-					 db => 'VBcv',
-					 description => 'A cvterm used internally within VectorBase Chado to group otherwise identical parameter values (e.g. multiple insecticides).',
-					     });
+sub collection_site {
+  my $self = shift;
+  return $self->schema->cvterms->find_by_accession( { term_source_ref => 'VBcv',
+						      term_accession_number => '0000831',
+						    } );
 }
 
 1;

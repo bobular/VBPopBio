@@ -17,7 +17,36 @@ Genotype assay
 
 =head1 SUBROUTINES/METHODS
 
-=head vcf_file
+=head2 result_summary
+
+returns a brief HTML summary of the assay results
+
+=cut
+
+sub result_summary {
+  my ($self) = @_;
+  my $schema = $self->result_source->schema;
+
+  my $method = 'unknown method';
+  if ($self->protocols->count) {
+    $method = $self->protocols->first->type->name;
+  }
+
+  my $max_shown = 4;
+  my $ngenotypes = $self->genotypes->count;
+  # but just get the first three
+  my @genotypes = $self->genotypes->slice(0,$max_shown-1);
+  my $text = join "; ", map { $_->description || $_->name } @genotypes;
+  if ($ngenotypes > $max_shown) {
+    $text .= sprintf "; and %d more genotypes", $ngenotypes-$max_shown;
+  }
+  if ($ngenotypes == 0 && $self->vcf_file) {
+    $text = "variants shown in genome browser";
+  }
+  return "$text ($method)";
+}
+
+=head2 vcf_file
 
 get/setter for VCF file name (stored via rank==0 prop)
 
