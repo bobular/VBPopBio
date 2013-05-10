@@ -7,7 +7,7 @@ use Dancer::Plugin::MemcachedFast;
 
 our $VERSION = '0.1';
 
-
+schema->storage->_use_join_optimizer(0);
 
 ### JUST FOR DEMO/TESTING ###
 # don't need /depth routes but maybe one day...

@@ -27,9 +27,10 @@ sub result_summary {
   my $schema = $self->result_source->schema;
 
   my $method = 'unknown method';
-  if ($self->protocols->count) {
-    $method = $self->protocols->first->type->name;
+  if (my $protocol = $self->protocols->first) {
+    $method = $protocol->type->name;
   }
+
   my $geoloc = $self->geolocation;
   my $collection_site_term = $schema->types->collection_site;
   my ($gazprop) = $geoloc->multiprops($collection_site_term);

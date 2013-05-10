@@ -573,10 +573,11 @@ sub external_id {
   my $props = $self->search_related('nd_experimentprops',
 				    { type_id => $expt_extID_type->id } );
 
-  if ($props->count > 1) {
+  my $first = $props->next;
+  if ($props->next) {
     croak "experiment has too many external ids\n";
-  } elsif ($props->count == 1) {
-    my $retval = $props->first->value;
+  } elsif (defined $first) {
+    my $retval = $first->value;
     croak "attempted to set a new external id ($external_id) for experiment with existing id ($retval)\n" if (defined $external_id && $external_id ne $retval);
 
     return $retval;
@@ -613,12 +614,14 @@ Returns a dbxref->accession from
 
 =cut
 
+my $VBA_db; # cached
+
 sub stable_id {
   my ($self, $project) = @_;
 
   my $schema = $self->result_source->schema;
 
-  my $db = $schema->dbs->find_or_create({ name => 'VBA' });
+  $VBA_db //= $schema->dbs->find_or_create({ name => 'VBA' });
 
 
   #
@@ -627,14 +630,16 @@ sub stable_id {
   #
   my $quicksearch = $self->search_related
     ( 'nd_experiment_dbxrefs',
-      { 'dbxref.db_id' => $db->id },
-      { join => 'dbxref' }
+      { 'dbxref.db_id' => $VBA_db->id },
+      { join => 'dbxref', prefetch => 'dbxref' }
     );
 
-  if ((my $count = $quicksearch->count()) == 1) {
-    return $quicksearch->first->dbxref->accession;
-  } elsif ($count > 1) {
-    croak "fatal error: too many VBA dbxrefs attached to nd_experiment: ".$self->external_id."\n";
+  if (my $first = $quicksearch->next) {
+    if ($quicksearch->next) {
+      croak "fatal error: too many VBA dbxrefs attached to nd_experiment: ".$self->external_id."\n";
+    } else {
+      return $first->dbxref->accession;
+    }
   }
 
   #
@@ -644,7 +649,7 @@ sub stable_id {
   my $proj_extID_type = $schema->types->project_external_ID;
   my $expt_extID_type = $schema->types->experiment_external_ID;
 
-  my $search = $db->dbxrefs->search
+  my $search = $VBA_db->dbxrefs->search
     ({
       'dbxrefprops.type_id' => $proj_extID_type->id,
       'dbxrefprops.value' => $project->external_id,
@@ -654,7 +659,8 @@ sub stable_id {
      { join => [ 'dbxrefprops', 'dbxrefprops' ] }
     );
 
-  if ($search->count == 0) {
+  my $first = $search->next;
+  if (!defined $first) {
     # need to make a new ID
 
     # first, find the "highest" accession in dbxref for VBP
@@ -665,8 +671,8 @@ sub stable_id {
          limit => 1 });
 
     my $next_number = 1;
-    if ($last_dbxref_search->count) {
-      my $acc = $last_dbxref_search->first->accession;
+    if (my $first_result = $last_dbxref_search->next) {
+      my $acc = $first_result->accession;
       my ($prefix, $number) = $acc =~ /(\D+)(\d+)/;
       $next_number = $number+1;
     }
@@ -674,7 +680,7 @@ sub stable_id {
     # now create the dbxref
     my $new_dbxref = $schema->dbxrefs->create
       ({
-	db => $db,
+	db => $VBA_db,
 	accession => sprintf("VBA%07d", $next_number),
 	dbxrefprops => [ {
 			 type => $proj_extID_type,
@@ -692,11 +698,10 @@ sub stable_id {
     $self->find_or_create_related('nd_experiment_dbxrefs', { dbxref=>$new_dbxref });
     # warn "new stable id ".$new_dbxref->accession." for $self ".$self->external_id."\n";
     return $new_dbxref->accession; # $self->stable_id would be nice but slower
-  } elsif ($search->count == 1) {
+  } elsif (!defined $search->next) {
     # set the stock.dbxref to the stored stable id dbxref
-    my $old_dbxref = $search->first;
-    $self->find_or_create_related('nd_experiment_dbxrefs', { dbxref=>$old_dbxref });
-    return $old_dbxref->accession;
+    $self->find_or_create_related('nd_experiment_dbxrefs', { dbxref=>$first });
+    return $first->accession;
   } else {
     croak "Too many VBA dbxrefs for project ".$project->external_id." + experiment ".$self->external_id."\n";
   }

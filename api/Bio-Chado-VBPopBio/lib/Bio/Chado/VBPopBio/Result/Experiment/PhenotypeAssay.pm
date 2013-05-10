@@ -26,18 +26,23 @@ sub result_summary {
   my $schema = $self->result_source->schema;
 
   my $method = 'unknown method';
-  if ($self->protocols->count) {
-    $method = $self->protocols->first->type->name;
+  if (my $protocol = $self->protocols->first) {
+    $method = $protocol->type->name;
   }
 
+  my $text = "no phenotypes";
+  my @text;
   my $max_shown = 4;
-  my $nphenotypes = $self->phenotypes->count;
-  # but just get the first three
-  my @phenotypes = $self->phenotypes->slice(0,$max_shown-1);
-  my $text = join "; ", map { $_->name } @phenotypes;
-  if ($nphenotypes > $max_shown) {
-    $text .= sprintf "; and %d more phenotypes", $nphenotypes-$max_shown;
+  my $phenotypes = $self->phenotypes;
+  # avoid using resultset->count
+  while (my $phenotype = $phenotypes->next) {
+    push @text, $phenotype->name;
+    if (@text == $max_shown) {
+      push @text, sprintf "; and %d more phenotypes", $phenotypes->count - $max_shown;
+      last;
+    }
   }
+  $text = join '; ', @text if (@text);
   return "$text ($method)";
 }
 

@@ -3,7 +3,7 @@ package Bio::Chado::VBPopBio;
 use warnings;
 use strict;
 
-use Moose;
+use Mouse;
 extends 'Bio::Chado::Schema';
 
 use Bio::Chado::VBPopBio::Types;
@@ -319,6 +319,8 @@ sub defer_exception_once {
   push @{$self->{deferred_exceptions}}, $msg unless (grep { $_ eq $msg } @{$self->{deferred_exceptions}}) ;
 }
 
+
+__PACKAGE__->meta->make_immutable;
 
 =head1 AUTHOR
 

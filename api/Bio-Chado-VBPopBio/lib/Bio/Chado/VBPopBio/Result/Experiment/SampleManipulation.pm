@@ -57,6 +57,15 @@ sub as_data_structure {
 	 };
 }
 
+=head2 result_summary
+
+=cut
+
+sub result_summary {
+  my ($self) = @_;
+  return 'basic sample manipulation';
+}
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

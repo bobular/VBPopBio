@@ -1,6 +1,6 @@
 package Bio::Chado::VBPopBio::Util::Multiprop;
 
-use Moose;
+use Mouse;
 use JSON;
 
 =head1 NAME

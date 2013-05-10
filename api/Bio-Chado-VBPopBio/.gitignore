@@ -2,3 +2,6 @@ MYMETA.json
 MYMETA.yml
 Makefile
 README-bob-google-fetch
+test*
+temp*
+nytprof*

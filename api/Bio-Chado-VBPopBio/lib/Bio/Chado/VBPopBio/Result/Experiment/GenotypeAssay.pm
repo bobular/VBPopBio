@@ -28,20 +28,28 @@ sub result_summary {
   my $schema = $self->result_source->schema;
 
   my $method = 'unknown method';
-  if ($self->protocols->count) {
-    $method = $self->protocols->first->type->name;
+  if (my $protocol = $self->protocols->first) {
+    $method = $protocol->type->name;
   }
 
-  my $max_shown = 4;
-  my $ngenotypes = $self->genotypes->count;
-  # but just get the first three
-  my @genotypes = $self->genotypes->slice(0,$max_shown-1);
-  my $text = join "; ", map { $_->description || $_->name } @genotypes;
-  if ($ngenotypes > $max_shown) {
-    $text .= sprintf "; and %d more genotypes", $ngenotypes-$max_shown;
-  }
-  if ($ngenotypes == 0 && $self->vcf_file) {
+  my $text = "no genotypes";
+  if ($self->vcf_file) {
     $text = "variants shown in genome browser";
+  } else {
+    # there could be "simple" Chado genotypes as well as VCF/genomic ones
+    # but let's assume there are not!
+    my @text;
+    my $max_shown = 4;
+    my $genotypes = $self->genotypes;
+    # avoid using resultset->count
+    while (my $genotype = $genotypes->next) {
+      push @text, $genotype->description || $genotype->name;
+      if (@text == $max_shown) {
+	push @text, sprintf "; and %d more genotypes", $genotypes->count - $max_shown;
+	last;
+      }
+    }
+    $text = join '; ', @text if (@text);
   }
   return "$text ($method)";
 }

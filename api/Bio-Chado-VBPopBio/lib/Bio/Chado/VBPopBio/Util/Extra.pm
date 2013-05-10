@@ -78,8 +78,9 @@ sub attribute {
 					    type_id => $prop_type->id,
 					    rank => 0,
 					   });
-    if ($propsearch->count == 1) {
-      $result = $propsearch->first->value;
+    # next line is 3x faster than $propsearch->count == 1
+    if ((my $prop = $propsearch->next) && !$propsearch->next) {
+      $result = $prop->value;
     }
   }
   return $result;

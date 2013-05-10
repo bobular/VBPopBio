@@ -122,7 +122,8 @@ sub get_multiprops {
 
   # get the positive-ranked props and order them by rank
   my $props = $row->$prop_relation_name->search({}, { where => { rank => { '>' => 0 } },
-						     order_by => 'rank' });
+						      order_by => 'rank',
+						      prefetch => { type => { 'dbxref' => 'db' } } });
 
   # step through the props pushing them into different baskets
   # splitting on an undefined value or non-comma value.

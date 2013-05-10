@@ -27,8 +27,8 @@ sub result_summary {
 
   if ($best_species) {
     my $method = 'unknown method';
-    if ($self->protocols->count) {
-      $method = $self->protocols->first->type->name;
+    if (my $protocol = $self->protocols->first) {
+      $method = $protocol->type->name;
     }
     return '<span class="species_name">'.$best_species->name."</span> ($method)";
   } else {
