@@ -38,6 +38,69 @@ sub create {
   return $self->SUPER::create($fields);
 }
 
+=head2 find_and_delete_existing
+
+Finds an experiment via its stable ID dbxref (project->external_id and assay_name),
+saves a list of relationships that need to be reestablished later,
+and then deletes it, returning the list of rels.
+
+Returns undef if existing assay not found.
+
+=cut
+
+my $VBA_db; # cached
+
+sub find_and_delete_existing {
+  my ($self, $assay_name, $project) = @_;
+  my $schema = $self->result_source->schema;
+  $VBA_db //= $schema->dbs->find_or_create({ name => 'VBA' });
+
+  my $proj_extID_type = $schema->types->project_external_ID;
+  my $expt_extID_type = $schema->types->experiment_external_ID;
+
+  my $search = $VBA_db->dbxrefs->search
+    ({
+      'dbxrefprops.type_id' => $proj_extID_type->id,
+      'dbxrefprops.value' => $project->external_id,
+      'dbxrefprops_2.type_id' => $expt_extID_type->id,
+      'dbxrefprops_2.value' => $assay_name,
+     },
+     { join => [ 'dbxrefprops', 'dbxrefprops' ] }
+    );
+
+  my $first = $search->next;
+  if (defined $first) {
+    if (!defined $search->next) { # make sure only one
+      my $linkers = $search->first->nd_experiment_dbxrefs;
+      # stable ID should only be for one assay
+      my $first_linker = $linkers->next;
+      if (defined $first_linker) {
+	if (!defined $linkers->next) { # should be only one!
+	  my $assay = $first_linker->nd_experiment;
+
+	  # save the projects and stocks to link to
+	  my $links = { projects => [ $assay->projects->all ],
+			stocks =>  [ $assay->stocks->all ],
+		        stock_link_type_ids => [ $assay->nd_experiment_stocks->get_column('type_id')->all ],
+		      };
+	  # then delete the linkers
+	  $assay->nd_experiment_projects->delete;
+	  $assay->nd_experiment_stocks->delete;
+	  # now delete the assay! (and phenotypes, genotypes etc
+	  # but they will be added back again, don't worry)
+	  $assay->delete;
+	  return $links;
+	} else {
+	  croak("fatal problem with multiple assays linked to dbxref");
+	}
+      }
+    } else {
+      croak("fatal problem with multiple VBA dbxrefs");
+    }
+  }
+  return undef;
+}
+
 =head2 find_and_link_existing
 
 Finds the existing experiment object (if there) via $assay_name if it's a stable_id.
@@ -131,9 +194,9 @@ sub find_by_stable_id {
   my ($self, $stable_id) = @_;
 
   my $schema = $self->result_source->schema;
-  my $db = $schema->dbs->find_or_create({ name => 'VBA' });
+  $VBA_db //= $schema->dbs->find_or_create({ name => 'VBA' });
 
-  my $search = $db->dbxrefs->search({ accession => $stable_id });
+  my $search = $VBA_db->dbxrefs->search({ accession => $stable_id });
 
   if ($search->count == 1 && $search->first->nd_experiment_dbxrefs->count == 1) {
     return $search->first->nd_experiment_dbxrefs->first->nd_experiment;

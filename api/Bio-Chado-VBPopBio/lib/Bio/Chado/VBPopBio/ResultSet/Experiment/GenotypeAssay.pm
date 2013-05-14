@@ -50,6 +50,10 @@ sub new {
 sub create_from_isatab {
   my ($self, $assay_name, $assay_data, $project, $ontologies, $study, $isa_parser) = @_;
 
+  # maybe the assay is in use by another project so wasn't deleted
+  # but we still need to delete it and relink it afterwards
+  my $saved_links = $self->find_and_delete_existing($assay_name, $project);
+  # maybe $assay_name is a stable ID and we just need to "borrow" an assay from an existing project
   my $genotype_assay = $self->find_and_link_existing($assay_name, $project);
 
   unless (defined $genotype_assay) {
@@ -128,6 +132,9 @@ sub create_from_isatab {
       }
     }
   }
+
+  $genotype_assay->relink($saved_links) if ($saved_links);
+
   return $genotype_assay;
 }
 

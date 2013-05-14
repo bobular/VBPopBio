@@ -1,105 +1,82 @@
-ONTOLOGY SOURCE REFERENCE						
-Term Source Name	MO	EFO	OBI	UO	GAZ	NCBITaxon
-Term Source File	http://mged.sourceforge.net/ontologies/MGEDontology.php	http://bioportal.bioontology.org/ontologies/45155	http://bioportal.bioontology.org/ontologies/44899	http://bioportal.bioontology.org/ontologies/45413	http:...	http://www.ncbi.nlm.nih.gov/Taxonomy/
-Term Source Version	1.3.0.1	144	2010-10-26 Vancouver 2010 release, RC2			
-Term Source Description	The Microarray Ontology	Experimental Factor Ontology	Ontology for Biomedical Investigations	Units of measurement	Gazetteer	NCBI Taxonomy
-						
-# investigation should be left blank if only one study						
-INVESTIGATION						
-Investigation Identifier						
-Investigation Title						
-Investigation Description						
-Investigation Submission Date						
-Investigation Public Release Date						
-						
-INVESTIGATION PUBLICATIONS						
-Investigation PubMed ID						
-Investigation Publication DOI						
-Investigation Publication Author list						
-Investigation Publication Title						
-Investigation Publication Status						
-Investigation Publication Status Term Accession Number						
-Investigation Publication Status Term Source REF						
-						
-INVESTIGATION CONTACTS						
-Investigation Person Last Name						
-Investigation Person First Name						
-Investigation Person Mid Initials						
-Investigation Person Email						
-Investigation Person Phone						
-Investigation Person Fax						
-Investigation Person Address						
-Investigation Person Affiliation						
-Investigation Person Roles						
-Investigation Person Roles Term Accession Number						
-Investigation Person Roles Term Source REF						
-						
-#There can be multiple studies, see end of sheet						
-STUDY						
-Study Identifier	2010-Neafsey-Revisited					
-Study Title	Neafsey et al., 2010 revisited					
-Study Submission Date						
-Study Public Release Date						
-Study Description	This is a placeholder description.					
-Study File Name	s_samples.txt					
-						
-STUDY DESIGN DESCRIPTORS						
-Study Design Type	observational design	strain or line design				
-Study Design Type Term Accession Number	0300311	0001754				
-Study Design Type Term Source REF	OBI	EFO				
-						
-STUDY PUBLICATIONS						
-Study PubMed ID	20966254					
-Study Publication DOI	10.1126/science.1193036					
-Study Publication Author list	Neafsey DE, Lawniczak MK, Park DJ, Redmond SN, Coulibaly MB, Traoré SF, Sagnon N, Costantini C, Johnson C, Wiegand RC, Collins FH, Lander ES, Wirth DF, Kafatos FC, Besansky NJ, Christophides GK, Muskavitch MA.					
-Study Publication Title	SNP genotyping defines complex gene-flow boundaries among African malaria vector mosquitoes					
-Study Publication Status	published					
-Study Publication Status Term Accession Number	0001796					
-Study Publication Status Term Source REF	EFO					
-						
-STUDY FACTORS						
-Study Factor Name	STRAIN					
-Study Factor Type	organism					
-Study Factor Type Term Accession Number	0100026					
-Study Factor Type Term Source REF	OBI					
-						
-STUDY ASSAYS						
-Study Assay Measurement Type	field collection
-Study Assay Measurement Type Term Accession Number						
-Study Assay Measurement Type Term Source REF						
-Study Assay Technology Type						
-Study Assay Technology Type Term Accession Number						
-Study Assay Technology Type Term Source REF						
-Study Assay Technology Platform						
-Study Assay File Name	a_collection.txt
-						
-STUDY PROTOCOLS						
-Study Protocol Name	inversion_karyotyping	species_identification	collection			
-Study Protocol Type			pyrethrum spray catch			
-Study Protocol Type Term Accession Number	30000037	30000005	30000023
-Study Protocol Type Term Source REF	MIRO	MIRO	MIRO			
-Study Protocol Description	Karyotypes were determined with the PCR method described in Coulibaly et al, Malar J. 2007; 6: 133. 	Species were identified by morphological and genotypic characteristics				
-Study Protocol URI						
-Study Protocol Version						
-Study Protocol Parameters Name						
-Study Protocol Parameters Name Term Accession Number						
-Study Protocol Parameters Name Term Source REF						
-Study Protocol Components Name						
-Study Protocol Components Type						
-Study Protocol Components Type Term Accession Number						
-Study Protocol Components Type Term Source REF						
-						
-STUDY CONTACTS						
-Study Person Last Name	
-Study Person First Name	
-Study Person Mid Initials						
-Study Person Email	
-Study Person Phone						
-Study Person Fax						
-Study Person Address						
-Study Person Affiliation	
-Study Person Roles	
-Study Person Roles Term Accession Number	
-Study Person Roles Term Source REF	
-						
-# you would add the next study here, starting with STUDY						
+"ONTOLOGY SOURCE REFERENCE"
+"Term Source Name"	MO	EFO	OBI	UO	GAZ	NCBITaxon	PATO	MIRO	efo	IDOMAL	VariO	SO
+"Term Source File"	http://mged.sourceforge.net/ontologies/MGEDontology.php
+"Term Source Version"	1.3.0.1	49584	47893	50119	47282	47845	47893	49766	49584	47619	49250	49414
+"Term Source Description"	"The Microarray Ontology"	"Experimental Factor Ontology"	"Ontology for Biomedical Investigations"	"Units of measurement"	Gazetteer	"NCBI organismal classification"	"Ontology for Biomedical Investigations"	"Mosquito insecticide resistance"	"Experimental Factor Ontology"	"Malaria Ontology"	"Variation Ontology"	"Sequence types and features"
+
+STUDY
+"Study Identifier"	2012-use-pre-existing-VBS
+"Study Title"	"Example ISA-Tab for VectorBase PopBio re-using samples"
+"Study Submission Date"	2012-01-01
+"Study Public Release Date"	2013-01-01
+"Study Description"	"This is an example of an ISA-Tab file for submitting population data to VectorBase.  It is complex because it contains examples of all possible data and metadata."
+"Study File Name"	s_samples.txt
+
+"STUDY DESIGN DESCRIPTORS"
+"Study Design Type"	"observational design"	"strain or line design"
+"Study Design Type Term Accession Number"	0000629	0001754
+"Study Design Type Term Source REF"	EFO	EFO
+
+"STUDY PUBLICATIONS"
+"Study PubMed ID"	22135296
+"Study Publication DOI"	10.1093/nar/gkr1089
+"Study Publication Author list"	"Megy K, Emrich SJ, Lawson D, Campbell D, Dialynas E, Hughes DS, Koscielny G, Louis C, Maccallum RM, Redmond SN, Sheehan A, Topalis P, Wilson D; VectorBase Consortium."
+"Study Publication Title"	"VectorBase: improvements to a bioinformatics resource for invertebrate vector genomics"
+"Study Publication Status"	published
+"Study Publication Status Term Accession Number"	0001796
+"Study Publication Status Term Source REF"	EFO
+
+
+"# VectorBase is currently not planning to use factors and factor values in popbio ISA-Tab submissions."
+"# Instead we ask you to provide our curators with a description of the pertinent Characteristics, Parameter Values, Genotypes and/or Phenotypes to be used in the display of the results."
+"STUDY FACTORS"
+"Study Factor Name"
+"Study Factor Type"
+"Study Factor Type Term Accession Number"
+"Study Factor Type Term Source REF"
+
+"STUDY ASSAYS"
+"Study Assay Measurement Type"	"field collection"
+"Study Assay Measurement Type Term Accession Number"
+"Study Assay Measurement Type Term Source REF"
+"Study Assay Technology Type"
+"Study Assay Technology Type Term Accession Number"
+"Study Assay Technology Type Term Source REF"
+"Study Assay Technology Platform"
+"Study Assay File Name"	a_collection.txt
+
+"STUDY PROTOCOLS"
+"Study Protocol Name"	PROTO1	PROTO2	PROTO3	PROTO4	PROTO5	PROTO6	PROTO7
+"Study Protocol Type"	"pyrethrum spray catch"	"morphological examination"	"cytological chromosome examination"	"PCR amplification of specific alleles"	"WHO paper kit DR test"	"genotyping by high throughput sequencing"	"insecticide efficacy test"
+"Study Protocol Type Term Accession Number"	30000023	30000039	30000037	20000100	20000048	0002771	20000040
+"Study Protocol Type Term Source REF"	MIRO	MIRO	MIRO	MIRO	MIRO	EFO	MIRO
+"Study Protocol Description"		"Species were identified by morphological and genotypic characteristics"	"Inversion karyotypes were determined via Giemsa staining and visual inspection under light microscopy"	"Microsatellite lengths were determined by PCR"	"The dose response was assayed using the WHO paper kit"	"Sequencing with Illumina HiSeq, alignment with bowtie and SNP calling with SamTools"	"dual insecticide resistance assay"
+"Study Protocol URI"	http://whqlibdoc.who.int/offset/WHO_OFFSET_13_(part2).pdf
+"Study Protocol Version"
+"Study Protocol Parameters Name"			"cell type;staining duration"		"insecticidal substance"		first.insecticide;first.concentration;second.insecticide;second.concentration
+"Study Protocol Parameters Name Term Accession Number"			0000324;0000433		10000239		10000239;0000033;10000239;0000033
+"Study Protocol Parameters Name Term Source REF"			EFO;EFO		MIRO		MIRO;PATO;MIRO;PATO
+"Study Protocol Components Name"			"microscope manufacturer;stain"			sequencer
+"Study Protocol Components Type"			Olympus;Giemsa			"Illumina HiSeq 2000"
+"Study Protocol Components Type Term Accession Number"			;0000552			0004203
+"Study Protocol Components Type Term Source REF"			;IDOMAL			EFO
+
+
+"# study contacts must contain a ""submitter"" or ""reporting party role"" person"
+"# please add the sample collector details in the a_collection sheet"
+"# the Email field is mandatory (emails will not be displayed on the site)"
+"# use ""sub-investigator role"" as a default role"
+"STUDY CONTACTS"
+"Study Person Last Name"	Person	Griffin	Other	"Ronaldo "
+"Study Person First Name"	Greta	Brian	Alan
+"Study Person Mid Initials"			N
+"Study Person Email"	g.person@somewhere.com	brian@madeup.email	a.n.other@abc.com	ronaldo@gmail.com
+"Study Person Phone"
+"Study Person Fax"
+"Study Person Address"				Portugal
+"Study Person Affiliation"	"University of Making Things Up"
+"Study Person Roles"	"principal investigator"	"reporting party role"	"sub-investigator role"	"sub-investigator role"
+"Study Person Roles Term Accession Number"	0000103	0000068	0000224	0000224
+"Study Person Roles Term Source REF"	OBI	OBI	OBI	OBI
+
+"# ISA-Tab allows multiple studies (a new STUDY section following this line) but for VectorBase submissions we only accept single studies at the moment."

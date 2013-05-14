@@ -520,18 +520,20 @@ deletes the experiment in a cascade which deletes all would-be orphan related ob
 
 sub delete {
   my $self = shift;
+  # warn "I am deleting experiment ".$self->stable_id."\n";
 
-  my $linkers = $self->related_resultset('nd_experiment_stocks');
-  while (my $linker = $linkers->next) {
-    # check that the stock is only attached to one experiment (has to be this one)
-    if ($linker->stock->experiments->count == 1) {
-      $linker->stock->delete;
-    }
-    $linker->delete;
-  }
+#   my $linkers = $self->related_resultset('nd_experiment_stocks');
+#   while (my $linker = $linkers->next) {
+#     # check that the stock is only attached to one experiment (has to be this one)
+#     if ($linker->stock->experiments->count == 1) {
+#       # warn "I am deleting stock ".$linker->stock->stable_id."\n";
+#       $linker->stock->delete;
+#     }
+#     $linker->delete;
+#   }
 
   # protocols
-  $linkers = $self->related_resultset('nd_experiment_protocols');
+  my $linkers = $self->related_resultset('nd_experiment_protocols');
   while (my $linker = $linkers->next) {
     if ($linker->nd_protocol->nd_experiments->count == 1) {
       $linker->nd_protocol->delete;
@@ -548,12 +550,41 @@ sub delete {
   # contacts
   $linkers = $self->related_resultset('nd_experiment_contacts');
   while (my $linker = $linkers->next) {
-    if ($linker->contact->experiments->count == 1) {
+    if ($linker->contact->experiments->count == 1 && $linker->contact->projects->count == 0) {
       $linker->contact->delete;
     }
     $linker->delete;
   }
+
+  # dbxref linkers (but don't delete them)
+  $linkers = $self->related_resultset('nd_experiment_dbxrefs');
+  while (my $linker = $linkers->next) {
+    $linker->delete;
+  }
+
   return $self->SUPER::delete();
+}
+
+=head2 relink
+
+Links a project back to objects passed in the hashref
+
+=cut
+
+sub relink {
+  my ($self, $links) = @_;
+
+  if ($links->{projects}) {
+    foreach my $project (@{$links->{projects}}) {
+      $self->add_to_projects($project);
+    }
+  }
+  if ($links->{stocks}) {
+    foreach my $stock (@{$links->{stocks}}) {
+      # warn "relinking ".$self->stable_id." to ".$stock->stable_id."\n";
+      $self->add_to_stocks($stock, { type_id => shift @{$links->{stock_link_type_ids}} });
+    }
+  }
 }
 
 
@@ -620,9 +651,7 @@ sub stable_id {
   my ($self, $project) = @_;
 
   my $schema = $self->result_source->schema;
-
   $VBA_db //= $schema->dbs->find_or_create({ name => 'VBA' });
-
 
   #
   # first see if there is one single dbxref (connected via nd_experiment_dbxrefs)
@@ -641,6 +670,8 @@ sub stable_id {
       return $first->dbxref->accession;
     }
   }
+
+  croak("stable_id called without project arg") unless (defined $project);
 
   #
   # now look up stable ID in the persistent dbxref table
@@ -696,7 +727,6 @@ sub stable_id {
        });
     # set the stock.dbxref to the new dbxref
     $self->find_or_create_related('nd_experiment_dbxrefs', { dbxref=>$new_dbxref });
-    # warn "new stable id ".$new_dbxref->accession." for $self ".$self->external_id."\n";
     return $new_dbxref->accession; # $self->stable_id would be nice but slower
   } elsif (!defined $search->next) {
     # set the stock.dbxref to the stored stable id dbxref

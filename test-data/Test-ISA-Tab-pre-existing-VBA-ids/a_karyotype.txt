@@ -1,3 +1,0 @@
-Sample Name	Assay Name	Protocol REF	Raw Data File
-SM-NEW1	SM-NEW1.ga1	inversion_karyotyping	p_genotypes.tab
-SM-NEW2	SM-NEW2.ga1	inversion_karyotyping	p_genotypes.tab

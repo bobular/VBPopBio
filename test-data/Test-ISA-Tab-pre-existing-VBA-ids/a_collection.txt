@@ -1,3 +1,3 @@
-Sample Name	Assay Name	Protocol REF	Characteristics [Collection site]	Term Source REF	Term Accession Number	Characteristics [Collection site latitude]	Characteristics [Collection site longitude]	Characteristics [Collection start date]	Characteristics [Collection end date]	Characteristics [Collection time of day]	Term Source REF	Term Accession Number	Characteristics [Collection site temperature]	Unit	Term Source REF	Term Accession Number	Characteristics [Collector name]	Characteristics [Collector email]	Characteristics [Collector institution]	Raw Data File
-SM-NEW1	VBA0000001	collection	Kela	GAZ	238237	11.88	-8.45	2004						degree celsius	UO	27				
-SM-NEW2	VBA0000001	collection	Kela	GAZ	238237	11.88	-8.45	2004						degree celsius	UO	27				
+"Sample Name"	"Assay Name"
+NewSample01	VBA0000001
+NewSample02	VBA0000001

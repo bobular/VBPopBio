@@ -239,6 +239,8 @@ has been deleted) or failing that, creating a new VBS0123456 style ID.
 
 =cut
 
+my $VBS_db; # crudely cached
+
 sub stable_id {
   my ($self, $project) = @_;
 
@@ -254,11 +256,11 @@ sub stable_id {
 
   my $schema = $self->result_source->schema;
 
-  my $db = $schema->dbs->find_or_create({ name => 'VBS' });
+  $VBS_db //= $schema->dbs->find_or_create({ name => 'VBS' });
   my $proj_extID_type = $schema->types->project_external_ID;
   my $samp_extID_type = $schema->types->sample_external_ID;
 
-  my $search = $db->dbxrefs->search
+  my $search = $VBS_db->dbxrefs->search
     ({
       'dbxrefprops.type_id' => $proj_extID_type->id,
       'dbxrefprops.value' => $project->external_id,
@@ -288,7 +290,7 @@ sub stable_id {
     # now create the dbxref
     my $new_dbxref = $schema->dbxrefs->create
       ({
-	db => $db,
+	db => $VBS_db,
 	accession => sprintf("VBS%07d", $next_number),
 	dbxrefprops => [ {
 			 type => $proj_extID_type,
@@ -392,12 +394,19 @@ sub as_data_structure {
 
       props => [ map { $_->as_data_structure } $self->multiprops ],
 
+	  # the sorting on ID below keeps assays in order, even if 'parent'
+	  # projects have been loaded/deleted/reloaded
       ($depth > 0) ? (
-		      field_collections => [ map { $_->as_data_structure($depth) } $self->field_collections ],
-		      species_identification_assays => [ map { $_->as_data_structure($depth) } $self->species_identification_assays ],
-		      genotype_assays => [ map { $_->as_data_structure($depth) } $self->genotype_assays ],
-		      phenotype_assays => [ map { $_->as_data_structure($depth) } $self->phenotype_assays ],
-		      sample_manipulations => [ map { $_->as_data_structure($depth) } $self->sample_manipulations ]
+		      field_collections => [ sort { $a->{id} cmp $b->{id} }
+					     map { $_->as_data_structure($depth) } $self->field_collections ],
+		      species_identification_assays => [ sort { $a->{id} cmp $b->{id} }
+							 map { $_->as_data_structure($depth) } $self->species_identification_assays ],
+		      genotype_assays => [ sort { $a->{id} cmp $b->{id} }
+					   map { $_->as_data_structure($depth) } $self->genotype_assays ],
+		      phenotype_assays => [ sort { $a->{id} cmp $b->{id} }
+					    map { $_->as_data_structure($depth) } $self->phenotype_assays ],
+		      sample_manipulations => [ sort { $a->{id} cmp $b->{id} }
+						map { $_->as_data_structure($depth) } $self->sample_manipulations ]
 		     )
 	  : (),
 
@@ -455,6 +464,27 @@ sub best_species {
     }
   }
   return $result;
+}
+
+=head2 relink
+
+Links a stock back to objects passed in the hashref
+
+=cut
+
+sub relink {
+  my ($self, $links) = @_;
+
+  if ($links->{projects}) {
+    foreach my $project (@{$links->{projects}}) {
+      $self->add_to_projects($project);
+    }
+  }
+  if ($links->{assays}) {
+    foreach my $assay (@{$links->{assays}}) {
+      $self->add_to_nd_experiments($assay, { type_id => shift @{$links->{assay_link_type_ids}} });
+    }
+  }
 }
 
 =head1 AUTHOR

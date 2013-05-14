@@ -336,10 +336,31 @@ It does not delete any would-be-orphaned contacts or publications.  Hopefully th
 OK.  If not we will have to check that the contacts (or publications) don't belong to
 several different object types before deletion.
 
+The deletion "path" is project->stocks (via our fake relatonship)
+and project->assays
+
+
 =cut
 
 sub delete {
   my $self = shift;
+  # warn "I am deleting project ".$self->stable_id."\n";
+  my $schema = $self->result_source->schema;
+  my $link_type = $schema->types->project_stock_link;
+  # delete stocks
+  foreach my $stock ($self->stocks) {
+    # if the stock has only one project it must be this one so ok to delete
+    if ($stock->projects->count == 1) {
+      # warn "I am deleting stock ".$stock->stable_id."\n";
+      # first delete the link from here to the stock
+      $self->search_related('projectprops',
+			    { type_id => $link_type->id,
+			      rank => -$stock->id,
+			    })->delete;
+      # then delete the stock (and the stockprop links back to project)
+      $stock->delete;
+    }
+  }
 
   my $linkers = $self->related_resultset('nd_experiment_projects');
   while (my $linker = $linkers->next) {
@@ -349,6 +370,7 @@ sub delete {
     }
     $linker->delete;
   }
+
   # now do contacts (experiment-contacts will have been done already)
   $linkers = $self->related_resultset('project_contacts');
   while (my $linker = $linkers->next) {

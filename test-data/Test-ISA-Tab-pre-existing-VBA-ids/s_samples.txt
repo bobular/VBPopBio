@@ -1,3 +1,3 @@
-Source Name	Sample Name	Comment [aspect X]	Material Type	Term Source REF	Term Accession Number	Characteristics [Organism]	Term Source REF	Term Accession Number	Characteristics [EFO:eye color]	Term Source REF	Term Accession Number	Factor Value [STRAIN]	Term Source REF	Term Accession Number
-SM-NEW1	SM-NEW1		whole organism	EFO	0002906	Anopheles gambiae	NCBITaxon	7165	blue	PATO	0000318	M		
-SM-NEW2	SM-NEW2		whole organism	EFO	0002906	Anopheles gambiae	NCBITaxon	7165	blue	PATO	0000318	M		
+"Source Name"	"Sample Name"	Description	"Comment [Ensembl variation ID]"	"Comment [BioSamples accession]"	"Material Type"	"Term Source REF"	"Term Accession Number"	"Characteristics [sex (EFO:0000695)]"	"Term Source REF"	"Term Accession Number"	"Characteristics [developmental stage (EFO:0000399)]"	"Term Source REF"	"Term Accession Number"	"Characteristics [age (EFO:0000246)]"	Unit	"Term Source REF"	"Term Accession Number"
+Source01	NewSample01	"First new sample of many"	1234	SAMEA453339	"whole organism"	EFO	0002906	female	PATO	0000383	adult	IDOMAL	0000655	4	day	UO	0000033
+Source02	NewSample02	"Second new sample of many"	4567	SAMEA453340	"whole organism"	EFO	0002906	"mixed sex"	PATO	0001338	adult	IDOMAL	0000655	2-3	week	UO	0000034

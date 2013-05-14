@@ -42,6 +42,10 @@ sub find_or_create_from_isatab {
 
   my $schema = $self->result_source->schema;
 
+  # maybe the stock is in use by another project so wasn't deleted
+  # but we still need to delete it and relink it afterwards
+  my $saved_links = $self->find_and_delete_existing($sample_name, $project);
+
   # create a stock type cvterm (maybe this could be optionally overwritten)
   my $cvterms = $schema->cvterms;
   my $dbxrefs = $schema->dbxrefs;
@@ -126,6 +130,8 @@ sub find_or_create_from_isatab {
   if ($sample_data->{factor_values}) {
     warn "Warning: Not currently loading factor values for samples\n" unless ($self->{FV_WARNED_ALREADY}++);
   }
+
+  $stock->relink($saved_links) if ($saved_links);
 
   return $stock;
 }
@@ -325,13 +331,15 @@ Look up dbxref VBS entry and return stock if it has one
 
 =cut
 
+my $VBS_db; # crudely cached
+
 sub find_by_stable_id {
   my ($self, $stable_id) = @_;
 
   my $schema = $self->result_source->schema;
-  my $db = $schema->dbs->find_or_create({ name => 'VBS' });
+  $VBS_db //= $schema->dbs->find_or_create({ name => 'VBS' });
 
-  my $search = $db->dbxrefs->search({ accession => $stable_id });
+  my $search = $VBS_db->dbxrefs->search({ accession => $stable_id });
 
   if ($search->count == 1 && $search->first->stocks->count == 1) {
     return $search->first->stocks->first;
@@ -350,6 +358,79 @@ sub looks_like_stable_id {
   return $id =~ /^VBS\d{7}$/;
 }
 
+=head2 find_and_delete_existing
+
+If the stock was re-used by another project, then if the original project is
+deleted, that stock does not get deleted.  If you want to reload the original
+project you need to reload the stock again.  To do that you need to delete it
+- remembering what it was linked to - then load it again by the normal mechanism
+and then relink it again.
+
+Returns a data structure of the links needed to be remade, or undef if nothing
+found or deleted.
+
+=cut
+
+sub find_and_delete_existing {
+  my ($self, $sample_name, $project) = @_;
+
+  my $schema = $self->result_source->schema;
+  $VBS_db //= $schema->dbs->find_or_create({ name => 'VBS' });
+
+  my $proj_extID_type = $schema->types->project_external_ID;
+  my $samp_extID_type = $schema->types->sample_external_ID;
+
+  my $search = $VBS_db->dbxrefs->search
+    ({
+      'dbxrefprops.type_id' => $proj_extID_type->id,
+      'dbxrefprops.value' => $project->external_id,
+      'dbxrefprops_2.type_id' => $samp_extID_type->id,
+      'dbxrefprops_2.value' => $sample_name,
+     },
+     { join => [ 'dbxrefprops', 'dbxrefprops' ] }
+    );
+
+  my $first = $search->next;
+  if (defined $first) {
+    if (!defined $search->next) { # make sure only one
+      my $stocks = $first->stocks;
+      # stable ID should only be for one stock
+      my $stock = $stocks->next;
+      if (defined $stock) {
+	if (!defined $stocks->next) { # should be only one!
+	  # save the projects and stocks to link to
+	  my $links = { projects => [ $stock->projects->all ],
+			assays =>  [ $stock->nd_experiments->all ],
+		        assay_link_type_ids => [ $stock->nd_experiment_stocks->get_column('type_id')->all ],
+		      };
+	  # then delete the linkers
+	  $stock->nd_experiment_stocks->delete;
+	  # don't need to delete stock_project linkers
+	  # because they are stored in stockprops which will get wiped with the stock
+
+	  # but what about project_stock?
+	  # we do need delete these manually otherwise they will go stale
+	  my $link_type = $schema->types->project_stock_link;
+          # perl loop required below due to some DBIx::Class problem
+          foreach my $project ($stock->projects) {
+	    $project->search_related('projectprops',
+				     { type_id => $link_type->id,
+				       rank => -$stock->id,
+				     })->delete;
+	  }
+	  # now delete the stock!
+	  $stock->delete;
+	  return $links;
+	} else {
+	  croak("fatal problem with multiple stocks linked to dbxref");
+	}
+      }
+    } else {
+      croak("fatal problem with multiple VBS dbxrefs");
+    }
+  }
+  return undef;
+}
 
 =head1 TO DO
 

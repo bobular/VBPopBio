@@ -7,6 +7,8 @@ __PACKAGE__->subclass({
 		       contact => 'Bio::Chado::VBPopBio::Result::Contact',
 		      });
 
+__PACKAGE__->resultset_attributes({ order_by => 'project_contact_id' });
+
 =head1 NAME
 
 Bio::Chado::VBPopBio::Result::Linker::ProjectContact

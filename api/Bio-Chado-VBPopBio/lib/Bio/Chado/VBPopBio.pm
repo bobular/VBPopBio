@@ -89,6 +89,17 @@ sub experiments {
   return $self->resultset('Experiment');
 }
 
+=head2 assays
+
+same as experiments
+
+=cut
+
+sub assays {
+  my $self = shift;
+  return $self->resultset('Experiment');
+}
+
 
 =head2 field_collections
 

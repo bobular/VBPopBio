@@ -1,9 +1,0 @@
-Sample	Assay	prop?	type ID	type Name	Name	Uniquename	Description/Value	Date Created
-SM-NEW1	SM-NEW1.ga1	1	SO:0000105	chromosome_arm			2L	
-SM-NEW1	SM-NEW1.ga1	0	SO:1000047	paracentric_inversion	2La/a		2La/a	
-SM-NEW1	SM-NEW1.ga1	1	SO:0000105	chromosome_arm			2R	
-SM-NEW1	SM-NEW1.ga1	0	SO:1000047	paracentric_inversion	2Rbc/+		2Rbc/+	
-SM-NEW2	SM-NEW2.ga1	1	SO:0000105	chromosome_arm			2L	
-SM-NEW2	SM-NEW2.ga1	0	SO:1000047	paracentric_inversion	2La/a		2La/a	
-SM-NEW2	SM-NEW2.ga1	1	SO:0000105	chromosome_arm			2R	
-SM-NEW2	SM-NEW2.ga1	0	SO:1000047	paracentric_inversion	2Rbc/+		2Rbc/+	
