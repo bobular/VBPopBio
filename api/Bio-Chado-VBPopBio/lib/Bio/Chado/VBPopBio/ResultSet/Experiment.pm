@@ -141,6 +141,11 @@ sub _type {
 
 =head2 search_on_properties
 
+################################################
+    THE SEARCH_ON_* METHODS ARE DEPRECATED
+may need revisiting if we do meta-projects again
+################################################
+
     my $expts1 = $experiments->search_on_properties({ name => 'CDC light trap' });
     my $expts2 = $experiments->search_on_properties({ value => 'green' });
     # probably more useful to search on cvterm and value:
@@ -179,6 +184,25 @@ sub search_on_properties_cv_acc {
 
   return $self->search({ 'db.name' => $cv_name, accession => $cv_number },
 		       { join => { 'nd_experimentprops' => { 'type' => { 'dbxref' => 'db'} } } });
+}
+
+=head2 filter_on_project
+
+with undefined arg, do nothing
+
+with $project object arg, restrict the search based on project membership
+
+=cut
+
+sub filter_on_project {
+  my ($self, $project) = @_;
+
+  my $result = $self;
+  if (defined $project) {
+    $result = $self->search({ project_id => $project->id },
+			 { join => 'nd_experiment_projects' });
+  }
+  return wantarray ? $result->all : $result;
 }
 
 

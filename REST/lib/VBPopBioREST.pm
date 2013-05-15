@@ -135,7 +135,7 @@ get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
 								);
 
 			   return {
-				   records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $stocks->all ],
+				   records => [ map { $_->as_data_structure(defined $head ? 0 : undef, $project) } $stocks->all ],
 				   records_info($o, $l, $stocks)
 				  };
 			 });

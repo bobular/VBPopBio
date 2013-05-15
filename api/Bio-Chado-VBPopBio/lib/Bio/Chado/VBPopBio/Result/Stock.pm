@@ -373,7 +373,7 @@ returns a json-like hashref of arrayrefs and hashrefs
 =cut
 
 sub as_data_structure {
-  my ($self, $depth) = @_;
+  my ($self, $depth, $project) = @_;
   $depth = INT_MAX unless (defined $depth);
 
   my $best_species = $self->best_species;
@@ -398,15 +398,20 @@ sub as_data_structure {
 	  # projects have been loaded/deleted/reloaded
       ($depth > 0) ? (
 		      field_collections => [ sort { $a->{id} cmp $b->{id} }
-					     map { $_->as_data_structure($depth) } $self->field_collections ],
+					     map { $_->as_data_structure($depth) }
+					     $self->field_collections->filter_on_project($project) ],
 		      species_identification_assays => [ sort { $a->{id} cmp $b->{id} }
-							 map { $_->as_data_structure($depth) } $self->species_identification_assays ],
+							 map { $_->as_data_structure($depth) }
+							 $self->species_identification_assays->filter_on_project($project) ],
 		      genotype_assays => [ sort { $a->{id} cmp $b->{id} }
-					   map { $_->as_data_structure($depth) } $self->genotype_assays ],
+					   map { $_->as_data_structure($depth) }
+					   $self->genotype_assays->filter_on_project($project) ],
 		      phenotype_assays => [ sort { $a->{id} cmp $b->{id} }
-					    map { $_->as_data_structure($depth) } $self->phenotype_assays ],
+					    map { $_->as_data_structure($depth) }
+					    $self->phenotype_assays->filter_on_project($project) ],
 		      sample_manipulations => [ sort { $a->{id} cmp $b->{id} }
-						map { $_->as_data_structure($depth) } $self->sample_manipulations ]
+						map { $_->as_data_structure($depth) }
+						$self->sample_manipulations->filter_on_project($project) ]
 		     )
 	  : (),
 

@@ -1,4 +1,4 @@
-use Test::More tests => 5;
+use Test::More tests => 6;
 
 use strict;
 use JSON;
@@ -15,12 +15,17 @@ my $json = JSON->new->pretty;
 $schema->txn_do_deferred(
 		sub {
 		  my $project1 = $projects->create_from_isatab({ directory=>'../../test-data/VectorBase_PopBio_ISA-Tab_full_example/' });
+		  my $project1_lone_data = $project1->as_data_structure;
 		  my $project2 = $projects->create_from_isatab({ directory=>'../../test-data/Test-ISA-Tab-pre-existing-VBS-ids/' });
 
 		  my $stock1 = $project1->stocks->first;
 		  my $stock2 = $project2->stocks->first;
 
 		  my $project1_data_orig = $project1->as_data_structure;
+
+		  # test for project filtering in as_data_structure chain
+		  is_deeply($project1_data_orig, $project1_lone_data, "is project 1 as_data same as before project2 was loaded");
+
 		  my $project2_data_orig = $project2->as_data_structure;
 
 #		  warn "project 1 stock uniquename = ".$stock1->uniquename."\n";

@@ -689,7 +689,7 @@ sub as_data_structure {
 	  publications => [ map { $_->as_data_structure } $self->publications ],
 	  contacts => [ map { $_->as_data_structure } $self->contacts ],
 	  props => [ map { $_->as_data_structure } $self->multiprops ],
-	  ($depth > 0) ? (stocks => [ map { $_->as_data_structure($depth-1) } $self->stocks ]) : (),
+	  ($depth > 0) ? (stocks => [ map { $_->as_data_structure($depth-1, $self) } $self->stocks ]) : (),
 	 };
 }
 
