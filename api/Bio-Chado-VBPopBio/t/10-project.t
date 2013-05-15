@@ -1,4 +1,4 @@
-use Test::More tests => 18;
+use Test::More tests => 23;
 
 use Bio::Chado::VBPopBio;
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
@@ -76,6 +76,16 @@ my $result =
 		    isa_ok($p3, "Bio::Chado::VBPopBio::Result::Project", "found by stable id");
 		    is($p3->id, $project3b->id, "same internal id");
 		    is($p3->external_id, $project3b->external_id, "same external id");
+
+		    like($project->creation_date, qr/^\d{4}-\d{2}-\d{2}$/, "project has a sane creation date");
+		    is($project2->creation_date, $p2->creation_date, "project2 and p2 creation dates the same");
+
+		    my $fail_date = eval { $project->last_modified_date };
+		    is($fail_date, undef, "not allowed to get last_modified_date before update_modification_date");
+		    my $last_modified = $project->update_modification_date();
+		    is($project->last_modified_date, $last_modified, "last_modified_date seems to work");
+
+		    like($project->last_modified_date, qr/^\d{4}-\d{2}-\d{2}$/, "project has a sane modification date");
 
 		    is(scalar(@{$schema->{deferred_exceptions}}), 1, "one expected deferred exceptions");
 		    # we were just pretending! roll back:

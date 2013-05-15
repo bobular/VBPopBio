@@ -98,6 +98,10 @@ sub create_from_isatab {
   # should there be an alias/wrapper for stable_id such as reserve_stable_id
   my $stable_id = $project->stable_id;
   croak "cannot create/retrieve a stable ID" unless ($stable_id);
+  # same for creation date (create it by asking for it)
+  my $creation_date = $project->creation_date;
+  # more explicit udpate for modification date
+  my $modification_date = $project->update_modification_date;
 
   #
   # set some date attributes (via props)

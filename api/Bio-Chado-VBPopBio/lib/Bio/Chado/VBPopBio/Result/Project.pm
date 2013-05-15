@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Carp;
 use POSIX;
+
 use feature 'switch';
 use base 'Bio::Chado::Schema::Result::Project::Project';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass/);
@@ -236,6 +237,17 @@ relationship in Chado).
 
 sub stable_id {
   my ($self) = @_;
+
+  my $dbxref = $self->_stable_id_dbxref();
+  if (defined $dbxref) {
+    return $dbxref->accession;
+  }
+}
+
+# private method
+
+sub _stable_id_dbxref {
+  my ($self) = @_;
   my $schema = $self->result_source->schema;
 
   my $db = $schema->dbs->find_or_create({ name => 'VBP' });
@@ -279,13 +291,13 @@ sub stable_id {
 			} ]
        });
 
-    return $new_dbxref->accession;
+    return $new_dbxref;
   } elsif ($search->count == 1) {
-    return $search->first->accession;
+    return $search->first;
   } else {
     croak "Too many dbxrefs for project ".$self->external_id." with dbxrefprop project external ID";
   }
-
+  return undef;
 }
 
 =head2 submission_date
@@ -326,6 +338,140 @@ sub public_release_date {
       prop_relation_name => 'projectprops',
       row => $self,
     );
+}
+
+=head2 creation_date
+
+get method only (but has side effects, see below)
+
+can only be called on a project with a valid stable id
+
+the creation date is stored as a dbxrefprop on the VBP dbxref
+
+if this doesn't exist, it will be generated with today's date
+
+=cut
+
+sub creation_date {
+  my ($self) = @_;
+
+  my $stable_id_dbxref = $self->_stable_id_dbxref();
+
+  if (defined $stable_id_dbxref) {
+    my $schema = $self->result_source->schema;
+    my $creation_date_type = $schema->types->creation_date;
+
+    my $search = $stable_id_dbxref->search_related('dbxrefprops',
+						   {
+						    type_id => $creation_date_type->id,
+						    rank => 0,
+						   });
+
+    my $first = $search->next;
+    if (defined $first) {
+      if (!defined $search->next) {
+	return $first->value; # no sanity testing!
+      } else {
+	croak "too many creation date dbxrefprops";
+      }
+    } else {
+      # make a new creation date dbxrefprop
+      my $date = strftime "%Y-%m-%d", localtime;
+      $stable_id_dbxref->add_to_dbxrefprops( {
+					      type => $creation_date_type,
+					      value => $date,
+					      rank => 0,
+					     });
+      return $date;
+    }
+  } else {
+    croak "creation date called but not stable id dbxref could be found";
+  }
+}
+
+=head2 last_modified_date
+
+return the last modified date string
+
+will croak if no time stamp in db
+
+call update_modification_date() explicitly to update/create the time stamp
+
+=cut
+
+sub last_modified_date {
+  my ($self) = @_;
+
+  my $stable_id_dbxref = $self->_stable_id_dbxref();
+
+  if (defined $stable_id_dbxref) {
+    my $schema = $self->result_source->schema;
+    my $last_modified_date_type = $schema->types->last_modified_date;
+
+    my $search = $stable_id_dbxref->search_related('dbxrefprops',
+						   {
+						    type_id => $last_modified_date_type->id,
+						    rank => 0,
+						   });
+
+    my $first = $search->next;
+    if (defined $first) {
+      if (!defined $search->next) {
+	return $first->value; # no sanity testing!
+      } else {
+	croak "too many last modified date dbxrefprops";
+      }
+    } else {
+      croak "no last_modified_date dbxrefprop for project stable id dbxref";
+    }
+  } else {
+    croak "no stable_id dbxref for last_modified_date";
+  }
+}
+
+=head2 update_modification_date
+
+"touch" the timestamp on the project (stable id dbxrefprop)
+
+=cut
+
+sub update_modification_date {
+  my ($self) = @_;
+  my $stable_id_dbxref = $self->_stable_id_dbxref();
+
+  if (defined $stable_id_dbxref) {
+    my $schema = $self->result_source->schema;
+    my $last_modified_date_type = $schema->types->last_modified_date;
+    my $date = strftime "%Y-%m-%d", localtime;
+
+    my $search = $stable_id_dbxref->search_related('dbxrefprops',
+						   {
+						    type_id => $last_modified_date_type->id,
+						    rank => 0,
+						   });
+
+    my $first = $search->next;
+    if (defined $first) {
+      if (!defined $search->next) {
+	$first->update({ value => $date });
+	return $date;
+      } else {
+	croak "too many last modified date dbxrefprops";
+      }
+    } else {
+      # make a brand new dbxrefprop
+      # (could probably have been done all-in-one (update_or_insert?))
+      $stable_id_dbxref->add_to_dbxrefprops( {
+					      type => $last_modified_date_type,
+					      value => $date,
+					      rank => 0,
+					     });
+      return $date;
+    }
+  } else {
+    croak "no stable_id dbxref for update_modification_date";
+  }
+
 }
 
 =head2 delete
@@ -538,6 +684,8 @@ sub as_data_structure {
 	  description => $self->description,
 	  submission_date => $self->submission_date,
 	  public_release_date => $self->public_release_date,
+	  creation_date => $self->creation_date,
+	  last_modified_date => $self->last_modified_date,
 	  publications => [ map { $_->as_data_structure } $self->publications ],
 	  contacts => [ map { $_->as_data_structure } $self->contacts ],
 	  props => [ map { $_->as_data_structure } $self->multiprops ],

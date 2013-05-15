@@ -1,4 +1,4 @@
-use Test::More tests => 15;
+use Test::More tests => 17;
 
 use strict;
 use JSON;
@@ -24,6 +24,8 @@ $schema->txn_do_deferred(
 		  is($project->name, 'Example ISA-Tab for VectorBase PopBio', "project name");
 		  is($project->submission_date, '2012-01-01', 'submission date');
 		  is($project->public_release_date, '2013-01-01', 'public release date');
+		  like($project->creation_date, qr/^\d{4}-\d{2}-\d{2}$/, "project has a sane creation date");
+		  like($project->last_modified_date, qr/^\d{4}-\d{2}-\d{2}$/, "project has a sane modification date");
 
 		  my $stock = $project->stocks->first;
 		  isa_ok($stock, "Bio::Chado::VBPopBio::Result::Stock", "first stock is a stock");

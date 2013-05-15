@@ -162,6 +162,38 @@ sub public_release_date {
 }
 memoize('public_release_date');
 
+=head2 last_modified_date
+
+VBcv:last_modified_date
+
+=cut
+
+sub last_modified_date {
+  my $self = shift;
+  return $self->schema->cvterms->create_with({ name => 'last modified date',
+					       cv => 'VBcv',
+					       db => 'VBcv',
+					       description => 'The date on which the project was last updated in the database.',
+					     });
+}
+memoize('last_modified_date');
+
+=head2 creation_date
+
+VBcv:creation_date
+
+=cut
+
+sub creation_date {
+  my $self = shift;
+  return $self->schema->cvterms->create_with({ name => 'creation date',
+					       cv => 'VBcv',
+					       db => 'VBcv',
+					       description => 'The date on which the project was first loaded into the database.',
+					     });
+}
+memoize('creation_date');
+
 
 =head2 placeholder
 
