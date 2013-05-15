@@ -80,7 +80,8 @@ sub create_from_isatab {
     # load the phenotype data from the phenotype file(s)
     foreach my $p_file_name (keys %{$assay_data->{raw_data_files}}) {
       my $phenotype_data =
-	$phenotype_data_cache{$p_file_name} ||=
+	# see comments in GenotypeAssay.pm about cache key
+	$phenotype_data_cache{$project->stable_id.'/'.$p_file_name} ||=
 	  $isa_parser->parse_study_or_assay($p_file_name, undef,
 					    {
 					     'Phenotype Name' => 'reusable node',

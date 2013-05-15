@@ -84,8 +84,11 @@ sub create_from_isatab {
       if ($g_file_name =~ /\.vcf$/i) {
 	$genotype_assay->vcf_file($g_file_name);
       } else {
+	# cache key must contain something from project otherwise
+	# you get into trouble loading multiple projects in the same perl process
+	# if they have similar-named files (likely!)
 	my $genotype_data =
-	  $genotype_data_cache{$g_file_name} ||=
+	  $genotype_data_cache{$project->stable_id.'/'.$g_file_name} ||=
 	    $isa_parser->parse_study_or_assay($g_file_name, undef,
 					      {
 					       'Type' => 'attribute',

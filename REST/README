@@ -2,6 +2,10 @@ This is the REST server for VBPopBio
 
 To start a development instance (SINGLE THREAD!) do
 
-screen -S popbio-rest-3003 ./bin/rest_server.pl -p 3003
+(flushing the memcached first)
 
-screen -S popbio-rest-3003 plackup -s Starman -p 3003 bin/rest_server.pl
+echo "flush_all" | netcat localhost 11211 ; screen -S popbio-rest-3003 ./bin/rest_server.pl -p 3003
+
+or
+
+echo "flush_all" | netcat localhost 11211 ; screen -S popbio-rest-3003 plackup -s Starman -p 3003 bin/rest_server.pl
