@@ -454,6 +454,23 @@ sub collection_site {
 }
 memoize('collection_site');
 
+
+=head2 vcf_file
+
+VBcv:protocol component
+
+=cut
+
+sub vis_configs {
+  my $self = shift;
+  return $self->schema->cvterms->create_with({ name => 'visualisation configs',
+					       cv => 'VBcv',
+					       db => 'VBcv',
+					       description => 'A cvterm used internally within Chado to store visualisation config JSON for projects.',
+					     });
+}
+memoize('vcf_file');
+
 __PACKAGE__->meta->make_immutable;
 
 1;

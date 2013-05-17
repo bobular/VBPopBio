@@ -66,7 +66,7 @@ sub attribute {
   confess "prop_type is not a Cvterm" unless ($prop_type->isa("Bio::Chado::VBPopBio::Result::Cvterm"));
 
   if (defined $result) {
-    $row->find_or_create_related($prop_relation_name,
+    $row->update_or_create_related($prop_relation_name,
 				  {
 				   type => $prop_type,
 				   value => $result,

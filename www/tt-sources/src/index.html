@@ -5,58 +5,17 @@
 
 <div id="welcome">
 
-  <p>
-  This is the <i>'beta'</i> version of the population biology resource at VectorBase.
-  Currently under active development it will eventually supercede both the
-  <a href="http://www.vectorbase.org/PopulationData/">population data</a>
-  browser and the <a href="http://anobase.vectorbase.org/ir/">insecticide
-    resistance</a> browser. It contains all the data from both of these resources, though this is subject
-  to further curation. 
-   </p>
+  <h1>VectorBase "new" PopBio demo server</h2>
+
+  <p style="width:600px">
+  This is the NEW <i>'beta'</i> version of the population biology resource at
+  VectorBase - aiming for relaunch in June 2013.  When fully released it will
+  have the usual VectorBase header/footer and colour scheme.
+  </p>
 <p>
-Whilst the display methods are subject to change, the submission pipeline is
-now open; we would welcome contributions from the population biology
-community. If you are interested in submitting data comprehensive documentation
-is available <a href="[% root %]submission/">here</a>, or please contact us
-at <a href="mailto:info@vectorbase.org">info@vectorbase.org</a>.</p>
-<p>
-    You may <a href="[% root %]projects">browse all projects</a> or one
-	of the selected examples below:
+    You may <a href="[% root %]projects/">browse all demo projects</a>.
   </p>
 
-[% INCLUDE 'list/projects.html' id='example_projects' %]
-
 </div>
-
-<script type="text/javascript">
-
-	var example_ids = $A([4, 34, 37, 39, 43, 48, 91, 141, 158, 182]);
-
-  var examples = { count: 100,	start: 1, end: example_ids.size(), records: [] };
-  var list_div = $('example_projects');
-	// change title
-	list_div.down('h2').update('Example projects');
-
-  var spinner = list_div.down('.vbpg_progress');
-
-	// the idea is that these will NEVER page
-	var limits = {
-	  offset: 0,
-	  limit: 100
-	};
-
-	example_ids.each(function(id) {
-	  getObject('project/'+id+'/head', spinner,
-              function(project){
-                examples.records.push(project);
-	              if (examples.records.size() == example_ids.size()) {
-                  // populate the table
-	                examples.records = examples.records.sortBy(function(p){return p.id});
-                  fillInPagedListValues(examples, list_div, '/projects', limits).down('.hide_on_load').removeClassName('hide_on_load');
-                }
-	            }
-	           );
-	});
-</script>
 
 [% INCLUDE footer.html %]

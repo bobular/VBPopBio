@@ -75,6 +75,14 @@ function updateSampleFull(stock, element) {
 function updateAssayFull(assay, element) {
     var species_div = element.down('#species_results');
 
+    // general props cleanup
+    assay.props.each(function(prop) {
+	if (prop.cvterms[0].name == 'species list') {
+	    prop.cvterms[0] = { name: 'species assay result', accession: 'temp:hack' };
+	}
+	prop.cvterms[0].name = prop.cvterms[0].name.replace(/_/g, " "); // e.g. for reference_genome
+    });
+
     fillInObjectValues(assay, element.down('#assay_info')).removeClassName('hide_on_load');
 
     if (assay.protocols.size()) {
@@ -162,31 +170,33 @@ function updateAssayFull(assay, element) {
  */
 
 function updateProjectFull(project, element, sandbox) {
+    if (sandbox && (sandbox == '0' || sandbox == 'false' || sandbox == 'no')) sandbox = 0;
     fillInObjectValues(project, element.down('#project_info')).removeClassName('hide_on_load');
-
     var index = 1;
-    var vis_array = project.props.filter(function(prop){return prop.type=='VBcv:vis' && prop.value.isJSON()}).collect(function(prop){
-	var vis = prop.value.evalJSON(); // TO DO: make this fail gracefully - the prior isJSON() doesn't seem to be enough
-	return vis;
-    });
+    var vis_array = new Array();
+    if (project.vis_configs && project.vis_configs.isJSON()) {
+	vis_array = project.vis_configs.evalJSON();
+	// TO DO: handle bad JSON better - it can cause a cryptic crash
+    }
 
     if (sandbox) {
 	vis_array.push({
 	    "type": "geoplot",
-	    "title": "sandbox default (lat x long x species)",
-	    "x": "$.stocks.*.assays[?(@.type == 'field collection' && @.geolocation.latitude)].geolocation.latitude",
-	    "y": "$.stocks.*.assays[?(@.type == 'field collection' && @.geolocation.latitude)].geolocation.longitude",
-	    "z": "$.stocks.*.id",
-	    "e": "$.stocks.*.assays[?(@.type == 'field collection' && @.geolocation.latitude)]",
-	    "filters" : { "zLabel": "bestSpeciesById" }
+	    "title": "default - change me",
+	    "x": "$.stocks.*.field_collections.*.geolocation.latitude",
+	    "y": "$.stocks.*.field_collections.*.geolocation.longitude",
+	    "z": "$.stocks.*.species.name",
+	    "e": "$.stocks.*.field_collections[?(@.geolocation.latitude && @.geolocation.longitude)]]"
 	});
 
     }
 
     fillInListValues(vis_array, element.down('#project_visualisations'), 'no_shading').removeClassName('hide_on_load');
 
+
     if (vis_array.size())	assembleProject(project, $('project_load_status'));
 
+    // fill in all textareas if we are in sandbox mode
     if (sandbox) {
 	var textAreas = element.down('#project_visualisations').select('.list_row_instance textarea');
 	vis_array.each(function(vis){ textAreas.shift().update(JSON.stringify(vis, null, 2)); });
@@ -211,6 +221,7 @@ function updateProjectFull(project, element, sandbox) {
 
     // now check every 2s for the full project to be loaded before loading the visualisations.
 
+
     if (vis_array.size()) {
 	new PeriodicalExecuter(function(pe) {
   	    if (project.complete) {
@@ -219,12 +230,15 @@ function updateProjectFull(project, element, sandbox) {
 		if (vis_panels.size() == vis_array.size()) {
 		    vis_array.each(function(vis) {
 			var vis_panel = vis_panels.shift();
-			renderVisualisation(project, vis, vis_panel);
-
+			if (vis.title != "default - change me") {
+			    renderVisualisation(project, vis, vis_panel);
+			}
 			if (sandbox) {
 			    // add the 'render' button
 			    var textArea = vis_panel.up('.list_row_instance').down('textarea');
 			    var button = new Element('input', { style: 'margin-left: 10px;', type: 'button', value: 'render' });
+			    textArea.up('div.sandbox').removeClassName('hide_on_load');
+
 			    button.observe('click', function(event) {
 				if (project.complete) {
 				    var textArea = event.element().previous('textarea');
@@ -284,6 +298,28 @@ function getFilteredDataHash_jsp(project, vis) {
     var hashJSP = getDataHash_jsp(project,vis.e,vis.x,vis.y,vis.z);
 
     if (vis.filters) {
+	if (vis.filters.histogram) {
+	    var counts = { };
+	    hashJSP.each(function(hash) {
+		var xval = hash.x !== false ? hash.x : 'no data';
+		var zval = hash.z !== false ? hash.z : 'no data';
+		if (!counts[xval]) counts[xval] = {};
+		if (!counts[xval][zval]) counts[xval][zval] = 0;
+		counts[xval][zval] += 1;
+	    });
+
+	    // new hash just using the number of times each combination of x and z is seen
+	    // y input is ignored
+	    hashJSP = new Array()
+	    for (var xval in counts) {
+		for (var zval in counts[xval]) {
+		    var count = counts[xval][zval];
+		    hashJSP.push({ x: xval, y: count, z: zval });
+		}
+	    }
+	    
+	}
+
 	if (vis.filters.noFalseZ) {
 	    /*
 	     * we don't want to encourage filtering away points from the dataset
@@ -293,14 +329,6 @@ function getFilteredDataHash_jsp(project, vis) {
 	    hashJSP = hashJSP.filter(function(hash){ return hash.z !== false; });
 	}
 
-	if (vis.filters.zLabel) {
-	    var auto_object = vis.filters.zLabel;
-	    if (auto_object == 'bestSpeciesById') {
-		var stocks_by_id = new Object();
-		project.stocks.each(function(stock){ stocks_by_id[stock.id] = stock; });
-		hashJSP.each(function(hash){ hash.z = getBestSpeciesForStock(stocks_by_id[hash.z]) });
-	    }
-	}
     }
 
     // compulsory false -> "no data" filter on z
@@ -308,68 +336,6 @@ function getFilteredDataHash_jsp(project, vis) {
 
     return hashJSP;
 }
-
-
-/*
- * getBestSpeciesForStock(stock)
- *
- * returns a suitable label
- */
-
-function getBestSpeciesForStock(stock) {
-    var retval = '';
-    // stock.species_id_assay.props.*.type
-    if (retval = jsonPath(stock, "$.assays[?(@.type == 'species identification assay')].props.*.type")) return retval.collect(function(s){return s.sub('MIRO:','')}).sort().join(', ');
-
-    // stock.spp
-    if (stock.organism && stock.organism.spp) return stock.organism.spp;
-
-    return 'unknown species';
-}
-
-function summariseAssays(assays, autolink) {
-
-    // automagic link to the assay page
-    var more_details = autolink ? ' <a class="object_id href" id="type" title="More details" href="[% root %]assay/?id=####">...</a>' : ' ...';
-
-    assays.each(function(assay) {
-	switch(assay.type) {
-	case 'field collection':
-	    var geo = assay.geolocation;
-	    var gaz = assay.geolocation.props.filter(function(prop){ prop.type.match(/^GAZ:/) }).first();
-	    if (gaz) {
-		assay.summary = displayCvterm(gaz.type);
-	    } else if (geo.description) {
-		assay.summary = geo.description;
-	    } else if (geo.longitude) {
-		assay.summary = geo.latitude+','+geo.longitude;
-	    } else {
-		assay.summary = '';
-	    }
-
-	    break;
-
-	case 'species identification assay':
-	    if (assay.props.size()) assay.summary = '<i>'+displayCvterm(assay.props[0].type)+'</i>';
-	    if (assay.props.size()>1) assay.summary = assay.summary+more_details;
-	    break;
-
-	case 'genotype assay':
-	    if (assay.genotypes.size()) assay.summary = jsonPath(assay.genotypes, '$.*.description').uniq().join(';<wbr/>');
-	    break;
-
-	case 'phenotype assay':
-	    if (assay.phenotypes.size()) assay.summary = displayAssayProps(assay.props)+" "+displayPhenotype(assay.phenotypes[0]);
-	    if (assay.phenotypes.size()>1) assay.summary = assay.summary+more_details;
-
-	    break;
-	default:
-	    assay.summary = '';
-	    break;
-	}
-    });
-}
-
 
 
 /*
@@ -436,6 +402,13 @@ function fillInObjectValues(object, element) {
 	var href = e.readAttribute('href');
 	e.writeAttribute('href', href.sub(/####/, object.id));
     });
+
+    // this one is more general purpose
+    element.select('.object_value.href').each(function(e){
+	var href = e.readAttribute('href');
+	e.writeAttribute('href', href.sub(/####/, jsonPath(object, '$.'+e.id) || ''));
+    });
+
 
     /*
      * not used at the moment
@@ -612,9 +585,11 @@ function fillInPagedListValues(page, element, url, limits) {
 	    fillInObjectValues(page, pager);
 	    pager.removeClassName('hide_unless_paging');
 	    var next = pager.down('.vbpg_pager_next');
+	    var last = pager.down('.vbpg_pager_last');
 	    if (page.end == page.count) {
 		next.purge(); // remove event handlers
 		next.addClassName('vbpg_pager_inactive');
+		last.purge(); last.addClassName('vbpg_pager_inactive');
 	    } else {
 		var next_callback = function(event) {
 		    element.down('.hide_on_update').addClassName('vbpg_pager_pending');
@@ -631,8 +606,28 @@ function fillInPagedListValues(page, element, url, limits) {
 		next.purge();
 		next.observe('click', next_callback);
 		next.removeClassName('vbpg_pager_inactive');
+
+		var last_callback = function(event) {
+		    element.down('.hide_on_update').addClassName('vbpg_pager_pending');
+		    var last_offset = 0; // might be quicker with int or floor and division!
+		    while (last_offset < page.count-limits.limit) { last_offset += limits.limit; }
+		    console.log("setting last_offset "+last_offset);
+		    getPagedObjects(url,
+				    {
+					offset: last_offset,
+					limit: limits.limit
+				    },
+				    spinner && spinner.show(),
+				    function(p) { // p is for page
+					fillInPagedListValues(p, element, url, limits).down('.hide_on_update').removeClassName('vbpg_pager_pending');
+				    });
+		};
+		last.purge();
+		last.observe('click', last_callback);
+		last.removeClassName('vbpg_pager_inactive');
 	    }
 	    var prev = pager.down('.vbpg_pager_prev');
+	    var first = pager.down('.vbpg_pager_first');
 	    if (page.start == 1) {
 		prev.addClassName('vbpg_pager_inactive');
 		prev.purge();
@@ -652,6 +647,23 @@ function fillInPagedListValues(page, element, url, limits) {
 		prev.purge();
 		prev.observe('click', prev_callback);
 		prev.removeClassName('vbpg_pager_inactive');
+
+		var first_callback = function(event) {
+		    element.down('.hide_on_update').addClassName('vbpg_pager_pending');
+		    getPagedObjects(url,
+				    {
+					offset: 0,
+					limit: limits.limit
+				    },
+				    spinner && spinner.show(),
+				    function(p) { // p is for page
+					fillInPagedListValues(p, element, url, limits).down('.hide_on_update').removeClassName('vbpg_pager_pending');
+				    });
+		};
+		first.purge();
+		first.observe('click', first_callback);
+		first.removeClassName('vbpg_pager_inactive');
+
 	    }
 	    
 	});
@@ -681,67 +693,6 @@ function renderCvterm(term) {
     } else {
 	return '';
     }
-}
-
-/* DEPRECATED????? see renderCvterm
- * formats a cv.name:cvterm.name string for display
- * or returns empty string on failure
- *
- * one day it will return a link or something!
- */
-
-function displayCvterm(type) {
-    if (type && Object.isString(type)) {
-	var parts = type.split(":",2);
-	if (parts.size() == 2) {
-	    return parts[1];
-	}
-    }
-    return "";
-}
-
-
-/*
- * single line text for assay props PROBABLY DEPRECATED
- *
- * e.g. for insecticide assays show the insecticide (concentration)
- */
-
-function displayAssayProps(props) {
-    var parts = [];
-    if (props && props.size()) {
-  	var vbcv_i = props.find(function(prop){ return prop.type == "VBcv:insecticide" });
-	if (vbcv_i) {
-  	    // find the next other prop with the same rank as the 'insecticide' VBcv term
-  	    var iprop = props.find(function(prop) { return prop.rank == vbcv_i.rank && prop.type !== vbcv_i.type });
-  	    if (iprop) {
-  		parts.push(displayCvterm(iprop.type));
-  		var vbcv_c = props.find(function(prop){ return prop.type == "VBcv:concentration" });
-  		if (vbcv_c) {
-  		    var cprop = props.find(function(prop) { return prop.rank == vbcv_c.rank && prop.type !== vbcv_c.type });
-  		    if (cprop) {
-  			parts.push("("+cprop.value+")");
-  		    }
-  		}
-  	    }
-  	}
-    }
-    return parts.join(" ");
-}
-
-/*
- * format phenotype for single <span> display
- *
- * TO DO: something more sophisticated!
- */
-
-function displayPhenotype(phenotype) {
-    var parts = [];
-    if (phenotype.observable) parts.push(phenotype.observable.name);
-    if (phenotype.attribute) parts.push(phenotype.attribute.name);
-    if (phenotype.cvalue) parts.push(phenotype.cvalue.name); 
-    if (phenotype.value !== null) parts.push(phenotype.value);
-    return parts.join(" ");
 }
 
 
@@ -796,8 +747,8 @@ function assembleProject (project, progress_div) {
     var maxStocks = 1000; //any large number
     var stocks = new Array();
     //  alert(stocks.length);
-    var limits = { 'offset': 0, 'limit': 50 };
-    getPagedObjects('project/'+project.id+'/stocks/', limits, null, addToProject);
+    var limits = { 'offset': 0, 'limit': 10 };
+    getPagedObjects('project/'+project.id+'/stocks', limits, null, addToProject);
     if (progress_div) progress_div.update("Loading samples...");
 
     function addToProject(response) {
@@ -818,7 +769,7 @@ function assembleProject (project, progress_div) {
 	if(stocks.length < maxStocks) {
 	    //      console.log("more!");
 	    limits.offset = limits.offset+limits.limit;
-	    getPagedObjects('project/'+project.id+'/stocks/', limits, spinner, addToProject);
+	    getPagedObjects('project/'+project.id+'/stocks', limits, spinner, addToProject);
 	}
 	if(stocks.length == maxStocks) {
 	    project.stocks = stocks;
@@ -859,75 +810,3 @@ function getPagedObjects(url, limits, spinner, callback) {
 	onFailure: function(t){alert('Sorry, an error occurred. '+url+' did not load')},
     });
 }
-
-
-
-/*
- * DEPRECATED
- * AJAX wrapper of a wrapper to get just one object by id and object type
- *
- */
-
-function getObjectById(object_id, object_type, spinner, callback) {
-    getObjectsByIds([ object_id ], object_type,  1, spinner, function(objects){ callback(objects[0]) } );
-}
-
-/*
- * DEPRECATED
- * AJAX wrapper to get an array of objects (given an array of ids) and apply the callback function on it
- *
- */
-
-function getObjectsByIds(object_ids, object_type, max_concurrent, spinner, callback) {
-
-    var objects = new Array();
-    var objects_in_progress = 0;
-
-    // start the spinner
-    if (spinner) {
-	spinner.update(new Element('img', { src: config.ROOT+'vbpg_images/bigrotation2.gif' }));
-    }
-
-    // get first of (possibly) many objects
-    requestObject(0);
-
-    function requestObject(index) {
-
-	if (index < object_ids.size()) {
-	    if (objects_in_progress < max_concurrent) {
-		// console.log('req '+index);
-		var object_id = object_ids[index++];
-		new Ajax.Request(config.REST+object_type+'/'+object_id, {
-		    method:'get',
-		    requestHeaders: {Accept: 'application/json'},
-		    onSuccess: handleObject,
-		    onFailure: function(t){alert('Sorry, an error occurred. '+object_type+'s did not all load')},
-		});
-		objects_in_progress++;
-	    } 
-
-	    // try sending another request a bit later
-	    if (index < object_ids.size()) setTimeout(function(){ requestObject(index)	}, 200);
-	}
-    }
-
-    function handleObject(response) {
-	var object = response.responseText.evalJSON();
-	
-	objects.push(object);
-	objects_in_progress--;
-
-	//		console.log('handled '+objects.size() + ' of ' + object_ids.size());
-	
-	if (objects.size() == object_ids.size()) {
-	    if (spinner) {
-		spinner.hide(); // clear it
-	    }
-	    callback(objects);
-	}
-    }
-
-}
-
-
-

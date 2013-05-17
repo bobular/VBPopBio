@@ -1,5 +1,10 @@
 serializer: JSON
 
+engines:
+  JSON:
+    pretty: 0
+
+
 plugins:
       DBIC:
         default:
@@ -11,6 +16,7 @@ plugins:
           - "127.0.0.1:11211"
         default_timeout: 0
         namespace: "popbio:"
+        compress_threshold: 10000
 
 logger: 'file'
 log: 'debug'

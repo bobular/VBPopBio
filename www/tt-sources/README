@@ -28,6 +28,6 @@ See also README-turnkey-site for updating that.
 
 Or try Bob's ~/bin/on-change-run script, for auto-updating:
 
-  on-change-run ttree -a -f ttree-dev.cfg
+  on-change-run ttree -a -f ttree-pubdev.cfg
 
 

@@ -42,7 +42,7 @@ Cluster.prototype.addPVMark = function(panel, z) {
 	    .strokeStyle(pv.color("#aaa").alpha(0.4))
 	    .fillStyle(pv.color("#aaa").alpha(0.5))
 	    .radius(10)
-	    .cursor("pointer").event("click", function() {c.popUp()})
+	 //   .cursor("pointer").event("click", function() {c.popUp()})
     ;
 	labelOffset = 5;
 
@@ -58,7 +58,7 @@ Cluster.prototype.addPVMark = function(panel, z) {
 
 	.fillStyle(z(comp[0].z).alpha(0.8))
 	.radius(this.getPxSize()/2)
-	.cursor("pointer").event("click", function() {c.popUp()})
+//	.cursor("pointer").event("click", function() {c.popUp()})
 	.anchor("center")
 	.add(pv.Label)
 //	.textBaseline(function(d) {if(labelOffset > 0) {return "top"} else {return "middle"}})
@@ -91,8 +91,8 @@ Cluster.prototype.addPVMark = function(panel, z) {
     }
 
     mark.
-    cursor("pointer").
-    event("click", function() {c.popUp()})
+    cursor("pointer")
+//    event("click", function() {c.popUp()})
     ;
     
 
@@ -115,10 +115,10 @@ Cluster.prototype.addPVMark = function(panel, z) {
     .top(function(d) {return Math.floor(((this.index) / sqrt) + 1) * dotSize * 3})
     .fillStyle(function(d) {return z(d.z)})
     .strokeStyle(function(d) {return z(d.z)})
-    .cursor("pointer")
-    .event("mouseover", function(d) {/*console.log(d.o.id); */self.status = ("sample  "+d.o.id);})
-    .event("mouseout", function() {self.status = "";})
-    .event("click", function(d) {self.location = config.ROOT+"/sample/?id="+d.o.id})
+//    .cursor("pointer")
+//    .event("mouseover", function(d) {/*console.log(d.o.id); */self.status = ("sample  "+d.o.id);})
+//    .event("mouseout", function() {self.status = "";})
+//    .event("click", function(d) {self.location = config.ROOT+"/sample/?id="+d.o.id})
 //    event("click",function(d) {console.log("clicked "+Object.toJSON(d.o.id));})
     ; 
 
@@ -513,37 +513,59 @@ function callPlot(type, dataHash, div, args) {
  */
 function getDataHash_jsp (json, est, xst, yst, zst) {
 
-  function getVal (json, est, pst, vst) {
-      var estHash = est.split('.');
-      var pstHash = pst.split('[');
-      for (var i = estHash.length; i> 1; i--) {
-	  var esst = estHash.slice(0,i).join(".");
-//	  console.log(esst+" "+vst.indexOf(esst));
-	  if(vst.indexOf(esst) >= 0) {
-	      var psst = pstHash.slice(0,i).join("[");
-	      
-	      var vpth = vst.replace(esst,psst);
-	      var vobj = jsonPath(json,vpth);
-//	      console.log(vpth+"\t"+vobj);
-	      if(vobj.length==1) {return vobj[0];}
-	      else {return vobj};
-	  }
-      }
-      return undefined;
-  }
+    /****
+     * json = data structure
+     * est = entity jsonPath string
+     * pst = jsonPath
+     * vst = the plottable value jsonPath string
+     ****/
 
-  var paths = jsonPath(json, est,{resultType:"PATH"});
+    function getVal (json, est, pst, vst) {
+	var estHash = est.split('.');
+	var pstHash = pst.split('[');
+	for (var i = estHash.length; i> 1; i--) {
+	    var esst = estHash.slice(0,i).join(".");
+	    //	  console.log(esst+" "+vst.indexOf(esst));
+	    if(vst.indexOf(esst) >= 0) {
+		var psst = pstHash.slice(0,i).join("[");
+		
+		var vpth = vst.replace(esst,psst);
+		var vobj = jsonPath(json,vpth);
+		//	      console.log(vpth+"\t"+vobj);
+		if(vobj.length==1) {return vobj[0];}
+		else {return vobj};
+	    }
+	}
+	return undefined;
+    }
 
-  var dataHash = paths.map(function(d,i) {
-      var retHash =  {x: getVal(json, est, d,xst),  
-		      y: getVal(json, est, d,yst), 
-		      z: getVal(json, est, d,zst),
-		      o: getVal(json, est, d,est)
-      };
-      return retHash;});
-  
-  dataHash.sortBy(function(d) {return Number(d.y)});
-  return dataHash;
+    var paths = jsonPath(json, est,{resultType:"PATH"});
+    var dataHash = paths.map(function(d,i) {
+
+	// handle multiple z jsonPath strings (in an array) and flatten
+	// the results by joining with ':'
+	var zresult;
+	if (typeof zst === 'string') {
+	    zresult = getVal(json, est, d, zst);
+	} else {
+	    var zresults = new Array();
+	    var lengthHash = { }; // check all lengths are the same before joining
+	    for (var i=0; i<zst.length; i++) {
+		var zval = getVal(json, est, d, zst[i])
+		zresults.push(zval === false ? 'no data' : zval);
+	    }
+	    zresult = zresults.join(':');
+	}
+
+	var retHash =  {x: getVal(json, est, d, xst),  
+			y: getVal(json, est, d, yst), 
+			z: zresult,
+			o: getVal(json, est, d, est)
+		       };
+	return retHash;});
+	
+//    dataHash.sortBy(function(d) {return Number(d.y)});
+    return dataHash;
 }
 /** add legend to any panel */
 function addLegend(panel, zvals, zscale) {
@@ -578,7 +600,7 @@ function getDivWidth(div) {
     var width;
     width = div.style.width || div.offsetWidth || div.getWidth();
     width = new String(width).replace("px","");
-//    console.log(width);
+//    console.log("phenovis calculated width as "+width);
     return width;
 }
 
@@ -770,7 +792,7 @@ function geoplot(posHash, div) {
 	this.canvas.setAttribute("class", "canvas");
 	this.canvas.style.position="absolute";
 	var c = this;
-	google.maps.event.addListener(this.getMap(), 'click', function(){console.log("clicked outside "); c.closePops()});
+//	google.maps.event.addListener(this.getMap(), 'click', function(){console.log("clicked outside "); c.closePops()});
 	
 	
 /* CODE TO OVERLAY DIRECTLY ON MAP NOT WORKING */
@@ -879,14 +901,24 @@ function geoplot(posHash, div) {
     var zvals = posHash.collect(function(d) {return d.z});
 
     var lDiv = document.createElement("div");
+    /* this way doesn't work when embedded in Drupal for some strange reason
+
     lDiv.style.width = estLegendWidth(zvals);
     lDiv.style.height = estLegendHeight(zvals);
 
+    
     lDiv.style.right = 10;
     lDiv.style.bottom = 30;
     lDiv.style.borderRadius = 5;
     lDiv.style.position = "absolute";
     lDiv.style.zIndex = "99"; 
+    */
+
+    // But this way does work nicely...
+    // see https://www.ebi.ac.uk/panda/jira/browse/VB-1763
+    var heightString = 'height:'+estLegendHeight(zvals)+'px;';
+    var widthString= 'width:'+estLegendWidth(zvals)+'px;';
+    lDiv.setAttribute('style', 'position:absolute;z-index:99;right:10px;bottom:30px;'+heightString+widthString);
 
     var map = new google.maps.Map(div, { mapTypeId: google.maps.MapTypeId.TERRAIN}  );
     //add the overlay canvas
@@ -1253,12 +1285,14 @@ function groupedBarChart(data, div,args) {
   for (var i = 0; i<uxvals.length; i++) {
     //add new panel of width (newHash.length * colwidth) 
     
-    dataMapSub = data.findAll(function (d) {return d.x == uxvals[i];});
+      dataMapSub = data
+	  .findAll(function (d) {return d.x == uxvals[i];})
+	  .sortBy(function(d) { return d.z; }); // sort within groups in same order as legend
 
     var catdiv = dataPanel.add(pv.Panel)
 	.width(dataMapSub.length * bw)
 	.left(left)
-	.strokeStyle('#e7e7e7')
+	.strokeStyle('#c7c7c7')
 	.width(bw * dataMapSub.length)
 	;
 

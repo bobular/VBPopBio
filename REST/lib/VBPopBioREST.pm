@@ -27,13 +27,25 @@ get '/' => sub{
 };
 
 
-# Project
-get qr{/project/(\w+)(/head)?} => sub {
-    my ($id, $head) = splat;
-    memcached_get_or_set("project/$id$head", sub {
+# project/head
+# special case NO CACHING (so editing vis_configs is less painful)
+get qr{/project/(\w+)/head} => sub {
+    my ($id) = splat;
+    my $project = schema->projects->find_by_stable_id($id);
+    if (defined $project) {
+      return $project->as_data_structure(0);
+    } else {
+      return { error_message => "can't find project" };
+    }
+  };
+
+# full project - hope nobody calls this (except maybe on things like MR4 collection)
+get qr{/project/(\w+)} => sub {
+    my ($id) = splat;
+    memcached_get_or_set("project/$id", sub {
 			   my $project = schema->projects->find_by_stable_id($id);
 			   if (defined $project) {
-			     return $project->as_data_structure(defined $head ? 0 : undef);
+			     return $project->as_data_structure(undef);
 			   } else {
 			     return { error_message => "can't find project" };
 			   }
@@ -41,12 +53,14 @@ get qr{/project/(\w+)(/head)?} => sub {
   };
 
 # Projects
-get qr{/projects(/head)?} => sub {
-    my ($head) = splat;
+# not cached any more - at least while in development
+# and until we can selectively flush parts of the cache
+get qr{/projects/head} => sub {
+    my $head = '/head'; # enforce this - or we kill the server
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
 
-    memcached_get_or_set("projects$head-$o-$l", sub {
+#    memcached_get_or_set("projects$head-$o-$l", sub {
 			   my $results = schema->projects->search(
 								  undef,
 								  {
@@ -60,7 +74,7 @@ get qr{/projects(/head)?} => sub {
 				   records => [ map { $_->as_data_structure($depth) } $results->all ],
 				   records_info($o, $l, $results)
 				  };
-			 });
+#			 });
   };
 
 # Stocks

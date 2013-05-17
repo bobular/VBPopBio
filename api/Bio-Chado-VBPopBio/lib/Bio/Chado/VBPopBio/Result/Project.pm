@@ -300,6 +300,24 @@ sub _stable_id_dbxref {
   return undef;
 }
 
+=head2 vis_configs
+
+Get/setter for visualisation config JSON text.
+Outer element should be an array.
+
+=cut
+
+sub vis_configs {
+  my ($self, $json) = @_;
+  return Extra->attribute
+    ( value => $json,
+      prop_type => $self->result_source->schema->types->vis_configs,
+      prop_relation_name => 'projectprops',
+      row => $self,
+    );
+}
+
+
 =head2 submission_date
 
 Get/setter for the submission date
@@ -686,6 +704,7 @@ sub as_data_structure {
 	  public_release_date => $self->public_release_date,
 	  creation_date => $self->creation_date,
 	  last_modified_date => $self->last_modified_date,
+	  vis_configs => $self->vis_configs,
 	  publications => [ map { $_->as_data_structure } $self->publications ],
 	  contacts => [ map { $_->as_data_structure } $self->contacts ],
 	  props => [ map { $_->as_data_structure } $self->multiprops ],

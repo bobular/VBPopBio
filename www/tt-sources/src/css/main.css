@@ -12,6 +12,10 @@ body#vbpg {
   font-family: arial,sans-serif;
 }
 
+div#vbpg_page {
+  width: 900px;
+}
+
 .vbpg_progress { 
 }
 
@@ -41,13 +45,28 @@ div.vbpg_progress {
     margin-top: -42px;
 }
 
+/* temp style for standalone demo server */
+ul#vbpg_nav {
+  text-align: right;
+  margin: 0px;
+  margin-bottom: -10px;
+  padding: 0px;
+  width: 100%;
+} 
+ul#vbpg_nav li {
+    display: inline;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 75%;
+}
+
 .list_row_template { display: none; }
 .hide_on_load { display: none; }
 .hide_unless_paging { display: none; }
 
 div.vbpg_object_info, div.vbpg_object_list {
 /* clear: both; */
- width: 800px;
+ width: 900px;
 }
 
 /* these dl dt dd stylings are for key=value lists */
@@ -132,25 +151,27 @@ table tr th.project_name { width: 400px; }
     margin: 15px;
 }
 
-.vbpg_pager_prev {
+.vbpg_pager_prev, .vbpg_pager_first {
     margin-right: 20px;
 }
 
-.vbpg_pager_next {
+.vbpg_pager_next, .vbpg_pager_last {
     margin-left: 20px;
 }
 
-.vbpg_pager_prev, .vbpg_pager_next {
+.vbpg_pager_prev, .vbpg_pager_next, .vbpg_pager_first, .vbpg_pager_last {
     padding-left: 10px;
     padding-right: 10px;
     background: #eee;
     color: black;
     border: 2px solid #ddd;
     font-size: 100%;
+    cursor: pointer;
 }
 
 .vbpg_pager_inactive {
     color: #ddd;
+    cursor: default;
 }
 
 
@@ -170,6 +191,29 @@ table tr th.project_name { width: 400px; }
 		margin-left: 50px;
 		margin-right: 50px;
 		margin-top: 25px;
+}
+
+.vis_flag {
+    color: #a00;
+    font-size: 75%;
+    background: #ccc;
+    margin-left: 10px;
+    border: 2px solid #a00;
+    padding: 2px;
+}
+
+.vis_flag a:link {text-decoration:none;}
+.vis_flag a:visited {text-decoration:none;}
+.vis_flag a:hover {text-decoration:underline;}
+.vis_flag a:active {text-decoration:underline;}
+
+
+div.sandbox {
+    margin-left: 50px;
+}
+
+.visualisation h3 {
+    text-align: center;
 }
 
 /* for any spinner pre-loaded */
@@ -212,7 +256,27 @@ div.assay_protocol_name {
   font-size: 85%;
 }
 
+.project .name {
+    padding-bottom: 10px;
+}
 
+.project .description {
+    margin-left: 20px;
+    padding-bottom: 10px;
+}
+
+.project .contacts {
+  font-size: 85%;
+  padding-bottom: 20px;
+}
+
+.publication {
+  font-size: 85%;
+  padding-bottom: 15px;
+}
+.publication #title {
+  font-weight: bold;
+}
 
 
 /* to show that what's on the screen is not current any more
