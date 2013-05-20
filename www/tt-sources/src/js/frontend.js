@@ -550,7 +550,19 @@ function fillInProp(prop, element) {
 		if (match.size() > 1) {
 		    comment_type = match[1];
 		}
-		value_element.update(prop.value.replace(/\[.+?\]\s+/, ""));
+		var comment_text = prop.value.replace(/\[.+?\]\s+/, "");
+		if (comment_type && config.linkouts[comment_type]) {
+		    var url = config.linkouts[comment_type];
+		    url = url.replace(/####/, comment_text);
+		    console.log("i am here");
+		    value_element.update(); // empty any pre-existing content
+		    var link = new Element('a', { href: url });
+		    link.addClassName('external_link').update(comment_text);
+		    // and add the new link
+		    value_element.insert({ top: link });
+		} else {
+		    value_element.update(comment_text);
+		}
 	    } else {
 		value_element.update(prop.value);
 	    }
@@ -747,7 +759,7 @@ function assembleProject (project, progress_div) {
     var maxStocks = 1000; //any large number
     var stocks = new Array();
     //  alert(stocks.length);
-    var limits = { 'offset': 0, 'limit': 10 };
+    var limits = { 'offset': 0, 'limit': 50 };
     getPagedObjects('project/'+project.id+'/stocks', limits, null, addToProject);
     if (progress_div) progress_div.update("Loading samples...");
 
