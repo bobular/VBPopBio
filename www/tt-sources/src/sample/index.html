@@ -34,12 +34,14 @@
       </tr>
     </table>
   </div>
+
   <div class="vbpg_object_list hide_on_load" id="sample_collections">
     <h2>Field collection</h2>
     <table>
       <tr>
         <th>Collection</th>
         <th>summary</th>
+        <th>project(s)</th>
       </tr>
       <tr class="list_row_template sample">
         <td>
@@ -48,15 +50,20 @@
         <td>
           <span class="object_value scalar" id="result_summary"></span><br />
         </td>
+	<td class="object_id id assay_projects" id="####">
+	  <!-- will be populated with linked project IDs via AJAX calls to assay/ID/projects/head -->
+        </td>
       </tr>
     </table>
   </div>
+
   <div class="vbpg_object_list hide_on_load" id="sample_assays">
     <h2>Assays</h2>
     <table>
       <tr>
         <th>Assay</th>
         <th>summary</th>
+        <th class="assay_projects">project(s)</th>
       </tr>
       <tr class="list_row_template sample">
         <td>
@@ -66,11 +73,14 @@
         <td>
           <span class="object_value scalar" id="result_summary"></span><br />
         </td>
+ 	<td class="object_id id assay_projects" id="####">
+	  <!-- will be populated with linked project IDs via AJAX calls to assay/ID/projects/head -->
+        </td>
       </tr>
     </table>
   </div>
 
-[% INCLUDE 'list/projects.html' id='sample_projects' %]
+[% INCLUDE 'list/projects.html' id='sample_projects' title='Sample belongs to these projects'%]
 
 </div>
   

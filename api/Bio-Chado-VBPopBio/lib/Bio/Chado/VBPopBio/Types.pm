@@ -455,9 +455,9 @@ sub collection_site {
 memoize('collection_site');
 
 
-=head2 vcf_file
+=head2 vis_configs
 
-VBcv:protocol component
+Internal project prop type
 
 =cut
 
@@ -469,7 +469,33 @@ sub vis_configs {
 					       description => 'A cvterm used internally within Chado to store visualisation config JSON for projects.',
 					     });
 }
-memoize('vcf_file');
+memoize('vis_configs');
+
+=head2 is_a
+
+=cut
+
+sub is_a {
+  my $self = shift;
+  return $self->schema->cvterms->find_by_accession( { term_source_ref => 'OBO_REL',
+						      term_accession_number => 'is_a',
+						    } );
+}
+memoize('is_a');
+
+=head2 part_of
+
+=cut
+
+sub part_of {
+  my $self = shift;
+  return $self->schema->cvterms->find_by_accession( { term_source_ref => 'OBO_REL',
+						      term_accession_number => 'part_of',
+						    } );
+}
+memoize('part_of');
+
+
 
 __PACKAGE__->meta->make_immutable;
 

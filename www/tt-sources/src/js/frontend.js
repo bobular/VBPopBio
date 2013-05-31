@@ -60,6 +60,33 @@ function updateSampleFull(stock, element) {
 			fillInPagedListValues(page, sprojects, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
 		    });
 
+    // fill in assays' project provenance (at least the first 5)
+
+    var assay_projects = $$('.list_row_instance .assay_projects');
+    var max_projects = 4;
+    var limits = { offset: 0, limit: max_projects };
+    assay_projects.each(function(element) {
+	var assay_id = element.id;
+	getPagedObjects('assay/'+assay_id+'/projects/head', limits, null,
+			function(projects) {
+			    // console.log("got response for "+assay_id+" count = "+projects.count);
+			    var ul = new Element('ul');
+			    projects.records.each(function(project) {
+				var li = new Element('li');
+				li.insert(
+				    { bottom: new Element('a', { href: config.ROOT+'project/?id='+project.id }).update(project.id) });
+				ul.insert({ bottom: li });
+			    });
+
+			    if (projects.count > max_projects) {
+				var li = new Element('li');
+				li.insert({ bottom: new Element('a', { href: config.ROOT+'assay/?id='+assay_id }).addClassName('more_assay_projects').update('...') });
+				ul.insert({ bottom: li });
+			    }
+
+			    element.insert({ bottom: ul });
+			});
+    });
 
     return element;
 }
@@ -210,7 +237,6 @@ function updateProjectFull(project, element, sandbox) {
     var limits = {
 	offset: 0,
 	limit: 20,
-	//return_full: true
     };
 
     getPagedObjects(url,
@@ -386,9 +412,8 @@ function getFilteredDataHash_jsp(project, vis) {
  * elements with class=="object_id href" will do a s/####/object.id/e on the href
  * attribute of the element.
  *
- * // uncomment below if using:
- * // elements with class=="object_id id" will do a s/####/object.id/e on the id
- * // attribute of the element.
+ * elements with class=="object_id id" will do a s/####/object.id/e on the id
+ * attribute of the element.
  *
  * elements with class=="auto_link" will have the element.href =~ s/####/element.innerHTML.stripTags/e
  *
@@ -448,14 +473,10 @@ function fillInObjectValues(object, element) {
     });
 
 
-    /*
-     * not used at the moment
-     *
-     element.select('.object_id.id').each(function(e){
-     var id = e.readAttribute('id');
-     e.writeAttribute('id', id.sub(/####/, object.id));
-     });
-    */
+    element.select('.object_id.id').each(function(e){
+	var id = e.readAttribute('id');
+	e.writeAttribute('id', id.sub(/####/, object.id));
+    });
 
     element.select('.auto_link').each(function(e){
 	var href = e.readAttribute('href');
@@ -846,8 +867,6 @@ function getPagedObjects(url, limits, spinner, callback) {
 
     // should process limits into url params here:
     var params = '?o='+limits.offset+'&l='+limits.limit;
-    if (limits.return_full) params = params + '&return=full';
-
 
     new Ajax.Request(config.REST+url+params, {
 	method:'get',

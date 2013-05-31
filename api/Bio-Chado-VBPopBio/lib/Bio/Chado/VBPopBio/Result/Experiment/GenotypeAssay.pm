@@ -28,8 +28,9 @@ sub result_summary {
   my $schema = $self->result_source->schema;
 
   my $method = 'unknown method';
-  if (my $protocol = $self->protocols->first) {
-    $method = $protocol->type->name;
+  my @protocols = $self->protocols->all;
+  if (@protocols) {
+    $method = join ', ', map { $_->type->name } @protocols;
   }
 
   my $text = "no genotypes";

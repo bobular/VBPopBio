@@ -311,6 +311,9 @@ div.assay_protocol_name {
   font-weight: bold;
 }
 
+td.assay_projects, th.assay_projects {
+  width: 100px;
+}
 
 /* to show that what's on the screen is not current any more
  * (after clicking 'next' or 'previous')
