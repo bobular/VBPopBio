@@ -36,14 +36,14 @@ STUDY
 "Study Factor Type Term Source REF"
 
 "STUDY ASSAYS"
-"Study Assay Measurement Type"	"field collection"
+"Study Assay Measurement Type"	"species identification assay"
 "Study Assay Measurement Type Term Accession Number"
 "Study Assay Measurement Type Term Source REF"
 "Study Assay Technology Type"
 "Study Assay Technology Type Term Accession Number"
 "Study Assay Technology Type Term Source REF"
 "Study Assay Technology Platform"
-"Study Assay File Name"	a_collection.txt
+"Study Assay File Name"	a_species.txt
 
 "STUDY PROTOCOLS"
 "Study Protocol Name"	PROTO1	PROTO2	PROTO3	PROTO4	PROTO5	PROTO6	PROTO7
