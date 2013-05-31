@@ -7,7 +7,9 @@
 #
 # recursion code taken from GMOD's chado/bin/make_cvtermpath.pl thanks to the author of that!
 #
-# known limitations: RELATIONSHIP TYPES ARE COMPLETELY IGNORED!!
+# known limitations: somewhat hacked to only follow is_a or part_of relationships
+# but it doesn't store this info in cvtermpath.type_id - what the script actually does
+# is IGNORE relationships that are not OBO_REL:is_a or OBO_REL:part_of
 #
 
 use strict;
@@ -41,6 +43,9 @@ my $cvterms = $schema->cvterms->search({
 my $n_terms = $cvterms->count;
 die "can't find any cvterms with dbxref.db.name = '$prefix'" unless ($n_terms);
 
+my $isa = $schema->types->is_a;
+my $partof = $schema->types->part_of;
+
 warn "Going to process $n_terms terms from $prefix\n";
 
 my %done_subject_object;
@@ -61,7 +66,8 @@ sub recurse {
 
   my $subject = $subjects->[-1];
 
-  my $objects = $subject->cvterm_relationship_subjects->search_related('object');
+  my $objects = $subject->cvterm_relationship_subjects->
+      search({ type_id => { -in => [ $isa->id, $partof->id ] }})->search_related('object');
 
   while (my $object = $objects->next) {
     my $tdist = $dist;
