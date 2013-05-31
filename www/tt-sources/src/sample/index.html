@@ -22,6 +22,10 @@
         <th class="row_heading">species</th>
         <td class="object_value cvterm species_name" id="species"></td>
       </tr>
+      <tr>
+        <th class="row_heading">material type</th>
+        <td class="object_value cvterm" id="type"></td>
+      </tr>
     </table>
     <table class="nested_props_list no_shading">
       <tr class="list_row_template">
@@ -30,8 +34,41 @@
       </tr>
     </table>
   </div>
-
-[% INCLUDE 'list/assays.html' id='sample_assays' %]
+  <div class="vbpg_object_list hide_on_load" id="sample_collections">
+    <h2>Field collection</h2>
+    <table>
+      <tr>
+        <th>Collection</th>
+        <th>summary</th>
+      </tr>
+      <tr class="list_row_template sample">
+        <td>
+          <a class="object_id href" title="Assay page" href="[% root %]assay/?id=####"><span class="object_value scalar" id="name"></span></a><br />
+          <span class="object_value scalar" id="id"></span></td>
+        <td>
+          <span class="object_value scalar" id="result_summary"></span><br />
+        </td>
+      </tr>
+    </table>
+  </div>
+  <div class="vbpg_object_list hide_on_load" id="sample_assays">
+    <h2>Assays</h2>
+    <table>
+      <tr>
+        <th>Assay</th>
+        <th>summary</th>
+      </tr>
+      <tr class="list_row_template sample">
+        <td>
+          <span class="object_value scalar capitalize" id="type"></span><br />
+          <a class="object_id href" title="Assay page" href="[% root %]assay/?id=####"><span class="object_value scalar" id="name"></span></a><br />
+          <span class="object_value scalar" id="id"></span></td>
+        <td>
+          <span class="object_value scalar" id="result_summary"></span><br />
+        </td>
+      </tr>
+    </table>
+  </div>
 
 [% INCLUDE 'list/projects.html' id='sample_projects' %]
 
@@ -41,7 +78,7 @@
   params = document.location.search.toQueryParams();
   if (params.id && params.id.match("^VBS[0-9]{7}$")) {
     var spinner = $('sample').down('.vbpg_progress');
-	  getObject('sample/'+params.id+'/head', spinner,
+	  getObject('sample/'+params.id, spinner,
                     function(stock){ updateSampleFull(stock, $('sample')); }
                    );
 

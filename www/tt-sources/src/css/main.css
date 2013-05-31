@@ -207,6 +207,39 @@ table tr th.project_name { width: 400px; }
 .vis_flag a:hover {text-decoration:underline;}
 .vis_flag a:active {text-decoration:underline;}
 
+ul#tabnav {
+    display: block;
+    margin-left: 50px;
+    text-align: center;
+    padding: 0;
+}
+
+ul#tabnav li {
+    float: left;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+
+ul#tabnav li a {
+/*    display: block; */
+    float: left;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 0 5px;
+    padding: 0 6px;
+    position: relative;
+    text-decoration: none;
+}
+
+ul#tabnav li a:hover, ul#tabnav li a.selected {
+    background: yellow;
+}
+
+ul#tabnav li a:visited, ul#tabnav li a:link, ul#tabnav li a:hover  {
+    color: #0000ee;
+}
 
 div.sandbox {
     margin-left: 50px;

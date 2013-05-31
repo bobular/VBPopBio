@@ -32,24 +32,26 @@ function updateSampleFull(stock, element) {
 
     var sprojects = element.down('#sample_projects');
     var url = 'sample/'+stock.id+'/projects/head';
-    var sassays = element.down('#sample_assays');
-    var url2 = 'sample/'+stock.id+'/assays';
-
     var spinner = sprojects.down('.vbpg_progress');
-    var spinner2 = sassays.down('.vbpg_progress');
+
+
+    // fill in field collections separately
+    if (stock.field_collections.size()) {
+	var scollections = element.down('#sample_collections');
+	fillInListValues(stock.field_collections, scollections).removeClassName('hide_on_load');
+    }
+
+    // gather everything that is not a field collection
+    var real_assays = stock.species_identification_assays.concat(stock.genotype_assays, stock.phenotype_assays, stock.sample_manipulations);
+    if (real_assays.size()) {
+	var sassays = element.down('#sample_assays');
+	fillInListValues(real_assays, sassays).removeClassName('hide_on_load');
+    }
 
     var limits = {
 	offset: 0,
 	limit: 20
     };
-
-
-    getPagedObjects(url2,
-                    limits,
-                    spinner2,
-                    function(page) {
-			fillInPagedListValues(page, sassays, url2, limits).down('.hide_on_load').removeClassName('hide_on_load');
-                    });
 
     getPagedObjects(url,
 		    limits,
@@ -218,24 +220,55 @@ function updateProjectFull(project, element, sandbox) {
 			fillInPagedListValues(page, pstocks, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
 		    });
 
-
     // now check every 2s for the full project to be loaded before loading the visualisations.
 
+    var tabnav = $('tabnav');
 
     if (vis_array.size()) {
+	// first set up the tabs and titles etc
+	var row_instances = $$('#project_visualisations .list_row_instance');
+	var tabnum = 0;
+	vis_array.each(function(vis) {
+	    var row_instance = row_instances.shift();
+
+	    // add the tab navigation item
+	    var tab = new Element('li');
+	    var tablink = new Element('a', { id: 'tab_'+tabnum, href:'#'+tabnum });
+	    tablink.addClassName('tab');
+	    tablink.update(vis.title);
+	    tab.insert({ bottom: tablink });
+	    tabnav.insert({ bottom: tab });
+	    // add the correct id and class to the content panel for stereotabs
+	    row_instance.writeAttribute('id', 'panel_'+tabnum).addClassName('panel');
+	    tabnum++;
+	});
+	
+	// activate the stereotabs
+	var tabs = new tabset('project_visualisations'); // name of div to crawl for tabs and panels
+	tabs.autoActivate($('tab_0')); // name of tab to auto-select if none exists in the url
+
+	// then wait for the project to be loaded
+	// and set up rendering handlers
 	new PeriodicalExecuter(function(pe) {
   	    if (project.complete) {
 		pe.stop();
 		vis_panels = $$('.list_row_instance .vis_panel');
 		if (vis_panels.size() == vis_array.size()) {
+		    var tabnum = 0;
 		    vis_array.each(function(vis) {
 			var vis_panel = vis_panels.shift();
+			var row_instance = vis_panel.up('.list_row_instance');
 			if (vis.title != "default - change me") {
-			    renderVisualisation(project, vis, vis_panel);
+			    row_instance.observe('tab:selected', function(event) {
+				if (!vis.rendered) renderVisualisation(project, vis, vis_panel);
+				vis.rendered = true;
+			    });
 			}
+			tabnum++;
+
 			if (sandbox) {
 			    // add the 'render' button
-			    var textArea = vis_panel.up('.list_row_instance').down('textarea');
+			    var textArea = row_instance.down('textarea');
 			    var button = new Element('input', { style: 'margin-left: 10px;', type: 'button', value: 'render' });
 			    textArea.up('div.sandbox').removeClassName('hide_on_load');
 
@@ -250,8 +283,13 @@ function updateProjectFull(project, element, sandbox) {
 			    } );
 			    textArea.insert({ after: button });
 			}
-
 		    });
+
+		    // artificially select the tab again to force rendering
+		    var row_instances = $$('#project_visualisations .list_row_instance');
+		    var active_tab_index = tabs.getHash() || 0;
+		    row_instances[active_tab_index].fire('tab:selected');
+
 		} else {
 		    //console.log(vis_array);
 		    //console.log(vis_panels);
@@ -478,9 +516,10 @@ function fillInListValues(list, element, no_even_odd_shading) {
     if (list && list.size()) {
 	list.each(function(item) {
 	    var new_row = list_row_template.clone(true).removeClassName('list_row_template').addClassName('list_row_instance');
-	    if (!no_even_odd_shading) new_row.addClassName(row_num++ % 2 == 0 ? 'even_row' : 'odd_row');
+	    if (!no_even_odd_shading) new_row.addClassName(row_num % 2 == 0 ? 'even_row' : 'odd_row');
 	    last_row.insert({ after: fillInObjectValues(item, new_row) });
 	    last_row = new_row;
+	    row_num++;
 	});
     } else {
 	// blank out if no items
@@ -554,7 +593,6 @@ function fillInProp(prop, element) {
 		if (comment_type && config.linkouts[comment_type]) {
 		    var url = config.linkouts[comment_type];
 		    url = url.replace(/####/, comment_text);
-		    console.log("i am here");
 		    value_element.update(); // empty any pre-existing content
 		    var link = new Element('a', { href: url });
 		    link.addClassName('external_link').update(comment_text);
