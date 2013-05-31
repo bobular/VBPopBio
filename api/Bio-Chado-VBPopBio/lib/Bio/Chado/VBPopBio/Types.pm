@@ -280,10 +280,9 @@ memoize('sample_manipulation');
 
 sub species_assay_result {
   my $self = shift;
-  warn "Temporarily using wrong term for species_assay_result\n";
-  return $self->schema->cvterms->find_by_name({ term_name => 'species list',
-						term_source_ref => 'VBcv',
-					      });
+  return $self->schema->cvterms->find_by_accession({ term_accession_number => '0000961',
+						     term_source_ref => 'VBcv',
+						   });
 }
 memoize('species_assay_result');
 

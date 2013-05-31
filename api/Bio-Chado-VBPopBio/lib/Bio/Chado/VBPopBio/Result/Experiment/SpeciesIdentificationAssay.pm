@@ -89,6 +89,36 @@ sub best_species {
   return $result;
 }
 
+
+=head2 annotate_from_isatab
+
+  Usage: $assay->annotate_from_isatab($assay_data)
+
+  Return value: none
+
+  Args: hashref of ISA-Tab data: $study->{study_assays}[0]{samples}{SAMPLE_NAME}{assays}{ASSAY_NAME}
+
+Adds description, comments, characteristics to the assay/nd_experiment object
+
+Specialised version which asks the cvterm lookup to look up VBsp terms
+via secondary cvterm_dbxref linker before looking via primary dbxref
+(see ResultSet::Cvterm->find_by_accession for more explanation)
+
+=cut
+
+sub annotate_from_isatab {
+  my ($self, $assay_data) = @_;
+
+  # add an extra key/value to tell cvterm loader to get the VBsp term for
+  # values in the species assay result column
+  # grep for the characteristics column name(s)
+  # then add the data
+  map { $assay_data->{characteristics}{$_}{prefered_term_source_ref} = 'VBsp' }
+    grep { /VBcv:0000961|species assay result/ } keys %{$assay_data->{characteristics}};
+
+  $self->SUPER::annotate_from_isatab($assay_data);
+}
+
 =head2 as_data_structure
 
 nothing special added here yet.

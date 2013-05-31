@@ -44,6 +44,20 @@ Returns a single cvterm or undef on failure.
 Usage: $cvterm = $cvterms->find_by_accession({ term_source_ref => 'TGMA',
                                                term_accession_number => '0000000' });
 
+Optional argument:
+          prefered_term_source_ref => 'VBsp'
+Forces a secondary dbxref lookup for a term which has a primary dbxref with db.name='VBsp'
+
+e.g. term we want is loaded from VBcv as VBsp:0001234, with secondary
+dbxref MIRO:0005678 We have data curated with MIRO:0005678 but we want
+to annotate with the VBsp term.  If we looked up primary cvterm.dbxref
+with MIRO:0005678 we'd get the MIRO term.  So we need to look up
+cvterms connected to the dbxref via the cvterm_dbxref linker (many to
+many).
+
+If the secondary dbxref link can't be found, then the primary
+referenced term is returned (e.g. the MIRO term in the example above).
+
 =cut
 
 
@@ -66,7 +80,25 @@ sub find_by_accession {
        },
        { join => 'db' }
       );
-    if (defined $dbxref) {
+
+    if ($dbxref &&
+	$arg->{prefered_term_source_ref} &&
+	$arg->{prefered_term_source_ref} ne $arg->{term_source_ref}) {
+      my $secondary_search = $dbxref->cvterm_dbxrefs->search({ 'db.name' => $arg->{prefered_term_source_ref} },
+							     { join => { cvterm => { dbxref => 'db' } } });
+
+      if (my $first_linker = $secondary_search->next) {
+	if ($secondary_search->next) {
+	  $schema->defer_exception_once("Ontology term $arg->{term_source_ref}:$arg->{term_accession_number} has multiple secondary dbxref links to $arg->{prefered_term_source_ref}");
+	} else {
+	  return $first_linker->cvterm;
+	}
+      } else {
+	# $schema->defer_exception_once("Ontology term $arg->{term_source_ref}:$arg->{term_accession_number} has no secondary dbxref links to $arg->{prefered_term_source_ref}");
+	# change of plan, just return the cvterm via the primary dbxref
+	return $dbxref->cvterm;
+      }
+    } elsif (defined $dbxref) {
       return $dbxref->cvterm;
     }
   }

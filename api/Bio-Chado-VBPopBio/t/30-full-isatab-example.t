@@ -1,4 +1,4 @@
-use Test::More tests => 17;
+use Test::More tests => 18;
 
 use strict;
 use JSON;
@@ -29,6 +29,11 @@ $schema->txn_do_deferred(
 
 		  my $stock = $project->stocks->first;
 		  isa_ok($stock, "Bio::Chado::VBPopBio::Result::Stock", "first stock is a stock");
+
+		  # check best species term (loaded from a MIRO accession)
+		  # is from VBsp
+		  my $stock_species = $stock->best_species();
+		  is($stock_species->dbxref->db->name, 'VBsp', "species is really in VBsp");
 
 		  is($stock->field_collections->count, 1, "stock has 1 FC");
 		  my $fc = $stock->field_collections->first;
