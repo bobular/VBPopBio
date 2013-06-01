@@ -20,10 +20,12 @@ use Getopt::Long;
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
+my $quiet;
 
 GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
 	   "dry-run|dryrun"=>\$dry_run,
+	   "quiet"=>\$quiet,
 	  );
 
 my ($prefix) = @ARGV;
@@ -46,14 +48,14 @@ die "can't find any cvterms with dbxref.db.name = '$prefix'" unless ($n_terms);
 my $isa = $schema->types->is_a;
 my $partof = $schema->types->part_of;
 
-warn "Going to process $n_terms terms from $prefix\n";
+warn "Going to process $n_terms terms from $prefix\n" unless ($quiet);
 
 my %done_subject_object;
 
 while (my $cvterm = $cvterms->next) {
   # only process leaf terms
   if ($cvterm->cvterm_relationship_objects->count == 0) {
-    warn "processing leaf term: ".$cvterm->name."\n";
+    warn "processing leaf term: ".$cvterm->name."\n" unless ($quiet);
 
     recurse([$cvterm], 1);
 
