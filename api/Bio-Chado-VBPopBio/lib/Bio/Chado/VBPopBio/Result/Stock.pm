@@ -376,7 +376,7 @@ sub as_data_structure {
   my ($self, $depth, $project) = @_;
   $depth = INT_MAX unless (defined $depth);
 
-  my $best_species = $self->best_species;
+  my $best_species = $self->best_species($project);
 
   return {
       id => $self->stable_id, # use stable_id when ready
@@ -424,6 +424,9 @@ sub as_data_structure {
 
 interrogates species_identification assays and returns the most "detailed" species ontology term
 
+if optional project argument is provided, then only
+species_identification_assays from that project will be used.
+
 returns undefined if nothing suitable found
 
 At present, the most leafward unambiguous term is returned.
@@ -439,14 +442,14 @@ restrict within-project species terms to the same ontology.
 =cut
 
 sub best_species {
-  my ($self) = @_;
+  my ($self, $project) = @_;
   my $schema = $self->result_source->schema;
 
   my $sar = $schema->types->species_assay_result;
 
   my $result;
   my $internal_result; # are we returning a non-leaf node?
-  foreach my $assay ($self->species_identification_assays) {
+  foreach my $assay ($self->species_identification_assays->filter_on_project($project)) {
     foreach my $result_multiprop ($assay->multiprops($sar)) {
       my $species_term = $result_multiprop->cvterms->[-1]; # second/last term in chain
       if (!defined $result) {
