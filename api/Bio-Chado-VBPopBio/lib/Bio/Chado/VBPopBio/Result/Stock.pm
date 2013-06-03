@@ -381,6 +381,7 @@ sub as_data_structure {
   return {
       id => $self->stable_id, # use stable_id when ready
       name => $self->name,
+      description => $self->description,
 
       # we try to reduce redundancy by just having name (it's identical to external_id anyway)
       # external_id => $self->external_id,
