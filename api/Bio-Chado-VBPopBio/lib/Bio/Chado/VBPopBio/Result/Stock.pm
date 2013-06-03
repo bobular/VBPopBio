@@ -436,8 +436,16 @@ e.g. if identified as Anopheles arabiensis AND Anopheles gambiae s.s. then Anoph
 The algorithm does not care if terms are from different ontologies but
 probably should, as there may be no common ancestor terms.
 
-Curators should definitely
-restrict within-project species terms to the same ontology.
+Curators should definitely restrict within-project species terms to
+the same ontology (fixed as of Mon Jun  3 and new VBsp ontology from Pantelis).
+
+If there are zero species_identification_assays and there is a link to
+another stock via a sample_manipulation - then take the best_species
+of that stock.  Initially we will enforce the condition that the
+sample_manipulation assay should have no protocols (indicating the
+simple "Comment [derived from]" usage) and exactly one "stocks_used".
+The best_species for the derived sample will come from all species
+assays done on that sample (from any project).
 
 =cut
 
@@ -449,7 +457,8 @@ sub best_species {
 
   my $result;
   my $internal_result; # are we returning a non-leaf node?
-  foreach my $assay ($self->species_identification_assays->filter_on_project($project)) {
+  my @sp_id_assays = $self->species_identification_assays->filter_on_project($project)->all;
+  foreach my $assay (@sp_id_assays) {
     foreach my $result_multiprop ($assay->multiprops($sar)) {
       my $species_term = $result_multiprop->cvterms->[-1]; # second/last term in chain
       if (!defined $result) {
@@ -471,6 +480,25 @@ sub best_species {
       }
     }
   }
+  if (@sp_id_assays == 0) {
+    my $sample_manips = $self->sample_manipulations;
+    if (my $first_manip = $sample_manips->next) {
+      if (!$sample_manips->next) {
+	# there was only one manipulation
+	# it has no protocols
+	if ($first_manip->protocols->count == 0) {
+	  my $used_stocks = $first_manip->stocks_used;
+	  if (my $first_stock = $used_stocks->next) {
+	    if (!$used_stocks->next) {
+	      # only one stock used by the simple manip
+	      $result = $first_stock->best_species;
+	    }
+	  }
+	}
+      }
+    }
+  }
+
   return $result;
 }
 

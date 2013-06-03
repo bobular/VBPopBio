@@ -1,4 +1,4 @@
-use Test::More tests => 18;
+use Test::More tests => 20;
 
 use strict;
 use JSON;
@@ -86,6 +86,14 @@ $schema->txn_do_deferred(
 
 		  diag("Project1 '", $project1->name, "' was created temporarily as:\n$project1_json") if ($verbose);
 		  diag("Project2 '", $project2->name, "' was created temporarily as:\n$project2_json") if ($verbose);
+
+		  # second stock in project2 has no species assays but still should have a species
+		  # via project1
+		  my ($p1s1, $p1s2) = $project1->stocks->all;
+		  my ($p2s1, $p2s2) = $project2->stocks->all;
+		  is($p2s2->species_identification_assays->count, 0, "project2 stock2 no species assays");
+		  my $p2s2_species = $p2s2->best_species($project2);
+		  is($p2s2_species && $p2s2_species->name, $p1s2->best_species->name, "project2 stock2 species derived from project1 stock2");
 
 		  is(scalar(@{$schema->{deferred_exceptions}}), 0, "no deferred exceptions");
 		  # we were just pretending!
