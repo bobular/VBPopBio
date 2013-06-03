@@ -470,31 +470,26 @@ sub vis_configs {
 }
 memoize('vis_configs');
 
-=head2 is_a
+=head2 relationships_to_follow
+
+special term which has a comma-delimited list of cvterm names for the
+relationships that should be followed when descending to find parents.
+
+e.g. relationships_to_follow->definition eq 'is_a,part_of';
 
 =cut
 
-sub is_a {
+sub relationships_to_follow {
   my $self = shift;
-  return $self->schema->cvterms->find_by_accession( { term_source_ref => 'OBO_REL',
-						      term_accession_number => 'is_a',
-						    } );
+  my $term = $self->schema->cvterms->create_with({ name => 'relationships to follow',
+					       cv => 'VBcv',
+					       db => 'VBcv',
+					     });
+  $term->definition('is_a,part_of,located_in');
+  $term->update;
+  return $term;
 }
-memoize('is_a');
-
-=head2 part_of
-
-=cut
-
-sub part_of {
-  my $self = shift;
-  return $self->schema->cvterms->find_by_accession( { term_source_ref => 'OBO_REL',
-						      term_accession_number => 'part_of',
-						    } );
-}
-memoize('part_of');
-
-
+memoize('relationships_to_follow');
 
 __PACKAGE__->meta->make_immutable;
 
