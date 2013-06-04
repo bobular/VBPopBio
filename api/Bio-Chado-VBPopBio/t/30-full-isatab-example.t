@@ -1,4 +1,4 @@
-use Test::More tests => 20;
+use Test::More tests => 24;
 
 use strict;
 use JSON;
@@ -32,8 +32,11 @@ $schema->txn_do_deferred(
 
 		  # check best species term (loaded from a MIRO accession)
 		  # is from VBsp
-		  my $stock_species = $stock->best_species();
+		  my ($stock_species, @quals) = $stock->best_species($project);
 		  is($stock_species->dbxref->db->name, 'VBsp', "species is really in VBsp");
+
+		  is(scalar(@quals), 1, "stock 1 only one qualifier");
+		  is($quals[0]->name, 'ambiguous', "stock 1 ambiguously derived");
 
 		  is($stock->field_collections->count, 1, "stock has 1 FC");
 		  my $fc = $stock->field_collections->first;
@@ -92,8 +95,11 @@ $schema->txn_do_deferred(
 		  my ($p1s1, $p1s2) = $project1->stocks->all;
 		  my ($p2s1, $p2s2) = $project2->stocks->all;
 		  is($p2s2->species_identification_assays->count, 0, "project2 stock2 no species assays");
-		  my $p2s2_species = $p2s2->best_species($project2);
+		  my ($p2s2_species, @qualifiers) = $p2s2->best_species($project2);
 		  is($p2s2_species && $p2s2_species->name, $p1s2->best_species->name, "project2 stock2 species derived from project1 stock2");
+
+		  is(scalar(@qualifiers), 2, "should be two qualifiers");
+		  is($qualifiers[0]->name, 'derived', "first species qualification is 'derived'");
 
 		  is(scalar(@{$schema->{deferred_exceptions}}), 0, "no deferred exceptions");
 		  # we were just pretending!

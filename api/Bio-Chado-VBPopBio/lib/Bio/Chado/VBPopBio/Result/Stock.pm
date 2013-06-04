@@ -376,7 +376,7 @@ sub as_data_structure {
   my ($self, $depth, $project) = @_;
   $depth = INT_MAX unless (defined $depth);
 
-  my $best_species = $self->best_species($project);
+  my ($best_species, @species_qualifications) = $self->best_species($project);
 
   return {
       id => $self->stable_id, # use stable_id when ready
@@ -391,7 +391,7 @@ sub as_data_structure {
       type => $self->type->as_data_structure,
 
       species => defined $best_species ? $best_species->as_data_structure : undef,
-      # species_evidence => 'to do?',
+      species_qualifications => [ map $_->as_data_structure, @species_qualifications ],
 
       props => [ map { $_->as_data_structure } $self->multiprops ],
 
@@ -430,6 +430,10 @@ species_identification_assays from that project will be used.
 
 returns undefined if nothing suitable found
 
+In list context returns ($species_term, @qualification_terms) where the
+latter is a list of internal terms (maybe later formalised into VBcv) to
+describe how the result was arrived at.  For example the results could be 'derived', 'unambiguous'
+
 At present, the most leafward unambiguous term is returned.
 
 e.g. if identified as Anopheles arabiensis AND Anopheles gambiae s.s. then Anopheles gambiae s.l. would be returned (with no further qualifying information at present).
@@ -457,6 +461,7 @@ sub best_species {
   my $sar = $schema->types->species_assay_result;
 
   my $result;
+  my $qualification = $schema->types->unambiguous;
   my $internal_result; # are we returning a non-leaf node?
   my @sp_id_assays = $self->species_identification_assays->filter_on_project($project)->all;
   foreach my $assay (@sp_id_assays) {
@@ -475,12 +480,14 @@ sub best_species {
 	  if ($parent->has_child($result)) {
 	    $result = $parent;
 	    $internal_result = 1;
+	    $qualification = $schema->types->ambiguous;
 	    last;
 	  }
 	}
       }
     }
   }
+  my @qualifications = ($qualification);
   if (@sp_id_assays == 0) {
     my $sample_manips = $self->sample_manipulations;
     if (my $first_manip = $sample_manips->next) {
@@ -492,7 +499,9 @@ sub best_species {
 	  if (my $first_stock = $used_stocks->next) {
 	    if (!$used_stocks->next) {
 	      # only one stock used by the simple manip
-	      $result = $first_stock->best_species;
+	      my ($derived_result, $derived_qualification) = $first_stock->best_species;
+	      $result = $derived_result;
+	      @qualifications = ($schema->types->derived, $derived_qualification);
 	    }
 	  }
 	}
@@ -500,7 +509,7 @@ sub best_species {
     }
   }
 
-  return $result;
+  return wantarray ? ($result, @qualifications) : $result;
 }
 
 =head2 relink

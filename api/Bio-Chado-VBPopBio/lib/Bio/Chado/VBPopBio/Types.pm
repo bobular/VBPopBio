@@ -491,6 +491,60 @@ sub relationships_to_follow {
 }
 memoize('relationships_to_follow');
 
+=head1 best_species qualifiers
+
+=head2 unambiguous
+
+=cut
+
+sub unambiguous {
+  my $self = shift;
+  my $term = $self->schema->cvterms->create_with({ name => 'unambiguous',
+						   cv => 'VBcv',
+						   db => 'VBcv',
+						 });
+  $term->definition('One or more species determination assays confirmed each other and the most specific species is reported.');
+  $term->update;
+  return $term;
+}
+memoize('unambiguous');
+
+=head2 ambiguous
+
+=cut
+
+sub ambiguous {
+  my $self = shift;
+  my $term = $self->schema->cvterms->create_with({ name => 'ambiguous',
+						   cv => 'VBcv',
+						   db => 'VBcv',
+						 });
+  $term->definition('Two or more species determination assays contradicted each other and the most appropriate higher level (more general) taxonomic term is reported.');
+  $term->update;
+  return $term;
+}
+memoize('ambiguous');
+
+=head2 derived
+
+=cut
+
+sub derived {
+  my $self = shift;
+  my $term = $self->schema->cvterms->create_with({ name => 'derived',
+						   cv => 'VBcv',
+						   db => 'VBcv',
+						 });
+  $term->definition('The sample has had no species determination assays performed directly on it, so the species assignment has been made from the sample it was derived from.');
+  $term->update;
+  return $term;
+}
+memoize('derived');
+
+#
+# this is a subsection - please add new terms above the previous head1
+#
+
 __PACKAGE__->meta->make_immutable;
 
 1;

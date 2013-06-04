@@ -46,6 +46,10 @@ interrogates results of this assay and returns the most "detailed" species ontol
 
 returns undefined if nothing suitable found
 
+In list context returns ($species_term, @qualification_terms) where the
+latter is a list of (one) internal term (maybe later formalised into VBcv) to
+describe how the result was arrived at
+
 At present, the most leafward unambiguous term is returned.
 
 e.g. if identified as Anopheles arabiensis AND Anopheles gambiae s.s. then Anopheles gambiae s.l. would be returned (with no further qualifying information at present).
@@ -53,8 +57,8 @@ e.g. if identified as Anopheles arabiensis AND Anopheles gambiae s.s. then Anoph
 The algorithm does not care if terms are from different ontologies but
 probably should, as there may be no common ancestor terms.
 
-Curators should definitely
-restrict within-project species terms to the same ontology.
+Curators should definitely restrict within-project species terms to
+the same ontology.
 
 =cut
 
@@ -65,6 +69,7 @@ sub best_species {
   my $sar = $schema->types->species_assay_result;
 
   my $result;
+  my $qualification = $schema->types->unambiguous;
   my $internal_result; # are we returning a non-leaf node?
   foreach my $result_multiprop ($self->multiprops($sar)) {
     my $species_term = $result_multiprop->cvterms->[-1]; # second/last term in chain
@@ -81,12 +86,13 @@ sub best_species {
 	if ($parent->has_child($result)) {
 	  $result = $parent;
 	  $internal_result = 1;
+	  $qualification = $schema->types->ambiguous;
 	  last;
 	}
       }
     }
   }
-  return $result;
+  return wantarray ? ($result, $qualification) : $result;
 }
 
 
