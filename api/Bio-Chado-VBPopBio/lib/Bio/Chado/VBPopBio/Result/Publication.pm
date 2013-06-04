@@ -52,7 +52,7 @@ sub as_data_structure {
   return {
 	  title => $self->title,
 	  pubmed_id => $self->miniref,
-	  doi => $self->uniquename,
+	  doi => $self->volumetitle,
 	  authors => [ map { $_->surname } sort { $a->rank <=> $b->rank } $self->pubauthors ],
 	  status => $self->type->as_data_structure,
 	 };
