@@ -1,4 +1,4 @@
-use Test::More tests => 24;
+use Test::More tests => 26;
 
 use strict;
 use JSON;
@@ -97,6 +97,11 @@ $schema->txn_do_deferred(
 		  is($p2s2->species_identification_assays->count, 0, "project2 stock2 no species assays");
 		  my ($p2s2_species, @qualifiers) = $p2s2->best_species($project2);
 		  is($p2s2_species && $p2s2_species->name, $p1s2->best_species->name, "project2 stock2 species derived from project1 stock2");
+
+		  my ($p1s2_species, @qual2) = $p1s2->best_species($project1);
+		  is($p1s2_species->dbxref->db->name, 'VBsp', "semicolon delimited species result is loaded as VBsp");
+		  is($qual2[0]->name, 'unambiguous', "albimanus should be unambiguous even though it's from two results");
+		  # warn "p1s2 species is ".$p1s2_species->name."\n";
 
 		  is(scalar(@qualifiers), 2, "should be two qualifiers");
 		  is($qualifiers[0]->name, 'derived', "first species qualification is 'derived'");

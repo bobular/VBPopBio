@@ -163,6 +163,10 @@ Adds a multiprop to the Chado object for each "Characteristics [xxx (ONTO:access
 If the column heading is not ontologised or the term can't be found, an exception will be thrown.
 Units will be added as appropriate.
 
+If term_source_ref and term_accession_number are semicolon
+delimited (the same number of items) then multiple multiprops will be
+added for that column.
+
 =cut
 
 sub add_multiprops_from_isatab_characteristics {
@@ -191,31 +195,48 @@ sub add_multiprops_from_isatab_characteristics {
 	  term_accession_number => $acc
 	 });
       if ($cterm) {
-	my @cvterms;
-	# now handle value
-	my $value = $cdata->{value};
-	my $vterm = $schema->cvterms->find_by_accession($cdata);
-	my $uterm = $schema->cvterms->find_by_accession($cdata->{unit});
-	if ($uterm && defined $value && length($value)) {
-	  # case 1: free text value with units
-	  @cvterms = ($cterm, $uterm);
-	  $schema->defer_exception_once("$cname value $value cannot be ontology term and have units") if ($vterm);
-	} elsif ($vterm) {
-	  # case 2: cvterm value
-	  @cvterms = ($cterm, $vterm);
-	  $value = undef;
-	} else {
-	  # case 3: free text value no units
-	  @cvterms = ($cterm);
-	  # but throw some errors if we were expecting to have ontology term for value
-	  $schema->defer_exception_once("$cname value $value failed to find ontology term for '$cdata->{term_source_ref}:$cdata->{term_accession_number}'") if ($cdata->{term_source_ref} && $cdata->{term_accession_number});
-	  # or units
-	  $schema->defer_exception_once("$cname value $value unit ontology lookup error '$cdata->{unit}{term_source_ref}:$cdata->{unit}{term_accession_number}'") if ($cdata->{unit}{term_source_ref} && $cdata->{unit}{term_accession_number});
+	# handle special case of semicolon delimited ontology values
+	my @refs = split /;/, $cdata->{term_source_ref} // '';
+	my @accs = split /;/, $cdata->{term_accession_number} // '';
+	if (@refs > 1 && @accs == @refs) {
+	  for (my $i=0; $i<@refs; $i++) {
+	    my $vterm = $schema->cvterms->find_by_accession({ term_source_ref => $refs[$i],
+							      term_accession_number => $accs[$i],
+							      prefered_term_source_ref => $cdata->{prefered_term_source_ref}});
+	    $schema->defer_exception_once("$cname column failed to find ontology term for '$refs[$i]:$accs[$i]'") unless (defined $vterm);
+	    $class->add_multiprop
+	      ( row => $row,
+		prop_relation_name => $prop_relation_name,
+		multiprop => Multiprop->new(cvterms=>[ $cterm, $vterm ])
+	      );
+	  }
+	} else { # just carry on - if delimiting is unbalanced the next bit will fail gracefully
+	  my @cvterms;
+	  # now handle value
+	  my $value = $cdata->{value};
+	  my $vterm = $schema->cvterms->find_by_accession($cdata);
+	  my $uterm = $schema->cvterms->find_by_accession($cdata->{unit});
+	  if ($uterm && defined $value && length($value)) {
+	    # case 1: free text value with units
+	    @cvterms = ($cterm, $uterm);
+	    $schema->defer_exception_once("$cname value $value cannot be ontology term and have units") if ($vterm);
+	  } elsif ($vterm) {
+	    # case 2: cvterm value
+	    @cvterms = ($cterm, $vterm);
+	    $value = undef;
+	  } else {
+	    # case 3: free text value no units
+	    @cvterms = ($cterm);
+	    # but throw some errors if we were expecting to have ontology term for value
+	    $schema->defer_exception_once("$cname value $value failed to find ontology term for '$cdata->{term_source_ref}:$cdata->{term_accession_number}'") if ($cdata->{term_source_ref} && $cdata->{term_accession_number});
+	    # or units
+	    $schema->defer_exception_once("$cname value $value unit ontology lookup error '$cdata->{unit}{term_source_ref}:$cdata->{unit}{term_accession_number}'") if ($cdata->{unit}{term_source_ref} && $cdata->{unit}{term_accession_number});
+	  }
+	  $class->add_multiprop
+	    ( row => $row,
+	      prop_relation_name => $prop_relation_name,
+	      multiprop => Multiprop->new(cvterms=>\@cvterms, value=>$value) );
 	}
-	$class->add_multiprop
-	  ( row => $row,
-	    prop_relation_name => $prop_relation_name,
-	    multiprop => Multiprop->new(cvterms=>\@cvterms, value=>$value) );
       } else {
 	$schema->defer_exception_once("Characteristics [$cname] - can't find ontology term via $onto:$acc");
       }
