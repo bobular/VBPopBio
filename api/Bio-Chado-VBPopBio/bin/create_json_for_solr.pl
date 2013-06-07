@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 #                 -*- mode: cperl -*-
 #
 # usage: bin/create_json_for_solr.pl -dbname vb_popgen_testing_20110607 > test-samples.json

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 #                                                       -*- mode: cperl -*-
 #
 # usage: bin/update_vis_configs.pl [ --wipe-all --dry-run -dbname my_chado_db -dbuser henry ] input_file
