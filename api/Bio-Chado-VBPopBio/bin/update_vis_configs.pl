@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 #                                                       -*- mode: cperl -*-
 #
 # usage: bin/update_vis_configs.pl [ --wipe-all --dry-run -dbname my_chado_db -dbuser henry ] input_file
@@ -21,6 +21,7 @@
 
 
 use strict;
+use warnings;
 use lib 'lib';  # this is so that I don't have to keep installing BCNA for testing
 use Getopt::Long;
 use Bio::Chado::VBPopBio;

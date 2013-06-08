@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 #                 -*- mode: cperl -*-
 #
 # usage: bin/create_json_for_solr.pl -dbname vb_popgen_testing_20110607 > test-samples.json
@@ -14,6 +14,7 @@
 
 
 use strict;
+use warnings;
 use feature 'switch';
 use lib 'lib';  # this is so that I don't have to keep installing BCNA for testing
 use Getopt::Long;
