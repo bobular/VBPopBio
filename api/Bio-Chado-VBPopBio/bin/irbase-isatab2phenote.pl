@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 #
 # usage bin/irbase-isatab2phenote.pl ../../data/IRbaseToISAtab/study23/a_phenotypes.old > ../../data/IRbaseToISAtab/study23/p_ir_assay_results.tab

@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 #
 # usage: ./load_ncbi_organisms.pl ../../data/ncbi_taxonomy/
