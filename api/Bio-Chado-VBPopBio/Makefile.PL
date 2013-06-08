@@ -15,7 +15,8 @@ WriteMakefile(
         'Test::More' => 0,
 	'DBIx::Class' =>  0.08250,
 	'DBIx::Class::DynamicSubclass' => 0,
-	'Bio::Parser::ISATab' => 0.05,
+	'Bio::Parser::ISATab' => 0.05, # not in CPAN - https://github.com/bobular/Bio-Parser-ISATab
+	'Text::CSV_XS' => 0, # actually a dependency of ISATab Parser
 	'Bio::Chado::Schema' => 0.2,
         'Iterator::Simple' => 0,
 	'DateTime::Format::ISO8601' => 0,
@@ -25,6 +26,8 @@ WriteMakefile(
 	'Digest::MD5' => 0,
 	'Try::Tiny' => 0,
 	'JSON' => 0,
+	'aliased' => 0,
+	'DBD::Pg' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Bio-Chado-VBPopBio-*' },

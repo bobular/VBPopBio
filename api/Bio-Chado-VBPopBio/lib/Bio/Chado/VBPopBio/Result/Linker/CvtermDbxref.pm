@@ -1,6 +1,6 @@
 package Bio::Chado::VBPopBio::Result::Linker::CvtermDbxref;
 
-use base 'Bio::Chado::Schema::Cv::CvtermDbxref';
+use base 'Bio::Chado::Schema::Result::Cv::CvtermDbxref';
 __PACKAGE__->load_components('+Bio::Chado::VBPopBio::Util::Subclass');
 __PACKAGE__->subclass({
 		       cvterm => 'Bio::Chado::VBPopBio::Result::Cvterm',
