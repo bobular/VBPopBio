@@ -42,6 +42,8 @@ sub simple_validate_date {
     # check date format here
     # first strip any time info
     $date =~ s/T.*$//;
+    # remove any trailing zero days/months
+    while ($date =~ s/-00$//) { }
     try {
       my $dt = $iso8601->parse_datetime($date);
       # the parsing succeeded, ultimately return the original string

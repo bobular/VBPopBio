@@ -59,10 +59,14 @@ sub find_or_create_from_isatab {
 			geodetic_datum => 'WGS 84',
 		       });
 
-  # don't delete "Collection site" characteristic!
   delete $assay_data->{characteristics}{$latitude_heading};
   delete $assay_data->{characteristics}{$longitude_heading};
   delete $assay_data->{characteristics}{$altitude_heading};
+  # delete "Collection site" characteristic if it doesn't contain ontology data
+  # we only want to store a multiprop with second GAZ term
+  delete $assay_data->{characteristics}{$collection_site_heading}
+    unless ($assay_data->{characteristics}{$collection_site_heading}{term_source_ref} &&
+	    $assay_data->{characteristics}{$collection_site_heading}{term_accession_number});
 
   # now copy the relevant remaining characteristics into a new data structure
   my $location_characteristics = ordered_hashref();
