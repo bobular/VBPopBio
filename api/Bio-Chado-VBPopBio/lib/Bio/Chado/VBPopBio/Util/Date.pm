@@ -43,7 +43,8 @@ sub simple_validate_date {
     # first strip any time info
     $date =~ s/T.*$//;
     # remove any trailing zero days/months
-    while ($date =~ s/-00$//) { }
+    # we have one instance of 2002-00-09 in UCDavis data - make it 2002
+    $date =~ s/-00.*//;
     try {
       my $dt = $iso8601->parse_datetime($date);
       # the parsing succeeded, ultimately return the original string
