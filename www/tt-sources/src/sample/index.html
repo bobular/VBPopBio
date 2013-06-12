@@ -8,7 +8,7 @@
   <h1 class="vbpg_progress"></h1>
 
   <div class="vbpg_object_info sample hide_on_load" id="sample_info">
-    <h1>Sample: <span class="object_value scalar" id="name"></span></h1>
+    <h1>[% IF development_environment %]Sample: [% END %]<span class="object_value scalar" id="name"></span></h1>
     <table>
       <tr>
 	<th class="row_heading">VectorBase stable ID</th>
@@ -80,7 +80,7 @@
     </table>
   </div>
 
-[% INCLUDE 'list/projects.html' id='sample_projects' title='Sample belongs to these projects'%]
+[% INCLUDE 'list/projects.html' id='sample_projects' title='This sample belongs to project(s)'%]
 
 </div>
   

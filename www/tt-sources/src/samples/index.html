@@ -8,7 +8,8 @@
 
   <h1 class="vbpg_progress"></h1>
 
-[% INCLUDE 'list/samples.html' id='sample_list' %]
+  [% IF development_environment %] [% title='Samples' %] [% END %]
+  [% INCLUDE 'list/samples.html' id='sample_list' %]
 
 </div>
   
@@ -18,7 +19,7 @@
 	var url = 'stocks';
 	var limits = {
 	  offset: 0,
-	  limit: 50
+	  limit: 20
 	};
 
 	getPagedObjects(url,

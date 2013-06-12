@@ -7,7 +7,8 @@ js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', '
 
   <h1 class="vbpg_progress"></h1>
 
-  [% INCLUDE 'list/projects.html' id='project_list' title='Projects' %]
+  [% IF development_environment %] [% title='Projects' %] [% END %]
+  [% INCLUDE 'list/projects.html' id='project_list' %]
 
    </div>
 
@@ -17,7 +18,7 @@ js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', '
   var url = 'projects/head';
   var limits = {
   offset: 0,
-  limit: 50
+  limit: 20
   };
 
   getPagedObjects(url,

@@ -2,4 +2,5 @@
    root_static = 'http://funcgen.vectorbase.org/new-popbio-preview/'
    vb_root = 'http://www.vectorbase.org/'
    json_root = 'http://funcgen.vectorbase.org/new-popbio-preview/REST/'
+   development_environment = 1
 %]

@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
  <head>
-  <link rel="stylesheet" href="[% root %]css/main.css" type="text/css" />
+  <link rel="stylesheet" href="[% root_static %]css/main.css" type="text/css" />
   [% FOREACH script IN js %]
     [% IF script.match('^https?://') %]
       <script type="text/javascript" src="[% script %]"></script>
@@ -13,5 +13,7 @@
  </head>
 <body id="vbpg">
 <div id="vbpg_page">
+[% IF development_environment %]
 <div id="vbpg_header"><ul id="vbpg_nav"><li><a href="[% root %]">PopBio home</a></li><li><a href="[% root %]projects/">Browse projects</a></li></ul></div>
+[% END %]
 <div id="vbpg_content">

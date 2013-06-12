@@ -2,4 +2,5 @@
    root_static ='/popbio_static/'
    vb_root = '/'
    json_root = '/popbio/REST/'
+   development_environment = 0
 %]

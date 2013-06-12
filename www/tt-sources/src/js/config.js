@@ -6,7 +6,8 @@ configTxt = {
     'ROOT_STATIC':'[% root_static %]',
     'linkouts' : {
 	'MR4 accession' : 'http://www.mr4.org/MR4ReagentsSearch/Results.aspx?BEINum=####&Template=livingMosquitoes',
-	'BioSamples accession' : 'http://www.ebi.ac.uk/biosamples/sample/####'
+	'BioSamples accession' : 'http://www.ebi.ac.uk/biosamples/sample/####',
+        'UCDavis ID' : 'https://grassi2.ucdavis.edu/PopulationData/DataViews/indiv.php?id=####'
     }
 };
 

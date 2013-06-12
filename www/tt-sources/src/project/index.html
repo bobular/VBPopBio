@@ -10,7 +10,7 @@
   <h1 class="vbpg_progress"></h1>
 
   <div class="vbpg_object_info project hide_on_load" id="project_info">
-    <h1>Project: <span class="object_value scalar" id="name"></span></h1>
+    <h1>[% IF development_environment %]Project: [% END %]<span class="object_value scalar" id="name"></span></h1>
     <table>
       <tr>
 	<th class="row_heading">VectorBase stable ID</th>
@@ -86,7 +86,7 @@
 
   <!-- to do: props, pubs, contacts, metaproject relationships? -->
   
-[% INCLUDE 'list/samples.html' id='project_stocks' %]
+[% INCLUDE 'list/samples.html' id='project_stocks' title='Samples' %]
 
 </div>
   

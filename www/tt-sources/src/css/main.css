@@ -22,7 +22,7 @@ div#vbpg_page {
 #project_load_status {
     position: fixed;
     left: 370px;
-    top: 10px;
+    top: 30px;
     width: 200px;
     background: yellow;
     color: black;
@@ -109,6 +109,7 @@ div.vbpg_object_info h1 { font-size: 140%;
 div.vbpg_object_list h2, div.vbpg_object_info h2 { font-size: 125%;
                                                    font-weight: bold;
                                                    border-bottom: 1px solid black;
+						   margin-top: 20px;
                                                  }
 
 div.vbpg_object_list h3, div.vbpg_object_info h3 { font-size: 100%;
@@ -314,6 +315,19 @@ div.assay_protocol_name {
 td.assay_projects, th.assay_projects {
   width: 100px;
 }
+
+
+/* cancel out some drupal table styling */
+
+div#vbpg_page table {
+  border-collapse: separate;
+}
+
+div#vbpg_page tbody th {
+  border: none;
+}
+
+
 
 /* to show that what's on the screen is not current any more
  * (after clicking 'next' or 'previous')
