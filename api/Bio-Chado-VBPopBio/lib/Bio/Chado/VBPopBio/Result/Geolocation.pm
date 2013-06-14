@@ -21,6 +21,26 @@ Geolocation object with extra convenience functions.
 =head1 SUBROUTINES/METHODS
 
 
+=head2 summary
+
+returns a brief HTML summary of the loacations
+
+=cut
+
+sub summary {
+  my ($self) = @_;
+  my $schema = $self->result_source->schema;
+
+  my $collection_site_term = $schema->types->collection_site;
+  my ($gazprop) = $self->multiprops($collection_site_term);
+  if ($gazprop) {
+    return $gazprop->cvterms->[1]->name;
+  } else {
+    # return a concatenated list of all free-text multiprops:
+    return join "; ", map $_->value, grep $_->value, $self->multiprops;
+  }
+}
+
 =head2 add_multiprop
 
 Adds normal props to the object but in a way that they can be

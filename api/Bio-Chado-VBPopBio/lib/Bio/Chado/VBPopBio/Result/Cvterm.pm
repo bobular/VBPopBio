@@ -42,7 +42,6 @@ sub as_data_structure {
 	 };
 }
 
-
 =head2 direct_parents
 
  Usage: $self->direct_parents

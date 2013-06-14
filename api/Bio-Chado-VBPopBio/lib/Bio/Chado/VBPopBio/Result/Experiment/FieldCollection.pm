@@ -32,17 +32,8 @@ sub result_summary {
     $method = join ', ', map { $_->type->name } @protocols;
   }
 
-  my $geoloc = $self->geolocation;
-  my $collection_site_term = $schema->types->collection_site;
-  my ($gazprop) = $geoloc->multiprops($collection_site_term);
-  if ($gazprop) {
-    my $gazname = $gazprop->cvterms->[1]->name;
-    return "$gazname ($method)";
-  } else {
-    # return a concatenated list of all free-text geoloc multiprops:
-    my $textname = join "; ", map $_->value, grep $_->value, $geoloc->multiprops;
-    return "$textname ($method)";
-  }
+  my $geoloc_summary = $self->geolocation->summary;
+  return "$geoloc_summary ($method)";
 }
 
 
