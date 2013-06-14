@@ -74,7 +74,7 @@ function updateSampleFull(stock, element) {
 			    projects.records.each(function(project) {
 				var li = new Element('li');
 				li.insert(
-				    { bottom: new Element('a', { href: config.ROOT+'project/?id='+project.id }).update(project.id) });
+				    { bottom: new Element('a', { href: config.ROOT+'project/?id='+project.id, title: project.name }).update(project.id) });
 				ul.insert({ bottom: li });
 			    });
 

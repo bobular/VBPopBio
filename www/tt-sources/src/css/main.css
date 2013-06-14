@@ -411,6 +411,7 @@ div#vbpg_page table {
 
 div#vbpg_page tbody th {
   border: none;
+  padding: 3px;
 }
 
 /* RMM added */
