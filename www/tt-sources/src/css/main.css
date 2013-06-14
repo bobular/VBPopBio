@@ -8,12 +8,13 @@
  */
 
 body#vbpg {
-  color: black;
-  font-family: arial,sans-serif;
+  /* color: black; ked */
+  /* font-family: arial,sans-serif; ked  */
 }
 
 div#vbpg_page {
   width: 900px;
+  padding:0 10px; /* ked */
 }
 
 .vbpg_progress { 
@@ -92,9 +93,9 @@ div.vbpg_object_info dl dd, div.vbpg_object_list dl dd {
     padding: 1px;
 
 /*    float: left; */
-/*		width: 500px; */
+/*    width: 500px; */
 /*    color: black;
-		margin: 0px; */
+    margin: 0px; */
 
     
 }
@@ -103,12 +104,12 @@ div.vbpg_object_info h1 { font-size: 140%;
                           font-weight: bold;
                           margin-top: 1ex;
                           margin-bottom: 2ex;
-                          border-bottom: 2px solid black;
+                          border-bottom: 2px solid #fff; /* ked 2px solid black; */
                         }
 
-div.vbpg_object_list h2, div.vbpg_object_info h2 { font-size: 125%;
+div.vbpg_object_list h2, div.vbpg_object_info h2 { font-size: 140%; /* ked */
                                                    font-weight: bold;
-                                                   border-bottom: 1px solid black;
+                                                   border-bottom: 1px solid #D6DDB9; /* ked black; */
 						   margin-top: 20px;
                                                  }
 
@@ -124,31 +125,43 @@ div.vbpg_object_list table {
 
 .species_name { font-style: italic; }
 
+.proj_name_style { font-weight: bold; } /* ked */
+
 #vbpg_content table {
 }
 #vbpg_content table tr th {
     vertical-align: top;
     text-align: left;
     color: #666;
-    font-weight: normal;
+    font-weight: bold; /* ked normal; */
 }
 #vbpg_content th.row_heading {
   padding-right: 25px;
-  width: 200px;
+  width: 150px; /* ked 200px; */
+  font-weight: bold; /* ked */
 }
 #vbpg_content table tr td {
     vertical-align: middle;
 }
 
+#vbpg_content table tr td.master_cell { /* ked */
+    padding:0; 
+}
+
+#vbpg_content table tr .master_row { /* ked */
+    border-bottom: solid 1px #ddd; 
+}
+
 table tr th.project_name { width: 400px; }
 
 .odd_row { background: #f0f0f0; }
-.even_row { background: #f7f7f7; }
+.even_row { background: #fff; } /* ked #efefef; */
 
 .vbpg_pager {
     font-weight: bold;
     text-align: center;
-    font-size: 80%;
+    font-size: 85%; /* ked 80%; */
+    text-transform: uppercase;
     margin: 15px;
 }
 
@@ -161,17 +174,31 @@ table tr th.project_name { width: 400px; }
 }
 
 .vbpg_pager_prev, .vbpg_pager_next, .vbpg_pager_first, .vbpg_pager_last {
-    padding-left: 10px;
-    padding-right: 10px;
-    background: #eee;
-    color: black;
-    border: 2px solid #ddd;
+    /* ked padding-left: 10px; */
+    /* ked padding-right: 10px; */
+    padding: 3px 9px; /* ked */
+    /* background: #eee; ked */
+    color: #27638c;  /* ked black;*/
+    border: 1px solid #859937; /* ked 2px solid #ddd; */
+    -webkit-border-radius: 4px; /* ked */
+    -moz-border-radius: 4px; /* ked */
+    border-radius: 4px; /* ked */
     font-size: 100%;
     cursor: pointer;
+    background: #b1ca49; /* Old browsers */
+    background: -moz-linear-gradient(top, #b1ca49 0%, #d2e099 100%); /* ked FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#b1ca49), color-stop(100%,#d2e099)); /* ked Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top, #b1ca49 0%,#d2e099 100%); /* ked Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top, #b1ca49 0%,#d2e099 100%); /* ked Opera 11.10+ */
+    background: -ms-linear-gradient(top, #b1ca49 0%,#d2e099 100%); /* ked IE10+ */
+    background: linear-gradient(to bottom, #b1ca49 0%,#d2e099 100%); /* ked W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b1ca49', endColorstr='#d2e099',GradientType=0 ); /* IE6-9 */
 }
 
 .vbpg_pager_inactive {
-    color: #ddd;
+    border: 1px solid #ddd; /* ked */
+    background: #eee; /* ked */
+    color: #b3b3b3; /* ked #ddd; */
     cursor: default;
 }
 
@@ -191,25 +218,33 @@ table tr th.project_name { width: 400px; }
 		height: 400px;
 		margin-left: 50px;
 		margin-right: 50px;
-		margin-top: 25px;
+		margin-top: 10px; /* ked 25px; */
 }
 
 .vis_flag {
     color: #a00;
-    font-size: 75%;
-    background: #ccc;
+    font-size: 70%; /* ked 75% */
+    text-transform: uppercase; /* ked */
+    background: #d6e49c; /* ked #ccc; */
     margin-left: 10px;
-    border: 2px solid #a00;
-    padding: 2px;
+    border: 0px solid #859937; /* ked 2px solid #a00; */
+    padding: 3px 9px; /* ked 2px */
 }
 
-.vis_flag a:link {text-decoration:none;}
-.vis_flag a:visited {text-decoration:none;}
-.vis_flag a:hover {text-decoration:underline;}
-.vis_flag a:active {text-decoration:underline;}
+.vis_flag a:link,   /* ked */
+.vis_flag a:visited {
+  color: #27638c;
+}
+
+.vis_flag a:hover,  /* ked */
+.vis_flag a:focus,
+.vis_flag a:active {
+  text-decoration: underline; 
+}
 
 ul#tabnav {
     display: block;
+    margin-top: 20px; /* ked */
     margin-left: 50px;
     text-align: center;
     padding: 0;
@@ -218,7 +253,7 @@ ul#tabnav {
 ul#tabnav li {
     float: left;
     list-style-type: none;
-    margin: 0;
+    margin: 0 0 5px 0; /* ked-new */
     padding: 0;
     position: relative;
 }
@@ -226,20 +261,44 @@ ul#tabnav li {
 ul#tabnav li a {
 /*    display: block; */
     float: left;
-    font-size: 16px;
-    font-weight: bold;
-    margin: 0 0 0 5px;
-    padding: 0 6px;
+    font-size: 1.2em; /* 16px; */
+    font-weight: normal; /* ked bold; */
+    margin: 0; /* ked  0 0 0 5px; */
+    padding: 8px 15px; /* ked  0 6px; */
     position: relative;
     text-decoration: none;
+    border: solid 1px #fff; /* ked */
+    border-bottom: 1px solid #ccc; /* ked */
+    -webkit-border-top-left-radius: 4px; /* ked */
+    -webkit-border-top-right-radius: 4px; /* ked */
+    -moz-border-radius-topleft: 4px; /* ked */
+    -moz-border-radius-topright: 4px; /* ked */
+    border-top-left-radius: 4px; /* ked */
+    border-top-right-radius: 4px; /* ked */
 }
 
-ul#tabnav li a:hover, ul#tabnav li a.selected {
-    background: yellow;
+ul#tabnav li a:link,  
+ul#tabnav li a:visited, 
+ul#tabnav li a:hover,
+ul#tabnav li a:focus,
+ul#tabnav li a:active
+{
+    color: #27638c;  /* ked */
 }
 
-ul#tabnav li a:visited, ul#tabnav li a:link, ul#tabnav li a:hover  {
-    color: #0000ee;
+ul#tabnav li a:hover,
+ul#tabnav li a:focus,
+ul#tabnav li a:active
+{
+    background: #efefef; /* ked */
+    border: solid 1px #ccc; /* ked */
+}
+
+ul#tabnav li a.selected {
+    background: #fff; /* ked */
+    border: solid 1px #ccc; /* ked */
+    border-bottom: solid 1px #fff; /* ked */
+    color: #666; /* ked */
 }
 
 div.sandbox {
@@ -290,25 +349,47 @@ div.assay_protocol_name {
   font-size: 85%;
 }
 
+.project {
+  padding: 10px;  /* ked */
+}
+
+.project.odd_row {   /* ked */
+  background: #efefef; 
+  border-bottom: solid 1px #ddd;
+}
+
+.project.even_row {  /* ked */
+  background: #fff; 
+  border-bottom: solid 1px #ddd;
+}
+
 .project .name {
-    padding-bottom: 10px;
+  font-size: 120%; /* ked */
+  padding-bottom: 5px; /* ked 10px; */
 }
 
 .project .description {
-    margin-left: 20px;
-    padding-bottom: 10px;
+  margin-left: 20px;
+  padding-bottom: 8px; /* ked 10px; */
+}
+
+.project .sub_date { /* ked */
+  font-size: 90%;
+  line-height: 90%;
+  margin-left: 0;
 }
 
 .project .contacts {
-  font-size: 85%;
-  padding-bottom: 20px;
+  font-size: 90%; /* ked 85%; */
+  padding-bottom: 10px; /* ked 20px; */
 }
 
 .publication {
-  font-size: 85%;
+  font-size: 90%; /* ked 85%; */
   padding-bottom: 15px;
 }
 .publication #title {
+  font-size: 110%; /* ked */
   font-weight: bold;
 }
 
@@ -316,6 +397,10 @@ td.assay_projects, th.assay_projects {
   width: 100px;
 }
 
+td.assay_projects ul { /* ked-new */
+  margin-left:0;
+  list-style-type:none; 
+}
 
 /* cancel out some drupal table styling */
 
@@ -343,3 +428,4 @@ div#vbpg_page .vbpg_pager_pending a {
     color: #eee;
 }
 */
+

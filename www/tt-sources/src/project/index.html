@@ -10,38 +10,34 @@
   <h1 class="vbpg_progress"></h1>
 
   <div class="vbpg_object_info project hide_on_load" id="project_info">
-    <h1>[% IF development_environment %]Project: [% END %]<span class="object_value scalar" id="name"></span></h1>
+    [% IF development_environment %]<h1>Project: <span class="object_value scalar" id="name"></span></h1>[% END %]
     <table>
       <tr>
 	<th class="row_heading">VectorBase stable ID</th>
 	<td class="object_value scalar" id="id"></td>
       </tr>
       <tr>
-	<th class="row_heading">name</th>
-	<td class="object_value scalar" id="name"></td>
+	<th class="row_heading">Name</th>
+	<td class="object_value scalar proj_name_style" id="name"></td>
       </tr>
       <tr>
-	<th class="row_heading">description</th>
+	<th class="row_heading">Description</th>
 	<td class="object_value scalar na_if_empty" id="description"></td>
       </tr>
       <tr>
-        <th class="row_heading">contact(s)</th>
+        <th class="row_heading">Contact(s)</th>
         <td class="object_value comma_separated" id="contacts"></td>
       </tr>
       <tr>
-	<th class="row_heading">submission date</th>
+	<th class="row_heading">Submission date</th>
 	<td class="object_value scalar na_if_empty date" id="submission_date"></td>
       </tr>
       <tr>
-	<th class="row_heading">public release date</th>
+	<th class="row_heading">Public release date</th>
 	<td class="object_value scalar na_if_empty date" id="public_release_date"></td>
       </tr>
       <tr>
-	<th class="row_heading">receipt date</th>
-	<td class="object_value scalar date" id="creation_date"></td>
-      </tr>
-      <tr>
-	<th class="row_heading">last modified date</th>
+	<th class="row_heading">Last modified date</th>
 	<td class="object_value scalar date" id="last_modified_date"></td>
       </tr>
     </table>
@@ -53,11 +49,11 @@
     </table>
 
     <div class="nested_object_list" id="publications">
-      <h3>Publications</h3>
+      <h2>Publications</h2>
       <div class="publications">
         <div class="list_row_template publication">
           <div>
-	    <a class="object_value href" href="http://dx.doi.org/####" id="doi"><span class="object_value scalar capitalize" id="title"></span></a>
+	    <a class="object_value href" href="http://dx.doi.org/####" id="doi"><span class="object_value scalar" id="title"></span></a>
 	  </div>
           <div class="object_value comma_separated" id="authors"></div>
           <div>

@@ -3,17 +3,17 @@
     [% INCLUDE 'spinner-pager.html' %]
     <table class="hide_on_load hide_on_update">
       <tr>
-        <th>Sample</th>
-        <th>species</th>
-        <th>properties</th>
+        <th class="master_row">Sample</th>
+        <th class="master_row">Species</th>
+        <th class="master_row">Properties</th>
       </tr>
       <tr class="list_row_template sample">
-        <td><a class="object_id href" title="Sample page" href="[% root %]sample/?id=####"><span class="object_value scalar" id="name"></span></a><br>
+        <td class="master_row"><a class="object_id href" title="Sample page" href="[% root %]sample/?id=####"><span class="object_value scalar" id="name"></span></a><br>
           (<span class="object_value scalar" id="id"></span>)</td>
-        <td>
+        <td class="master_row">
           <span class="object_value cvterm species_name" id="species"></span><br />
         </td>
-	<td>
+	<td class="master_row master_cell">
           <table>
             <tr class="sample_prop odd_row">
               <th class="row_heading">material type</th>
