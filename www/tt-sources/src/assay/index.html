@@ -9,7 +9,7 @@
   <div class="vbpg_progress"></div>
 
   <div class="vbpg_object_info assay hide_on_load" id="assay_info">
-    <h1><span class="object_value scalar capitalize" id="type"></span>: <span class="object_value scalar" id="name"></span></h1>
+    [% IF development_environment %]<h1><span class="object_value scalar capitalize" id="type"></span>: <span class="object_value scalar" id="name"></span></h1>[% END %]
 
     <table>
       <tr>
@@ -17,11 +17,15 @@
 	<td class="object_value scalar" id="id"></td>
       </tr>
       <tr>
-	<th class="row_heading">description</th>
+        <th class="row_heading">Type / Name</th>
+        <td class="proj_name_style"><span class="object_value scalar capitalize" id="type"></span> / <span class="object_value scalar" id="name"></span></td>
+      </tr>
+      <tr>
+	<th class="row_heading">Description</th>
 	<td class="object_value scalar na_if_empty" id="description"></td>
       </tr>
       <tr>
-	<th class="row_heading">performed by</dt>
+	<th class="row_heading">Performed by</dt>
         <td class="object_value comma_separated na_if_empty" id="performers"></td>
       </tr>
     </table>
@@ -38,27 +42,33 @@
   <div class="vbpg_object_info hide_on_load" id="assay_protocols">
     <h2>Protocols</h2>
     <div class="assay_protocol list_row_template">
-      <div class="assay_protocol_name object_value scalar" id="name"></div>
       <table>
         <tr>
-          <th class="row_heading">description</th>
-          <td class="object_value scalar na_if_empty" id="description"></td>
-	  <td class="nested_props_list no_shading" rowspan="3">
+          <th class="row_heading">Name</th>
+          <td class="object_value scalar proj_name_style" id="name"></td>
+	  <td class="nested_props_list no_shading master_cell" rowspan="4">
 	    <table>
-              <tr class="protocol_prop list_row_template">
-                <th class="prop_type row_heading" delimiter=", "></th>
-                <td class="prop_value"></td>
-              </tr>
-            <table>
-        </tr>
-        </table>
+              <thead>
+		<tr><th colspan="2" class="nested_props_header">Properties</th></tr>
+              </thead>
+              <tbody>
+                <tr class="protocol_prop list_row_template">
+                  <th class="prop_type row_heading" delimiter=", "></th>
+                  <td class="prop_value"></td>
+                </tr>
+              </tbody>
+            </table>
         </tr>
         <tr>
-          <th class="row_heading">type</th>
+          <th class="row_heading">Description</th>
+          <td class="object_value scalar na_if_empty" id="description"></td>
+        </tr>
+        <tr>
+          <th class="row_heading">Type</th>
           <td class="object_value cvterm" id="type"></td>
         </tr>
         <tr>
-          <th class="row_heading">external link</th>
+          <th class="row_heading">External link</th>
           <td><a class="auto_link" href="####"><span class="object_value scalar" id="uri"></span></a></td>
         </tr>
       </table>

@@ -145,7 +145,8 @@ div.vbpg_object_list table {
 }
 
 #vbpg_content table tr td.master_cell { /* ked */
-    padding:0; 
+    padding:0;
+    vertical-align: top;
 }
 
 #vbpg_content table tr .master_row { /* ked */
@@ -329,7 +330,7 @@ div.sandbox {
 
 span.cvterm {
     color: #408040;
-    border-bottom: 1px #408040 dotted;
+    border-bottom: 1px #b1ca49 dotted; /* ked-new #408040 */
 }
 
 /* a pseudo centered heading */
@@ -412,7 +413,18 @@ div#vbpg_page tbody th {
   border: none;
 }
 
-
+/* RMM added */
+div#vbpg_page tr .nested_props_header {
+  border-bottom: 1px solid #ddd;
+}
+/* RMM: only for actually embeded tables within tables */
+td.nested_props_list table tbody {
+  font-size: 90%;
+}
+/* RMM fix sample page column lineup */
+div#vbpg_page table th.sample_assays_col1 {
+  width: 200px;
+}
 
 /* to show that what's on the screen is not current any more
  * (after clicking 'next' or 'previous')

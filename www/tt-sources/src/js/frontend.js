@@ -757,7 +757,11 @@ function fillInPagedListValues(page, element, url, limits) {
 function renderCvterm(term) {
     if (term != null) {
 	if (term.accession.match(/^\w+:\d+$/)) {
-	    return '<span class="cvterm" accession="'+term.accession+'">'+term.name+'</span>';
+	    if (term.accession.match(/^VBsp:/)) { // !!warning: copy and paste next two lines!!
+		return '<span class="cvterm species_name" accession="'+term.accession+'">'+term.name+'</span>';
+	    } else {
+		return '<span class="cvterm" accession="'+term.accession+'">'+term.name+'</span>';
+	    }
 	} else {
 	    return term.name;
 	}

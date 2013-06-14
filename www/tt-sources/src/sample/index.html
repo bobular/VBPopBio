@@ -8,11 +8,15 @@
   <h1 class="vbpg_progress"></h1>
 
   <div class="vbpg_object_info sample hide_on_load" id="sample_info">
-    <h1>[% IF development_environment %]Sample: [% END %]<span class="object_value scalar" id="name"></span></h1>
+    [% IF development_environment %]<h1>Sample: <span class="object_value scalar" id="name"></span></h1>[% END %]
     <table>
       <tr>
 	<th class="row_heading">VectorBase stable ID</th>
 	<td class="object_value scalar" id="id"></td>
+      </tr>
+      <tr>
+	<th class="row_heading">Name</th>
+	<td class="proj_name_style object_value scalar" id="name"></td>
       </tr>
       <tr>
 	<th class="row_heading">Description</th>
@@ -39,7 +43,7 @@
     <h2>Field collection</h2>
     <table>
       <tr>
-        <th>Collection</th>
+        <th class="sample_assays_col1">Collection</th>
         <th>Summary</th>
         <th class="assay_projects">Project(s)</th>
       </tr>
@@ -61,7 +65,7 @@
     <h2>Assays</h2>
     <table>
       <tr>
-        <th>Assay</th>
+        <th class="sample_assays_col1">Assay</th>
         <th>Summary</th>
         <th class="assay_projects">Project(s)</th>
       </tr>
