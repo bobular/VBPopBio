@@ -541,6 +541,22 @@ sub derived {
 }
 memoize('derived');
 
+=head2 unknown
+
+=cut
+
+sub unknown {
+  my $self = shift;
+  my $term = $self->schema->cvterms->create_with({ name => 'unknown',
+						   cv => 'VBcv',
+						   db => 'VBcv',
+						 });
+  $term->definition('The sample either had no species determination assays performed on it, or there were no usable results.');
+  $term->update;
+  return $term;
+}
+memoize('unknown');
+
 #
 # this is a subsection - please add new terms above the previous head1
 #
