@@ -110,20 +110,20 @@
     <h2>Phenotypes</h3>
     <table>
     <tr>
-      <th>name</th>
-      <th>formal 'ontologised' description</th>
-      <th>additional properties</th>
+      <th class="master_row">Name</th>
+      <th class="master_row">Ontology-based definition</th>
+      <th class="master_row">Properties</th>
     </tr>
     <tr class="list_row_template">
-      <td class="object_value scalar" id="name"></td>
-      <td>
+      <td class="object_value scalar master_row" id="name"></td>
+      <td class="master_row">
         <span class="object_value cvterm linebreak_after" id="observable"></span>
         <span class="object_value cvterm linebreak_after" id="attribute"></span>
         <span class="object_value cvterm" id="value.term"></span>
         <span class="object_value scalar" id="value.text"></span>
         <span class="object_value cvterm" id="value.unit"></span>
       </td>
-      <td class="nested_props_list">
+      <td class="nested_props_list master_row master_cell">
         <!-- extra properties -->
         <table>
           <tr class="phenotype_prop list_row_template">
@@ -143,14 +143,16 @@
     <h2>Genotypes</h3>
     <table>
       <tr>
-        <th class="row_heading">name</th>
-        <th class="row_heading">description</th>
-        <th class="row_heading">properties</th>
+        <th class="master_row">Name</th>
+        <th class="master_row">Description</th>
+        <th class="master_row">Type</th>
+        <th class="master_row">Properties</th>
       </tr>
       <tr class="list_row_template">
-        <td class="object_value scalar" id="name"></td>
-        <td class="object_value scalar" id="description"></td>
-        <td class="nested_props_list" id="props">
+        <td class="object_value scalar master_row" id="name"></td>
+        <td class="object_value scalar master_row" id="description"></td>
+        <td class="object_value cvterm master_row" id="type"></td>
+        <td class="nested_props_list master_row master_cell" id="props">
           <table>
             <tr class="phenotype_prop list_row_template">
               <th class="prop_type row_heading" delimiter=", "></th>

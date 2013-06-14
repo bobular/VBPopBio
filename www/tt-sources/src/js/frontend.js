@@ -448,10 +448,14 @@ function fillInObjectValues(object, element) {
     });
 
     element.select('.object_value.comma_separated').each(function(e){
-        var items = jsonPath(object, '$.'+e.id);
-	// console.log(items); // it was a 2D array [['item1', 'item2']]
-	if (items != null) { // so strip outer layer here
-	    e.update(items.first().join(', '));
+        items = jsonPath(object, '$.'+e.id);
+	// console.log(Object.prototype.toString.call( items )+' and '+Object.prototype.toString.call( items.first() )); // it was a 2D array [['item1', 'item2']]
+	if (items != null) {
+	    // if the first element is another array we'll join that instead
+	    if (Object.prototype.toString.call(items.first()) === '[object Array]') {
+		items = items.first();
+	    }
+	    e.update(items.join(', '));
 	}
     });
 
@@ -758,9 +762,9 @@ function renderCvterm(term) {
     if (term != null) {
 	if (term.accession.match(/^\w+:\d+$/)) {
 	    if (term.accession.match(/^VBsp:/)) { // !!warning: copy and paste next two lines!!
-		return '<span class="cvterm species_name" accession="'+term.accession+'">'+term.name+'</span>';
+		return '<span class="cvterm species_name" title="Ontology term '+term.accession+'" accession="'+term.accession+'">'+term.name+'</span>';
 	    } else {
-		return '<span class="cvterm" accession="'+term.accession+'">'+term.name+'</span>';
+		return '<span class="cvterm" title="Ontology term '+term.accession+'" accession="'+term.accession+'">'+term.name+'</span>';
 	    }
 	} else {
 	    return term.name;
