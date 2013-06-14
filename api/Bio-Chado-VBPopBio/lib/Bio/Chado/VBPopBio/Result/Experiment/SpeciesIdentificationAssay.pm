@@ -92,6 +92,7 @@ sub best_species {
       }
     }
   }
+  $qualification = $schema->types->unknown unless $result;
   return wantarray ? ($result, $qualification) : $result;
 }
 

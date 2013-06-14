@@ -508,7 +508,7 @@ sub best_species {
       }
     }
   }
-
+  @qualifications = ($schema->types->unknown) unless $result;
   return wantarray ? ($result, @qualifications) : $result;
 }
 
