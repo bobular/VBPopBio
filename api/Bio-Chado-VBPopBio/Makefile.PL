@@ -28,6 +28,7 @@ WriteMakefile(
 	'JSON' => 0,
 	'aliased' => 0,
 	'DBD::Pg' => 0,
+	'Config::General' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Bio-Chado-VBPopBio-*' },
