@@ -61,12 +61,18 @@ get qr{/projects/head} => sub {
     my $o = params->{o} || 0;
 
 #    memcached_get_or_set("projects$head-$o-$l", sub {
+
+                           # for ordering by submission date
+                           my $sub_date_type = $schema->types->submission_date;
+
 			   my $results = schema->projects->search(
-								  undef,
+								  { 'projectprops.type_id' => $sub_date_type->id },
 								  {
 								   rows => $l,
 								   offset => $o,
 								   page => 1,
+								   join => 'projectprops',
+								   order_by => 'projectprops.value',
 								  },
 								 );
 			   my $depth = $head ? 0 : undef;
