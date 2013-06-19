@@ -108,6 +108,8 @@ sub create_from_isatab {
   #
   if ($study->{study_submission_date}) {
     $project->submission_date($study->{study_submission_date});
+  } else {
+    $schema->defer_exception("Missing mandatory study submission date in ISA-Tab investigation sheet");
   }
   if ($study->{study_public_release_date}) {
     $project->public_release_date($study->{study_public_release_date});
