@@ -63,7 +63,7 @@ get qr{/projects/head} => sub {
 #    memcached_get_or_set("projects$head-$o-$l", sub {
 
                            # for ordering by submission date
-                           my $sub_date_type = $schema->types->submission_date;
+                           my $sub_date_type = schema->types->submission_date;
 
 			   my $results = schema->projects->search(
 								  { 'projectprops.type_id' => $sub_date_type->id },
