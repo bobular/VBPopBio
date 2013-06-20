@@ -79,6 +79,52 @@ sub vcf_file {
     );
 }
 
+=head2 genome_browser_path
+
+If the relevant properties are available
+(provided by ISA-Tab columns
+Characteristics [reference_genome (SO:0001505)]
+Characteristics [variation_collection (SO:0001507)]
+Characteristics [experimental result region (SO:0000703)]
+)
+then return a path that would open the genome browser at the
+given location with the variation set track turned on.
+
+(This should possibly be in the Javascript client.)
+
+=cut
+
+sub genome_browser_path {
+  my ($self) = @_;
+  my $schema = $self->result_source->schema;
+  my $cvterms = $schema->cvterms;
+  my $ref_type = $cvterms->find_by_accession({term_source_ref => 'SO', term_accession_number=>'0001505'});
+  my $var_set_type = $cvterms->find_by_accession({term_source_ref => 'SO', term_accession_number=>'0001507'});
+  my $region_type = $cvterms->find_by_accession({term_source_ref => 'SO', term_accession_number=>'0000703'});
+
+  my @multiprops = $self->multiprops;
+  if (@multiprops >= 3) {
+    my ($ref, $var_set, $region);
+    foreach my $multiprop ($self->multiprops) {
+      my $prop_key_id = $multiprop->cvterms->[0]->cvterm_id;
+      if ($prop_key_id == $ref_type->cvterm_id) {
+	$ref = $multiprop->value;
+      } elsif ($prop_key_id == $var_set_type->cvterm_id) {
+	$var_set = $multiprop->value;
+      } elsif ($prop_key_id == $region_type->cvterm_id) {
+	$region = $multiprop->value;
+      }
+    }
+
+    # /Anopheles_gambiae/Location?db=core;r=2L:39215647-39228146;contigviewbottom=variation_set_AgSNP01=normal
+    if ($ref && $var_set && $region) {
+      # $var_set needs any url-escaping?
+      return "/$ref/Location?db=core;r=$region;contigviewbottom=variation_set_$var_set=normal";
+    }
+  }
+  return undef;
+}
+
 =head2 as_data_structure
 
 return a data structure for jsonification
@@ -93,6 +139,7 @@ sub as_data_structure {
       $self->basic_info,
       genotypes => [ map { $_->as_data_structure } $self->genotypes->all ],
       vcf_file => $self->vcf_file,
+      genome_browser_path => $self->genome_browser_path,
 	 };
 }
 
