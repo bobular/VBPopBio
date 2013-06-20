@@ -75,7 +75,10 @@
           <a class="object_id href" title="Assay page" href="[% root %]assay/?id=####"><span class="object_value scalar" id="name"></span></a><br />
           <span class="object_value scalar" id="id"></span></td>
         <td>
-          <span class="object_value scalar" id="result_summary"></span><br />
+          <span class="object_value clear_if_missing" id="genome_browser_path">
+	    <a href="####" class="object_value href" id="genome_browser_path"><img style="margin-right:5px" align="right" src="/sites/default/files/ftp/images/browse_genome.png" /></a>
+          </span>
+          <span class="object_value scalar" id="result_summary"></span>
         </td>
  	<td class="object_id id assay_projects" id="####">
 	  <!-- will be populated with linked project IDs via AJAX calls to assay/ID/projects/head -->
