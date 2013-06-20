@@ -72,7 +72,7 @@ get qr{/projects/head} => sub {
 								   offset => $o,
 								   page => 1,
 								   join => 'projectprops',
-								   order_by => 'projectprops.value',
+								   order_by => [ 'projectprops.value', 'me.name' ]
 								  },
 								 );
 			   my $depth = $head ? 0 : undef;
