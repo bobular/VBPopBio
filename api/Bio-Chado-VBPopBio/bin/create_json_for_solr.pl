@@ -3,6 +3,9 @@
 #
 # usage: bin/create_json_for_solr.pl -dbname vb_popgen_testing_20110607 > test-samples.json
 #
+#
+#
+#
 ## get example solr server running (if not already)
 # cd /home/maccallr/vectorbase/popgen/search/apache-solr-3.5.0/example/
 # screen -S solr-popgen java -jar start.jar
@@ -25,11 +28,13 @@ my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
 my $limit;
+my $project_stable_id;
 
 GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
 	   "dry-run|dryrun"=>\$dry_run,
 	   "limit=i"=>\$limit, # for debugging/development
+	   "project=s"=>\$project_stable_id, # just one project for debugging
 	  );
 
 my $dsn = "dbi:Pg:dbname=$dbname";
@@ -41,10 +46,21 @@ my $assays = $schema->assays;
 my $json = JSON->new->pretty; # useful for debugging
 my $done;
 
+#
+# debug only
+#
+if ($project_stable_id) {
+  my $project = $projects->find_by_stable_id($project_stable_id);
+  $stocks = $project->stocks;
+  $assays = $project->experiments;
+}
 
-# resistance identification/monitoring
+
+# 'bioassay' MIRO:20000058
+# because unfortunately we have used MIRO:20000100 (PCR amplification of specific alleles)
+# to describe genotype assays totally unrelated to insecticide resistance
 my $ir_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
-							       term_accession_number => '20000001' });
+							       term_accession_number => '20000058' });
 
 # insecticidal substance
 my $insecticidal_substance = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
@@ -88,9 +104,9 @@ while (my $project = $projects->next) {
 					     ],
 		   }
 		 };
-  my $json = $json->encode($document);
-  chomp($json);
-  print qq!"add": $json,\n!;
+  my $json_text = $json->encode($document);
+  chomp($json_text);
+  print qq!"add": $json_text,\n!;
 
   last if ($limit && ++$done >= $limit);
 }
@@ -141,8 +157,10 @@ while (my $stock = $stocks->next) {
 		    phenotypes =>  [ map { $_->result_summary } (@tmp = $stock->phenotype_assays) ],
 		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } map { $_->phenotypes->all } @tmp ],
 
-		    species => [ $stock_best_species->name ],
-		    species_cvterms => [ flattened_parents($stock_best_species) ],
+		    ($stock_best_species ? (
+					    species => [ $stock_best_species->name ],
+					    species_cvterms => [ flattened_parents($stock_best_species) ]
+					   ) : () ),
 
 		    annotations => [ map { $_->as_string } $stock->multiprops ],
 		    annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($stock) ],
@@ -153,9 +171,9 @@ while (my $stock = $stocks->next) {
 		   }
 		 };
 
-  my $json = $json->encode($document);
-  chomp($json);
-  print qq!"add": $json,\n!;
+  my $json_text = $json->encode($document);
+  chomp($json_text);
+  print qq!"add": $json_text,\n!;
 
   last if ($limit && ++$done >= $limit);
 }
@@ -232,16 +250,18 @@ while (my $assay = $assays->next) {
 		 };
 
 
-  my $json = $json->encode($document);
-  chomp($json);
-  print qq!"add": $json,\n!;
+  my $json_text = $json->encode($document);
+  chomp($json_text);
+  print qq!"add": $json_text,\n!;
 
 
   ### IR assay special case ###
-  if (grep { $_->id = $ir_assay_base_term->id ||
+  if (grep { $_->id == $ir_assay_base_term->id ||
 	       $ir_assay_base_term->has_child($_) } @protocol_types) {
 
-    my $sample = $assay->samples->count == 1 ? $assay->samples->first : undef;
+    # warn "I found an IR assay for $stable_id ".join("\n", map { $_->name } @protocol_types)."\n\n";
+
+    my $sample = $assay->stocks->count == 1 ? $assay->stocks->first : undef;
     if (defined $sample) {
       my $fc = $sample->field_collections->first;
       if (defined $fc) {
@@ -254,7 +274,7 @@ while (my $assay = $assays->next) {
 	my $document =
 	  { doc =>
 	    {
-	     label => $assay->name,
+	     label => $assay->external_id,
 	     accession => $stable_id,
 	     site => 'Population Biology',
 	     bundle => 'pop_ir_assay',
@@ -279,8 +299,10 @@ while (my $assay = $assays->next) {
 	     collection_protocols => [ map { $_->name } @collection_protocol_types ],
 	     collection_protocols_cvterms => [ map { flattened_parents($_) } @collection_protocol_types ],
 
-	     species => $sample_best_species->name,
-	     species_cvterms => [ flattened_parents($sample_best_species) ],
+	     ($sample_best_species ? (
+				      species => [ $sample_best_species->name ],
+				      species_cvterms => [ flattened_parents($sample_best_species) ],
+				     ) : () ),
 
 	     protocols => [ map { $_->name } @protocol_types ],
 	     protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
@@ -296,9 +318,9 @@ while (my $assay = $assays->next) {
 
 
 
-	my $json = $json->encode($document);
-	chomp($json);
-	print qq!"add": $json,\n!;
+	my $json_text = $json->encode($document);
+	chomp($json_text);
+	print qq!"add": $json_text,\n!;
       }
     }
   }
