@@ -16,155 +16,358 @@
 use strict;
 use warnings;
 use feature 'switch';
-use lib 'lib';  # this is so that I don't have to keep installing BCNA for testing
+use lib 'lib';
 use Getopt::Long;
 use Bio::Chado::VBPopBio;
-use Config::General;
-use JSON; # for debugging only
-
+use JSON;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
+my $limit;
 
 GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
 	   "dry-run|dryrun"=>\$dry_run,
+	   "limit=i"=>\$limit, # for debugging/development
 	  );
-
-#my ($input_file) = @ARGV;
-#my $conf = new Config::General(-ConfigFile => $input_file,
-#			       -SplitPolicy => 'equalsign',
-#			      );
-my %config = (); # $conf->getall;
-
-$dbuser = $config{dbuser} || $dbuser;
-$dbname = $config{dbname} || $dbname;
 
 my $dsn = "dbi:Pg:dbname=$dbname";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $dbuser, undef, { AutoCommit => 1 });
-my $stocks = $schema->stocks; # ->search({}, {order_by=>'stock_id'})->slice(300,330);
+my $stocks = $schema->stocks;
 my $projects = $schema->projects;
-my $cvterms = $schema->cvterms;
+my $assays = $schema->assays;
+
 my $json = JSON->new->pretty; # useful for debugging
+my $done;
 
-my $done = 0;
+
+# resistance identification/monitoring
+my $ir_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
+							       term_accession_number => '20000001' });
+
+# insecticidal substance
+my $insecticidal_substance = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
+							       term_accession_number => '10000239' });
+
+
 print "{\n";
-while (my $stock = $stocks->next) {
 
-  my $solr_id = "stock_".$stock->id;
-  print qq!"delete": { "id": "$solr_id" },\n!;
+### PROJECTS ###
+$done = 0;
+my $study_design_type = $schema->types->study_design;
+my $start_date_type = $schema->types->start_date;
+my $date_type = $schema->types->date;
 
-  my $stock_type = $stock->type->name;
-
-  my $document = { doc =>
-		   {
-		    name => $stock->name,
-		    id => $solr_id,
-		    type => 'sample',
-		    description => $stock->description ? $stock->description : $stock_type,
-
-        geolocations => [ summarise_geolocations($stock) ],
-				genotypes => [ summarise_genotypes($stock) ],
-				phenotypes => [ summarise_phenotypes($stock) ],
-				species => [ summarise_species($stock) ],
-		   }
-		 };
-  my $json = $json->encode($document);
-  chomp($json);
-  print qq!"add": $json,\n!;
-
-#  last if (++$done == 20);
-}
 
 while (my $project = $projects->next) {
-
-  my $solr_id = "project_".$project->id;
-  print qq!"delete": { "id": "$solr_id" },\n!;
-
+  my $stable_id = $project->stable_id;
+  my @design_terms = map { $_->cvterms->[1] } $project->multiprops($study_design_type);
   my $document = { doc =>
 		   {
-		    name => $project->name,
-		    id => $solr_id,
-		    type => 'project',
+		    label => $project->name,
+		    id => $stable_id,
+		    accession => $stable_id,
+		    # type => 'project', # doesn't seem to be in schema
+		    bundle => 'pop_project',
+		    bundle_name => 'Project',
+		    site=> 'Population Biology',
+	            url => '/popbio/project/?id='.$stable_id,
+		    entity_type => 'popbio',
+		    entity_id => $project->id,
 		    description => $project->description ? $project->description : '',
+		    date => $project->public_release_date,
+		    authors => [
+				map { $_->description } $project->contacts
+			       ],
+		    study_designs => [
+				      map { $_->name } @design_terms
+				     ],
+		    study_designs_cvterms => [
+					      map { flattened_parents($_) } @design_terms
+					     ],
 		   }
 		 };
   my $json = $json->encode($document);
   chomp($json);
   print qq!"add": $json,\n!;
 
-#  last if (++$done == 20);
+  last if ($limit && ++$done >= $limit);
 }
 
-print qq!"optimize": {}\n!;
-print "}\n";
 
-#
-# WARNING:
-# much ported/copied from frontend.js summariseExperiments !!
-#
-# returns an array of strings (one per geolocation)
-#
-sub summarise_geolocations {
-	my $stock = shift;
-	my @result = ();
-	foreach my $experiment ($stock->field_collections) {
-		my %strings;
-		my $geo = $experiment->nd_geolocation;
-	  map { $strings{$_->type->name}++ } grep { $_->type->cv->name eq 'GAZ' } $geo->nd_geolocationprops;
-		if ($geo->description) {
-			$strings{$geo->description}++;
-		}
-		if ($geo->longitude || $geo->latitude) {
-			$strings{'WGS 84: '.$geo->latitude.','.$geo->longitude}++;
-		}
-		# handle VBcv:collection site XXXX
-		map { $strings{$_->value}++  } grep { $_->type->cv->name eq 'VBcv' && $_->type->name =~ /^collection site/i } $geo->nd_geolocationprops;
+### SAMPLES ###
+$done = 0;
+while (my $stock = $stocks->next) {
+  my $stable_id = $stock->stable_id;
+  die "stock with db id ".$stock->id." does not have a stable id" unless ($stable_id);
 
-		push @result, join '; ', keys %strings if (keys %strings);
-	}
+  my @collection_protocol_types = map { $_->type } map { $_->protocols->all } $stock->field_collections;
+  my ($lat, $long) = stock_latlong($stock);
+  my $stock_best_species = $stock->best_species();
+  my $fc = $stock->field_collections->first;
+  my @tmp;
 
-	return @result;
+  my $document = { doc =>
+		   {
+		    label => $stock->name,
+		    id => $stable_id,
+		    # type => 'sample', # doesn't seem to be in schema
+		    accession => $stable_id,
+		    bundle => 'pop_sample',
+		    bundle_name => 'Sample',
+	  	    site => 'Population Biology',
+		    url => '/popbio/sample/?id='.$stable_id,
+		    entity_type => 'popbio',
+		    entity_id => $stock->id,
+		    description => $stock->description,
+
+		    sample_type => $stock->type->name,
+		    sample_type_cvterms => [ flattened_parents($stock->type) ],
+
+		    collection_protocols => [ map { $_->name } @collection_protocol_types ],
+		    collection_protocols_cvterms => [ map { flattened_parents($_) } @collection_protocol_types ],
+
+		    has_geodata => ($lat || $long ? 'true' : 'false'), # one could be zero!
+
+		    ($lat || $long ? ( latitude=>$lat||0, longitude=>$long||0 ) : ()),
+
+		    geolocations => [ map { $_->geolocation->summary } (@tmp = $stock->field_collections) ],
+		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation) } @tmp ],
+
+		    genotypes =>  [ map { $_->result_summary } (@tmp = $stock->genotype_assays) ],
+		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } map { $_->genotypes->all } @tmp ],
+
+		    phenotypes =>  [ map { $_->result_summary } (@tmp = $stock->phenotype_assays) ],
+		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } map { $_->phenotypes->all } @tmp ],
+
+		    species => [ $stock_best_species->name ],
+		    species_cvterms => [ flattened_parents($stock_best_species) ],
+
+		    annotations => [ map { $_->as_string } $stock->multiprops ],
+		    annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($stock) ],
+
+		    projects => [ map { $_->stable_id } $stock->projects ],
+
+		    date => stock_date($stock),
+		   }
+		 };
+
+  my $json = $json->encode($document);
+  chomp($json);
+  print qq!"add": $json,\n!;
+
+  last if ($limit && ++$done >= $limit);
 }
 
-sub summarise_genotypes {
-	my $stock = shift;
-	my @result = ();
-	foreach my $experiment ($stock->genotype_assays) {
-		push @result, map { $_->uniquename } $experiment->genotypes;
-	}
+### ASSAYS ###
+$done = 0;
+while (my $assay = $assays->next) {
+  my $stable_id = $assay->stable_id;
+  die "assay with db id ".$assay->id." does not have a stable id" unless ($stable_id);
 
-	return @result;
+  my @protocol_types = map { $_->type } $assay->protocols->all;
+  my $assay_type_name = $assay->type->name;
+  my ($lat, $long, $geoloc, $assay_best_species, @tmp);
+  if ($assay_type_name eq 'field collection') {
+    $geoloc = $assay->geolocation;
+    $lat = $geoloc->latitude;
+    $long = $geoloc->longitude;
+  } elsif ($assay_type_name eq 'species identification method') {
+    $assay_type_name = 'species identification assay';
+    $assay_best_species = $assay->best_species;
+  }
+
+  my $document = { doc =>
+		   {
+		    label => $assay->external_id,
+		    id => $stable_id,
+		    # type => 'sample', # doesn't seem to be in schema
+		    accession => $stable_id,
+		    bundle => 'pop_assay',
+		    bundle_name => 'Assay',
+	  	    site => 'Population Biology',
+		    url => '/popbio/assay/?id='.$stable_id,
+		    entity_type => 'popbio',
+		    entity_id => $assay->id,
+		    description => $assay->description,
+
+		    assay_type => $assay_type_name,
+		    # not expanding this because it's a flat
+
+		    projects => [ map { $_->stable_id } $assay->projects ],
+
+		    protocols => [ map { $_->name } @protocol_types ],
+		    protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
+
+		    date => assay_date($assay),
+
+
+		    has_geodata => ($lat || $long ? 'true' : 'false'), # one could be zero!
+
+		    ($lat || $long ? ( latitude=>$lat||0, longitude=>$long||0 ) : ()),
+
+
+		    ( $geoloc ? (
+				 geolocations => [ $geoloc->summary ],
+				 geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($geoloc) ],
+				) : () ),
+
+		    genotypes =>  [ map { ($_->description, $_->name) } (@tmp = $assay->genotypes) ],
+		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @tmp ],
+
+		    phenotypes =>  [ map { $_->name } (@tmp = $assay->phenotypes) ],
+		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @tmp ],
+
+
+		    annotations => [ map { $_->as_string } $assay->multiprops ],
+		    annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($assay) ],
+
+		    ($assay_best_species ? (
+					    species => [ $assay_best_species->name ],
+					    species_cvterms => [ flattened_parents($assay_best_species) ],
+					   ) : ()),
+
+		   }
+		 };
+
+
+  my $json = $json->encode($document);
+  chomp($json);
+  print qq!"add": $json,\n!;
+
+
+  ### IR assay special case ###
+  if (grep { $_->id = $ir_assay_base_term->id ||
+	       $ir_assay_base_term->has_child($_) } @protocol_types) {
+
+    my $sample = $assay->samples->count == 1 ? $assay->samples->first : undef;
+    if (defined $sample) {
+      my $fc = $sample->field_collections->first;
+      if (defined $fc) {
+	my ($lat, $long) = ($fc->geolocation->latitude, $fc->geolocation->longitude);
+
+	my @collection_protocol_types = map { $_->type } $fc->protocols->all;
+	my $sample_best_species = $sample->best_species;
+	my @insecticides = assay_insecticides($assay);
+
+	my $document =
+	  { doc =>
+	    {
+	     label => $assay->name,
+	     accession => $stable_id,
+	     site => 'Population Biology',
+	     bundle => 'pop_ir_assay',
+	     bundle_name => 'Insecticide resistance assay',
+	     id => $stable_id.".IR", # must be unique across whole of Solr
+
+	     url => '/popbio/assay/?id='.$stable_id,
+	     entity_type => 'popbio',
+	     entity_id => $assay->id,
+	     description => $assay->description,
+
+	     date => assay_date($assay),
+
+	     collection_date => $fc ? assay_date($fc) : undef,
+
+	     has_geodata => ($lat || $long ? 'true' : 'false'), # one could be zero!
+	     ($lat || $long ? ( latitude=>$lat||0, longitude=>$long||0 ) : ()),
+
+	     geolocations => [ $fc->geolocation->summary ],
+	     geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($fc->geolocation) ],
+
+	     collection_protocols => [ map { $_->name } @collection_protocol_types ],
+	     collection_protocols_cvterms => [ map { flattened_parents($_) } @collection_protocol_types ],
+
+	     species => $sample_best_species->name,
+	     species_cvterms => [ flattened_parents($sample_best_species) ],
+
+	     protocols => [ map { $_->name } @protocol_types ],
+	     protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
+
+	     phenotypes =>  [ map { $_->name } (@tmp = $assay->phenotypes) ],
+	     phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @tmp ],
+
+	     insecticides => [ map { $_->name } @insecticides ],
+	     insecticides_cvterms => [ map { flattened_parents($_) } @insecticides ],
+
+	    }
+	  };
+
+
+
+	my $json = $json->encode($document);
+	chomp($json);
+	print qq!"add": $json,\n!;
+      }
+    }
+  }
+
+
+  last if ($limit && ++$done >= $limit);
 }
 
-sub summarise_phenotypes {
-	my $stock = shift;
-	my @result = ();
-	foreach my $experiment ($stock->phenotype_assays) {
-		push @result, map { join "; ", (map { grep { defined && /\w/ } $_->type->name, $_->value } $experiment->nd_experimentprops->search({}, {order_by=>'rank'})), grep { defined }
-													( $_->observable && $_->observable->name,
-														$_->attr && $_->attr->name,
-															$_->cvalue && $_->cvalue->name,
-																$_->value ) } $experiment->phenotypes;
-	}
+# the commit is needed to resolve the trailing comma
+print qq!\"commit\" : { } }\n!;
 
-	return @result;
+# returns just the 'proper' cvterms for all multiprops
+# of the argument
+sub multiprops_cvterms {
+  my $object = shift;
+  return grep { $_->dbxref->as_string =~ /^(?!VBcv)\w+:\d+$/ } map { $_->cvterms } $object->multiprops;
 }
 
-sub summarise_species {
-	my $stock = shift;
-	my @result = ();
 
-	# priority is sp id assays
-	foreach my $experiment ($stock->species_identification_assays) {
-		push @result, map { $_->type->name } $experiment->nd_experimentprops;
-	}
+# returns $lat, $long
+sub stock_latlong {
 
-	# fallback is stock->organism
-	if (@result == 0) {
-		push @result, $stock->organism ? $stock->organism->genus.' '.$stock->organism->species : ();
-	}
+  my $stock = shift;
 
-	return @result;
+  foreach my $experiment ($stock->field_collections) {
+    if ($stock->field_collections->count == 1) {
+      my $geo = $experiment->nd_geolocation;
+      if (defined $geo->latitude && defined $geo->longitude) {
+	return ( $geo->latitude, $geo->longitude );
+      }
+    }
+  }
+  return (); # empty array
+}
+
+# returns date of first assay with a date
+sub stock_date {
+  my $stock = shift;
+  foreach my $assay ($stock->nd_experiments) {
+    my $date = assay_date($assay);
+    return $date if ($date);
+  }
+  return undef;
+}
+
+
+# returns single date string
+sub assay_date {
+  my $assay = shift;
+  my @start_dates = $assay->multiprops($start_date_type);
+  my @dates = $assay->multiprops($date_type);
+  if (@start_dates == 1) {
+    return $start_dates[0]->value;
+  }
+  if (@dates == 1) {
+    return $dates[0]->value;
+  }
+}
+
+# returns an array of cvterms
+# definitely want has child only (not IS also) because
+# the insecticidal_substance term is used as a multiprop "key"
+sub assay_insecticides {
+  my $assay = shift;
+  return grep { $insecticidal_substance->has_child($_) } map { $_->cvterms } $assay->multiprops;
+}
+
+# returns an array of (name, accession, name, accession, ...)
+sub flattened_parents {
+  my $term = shift;
+  return map { ( $_->name, $_->dbxref->as_string ) } ($term, $term->recursive_parents);
 }
