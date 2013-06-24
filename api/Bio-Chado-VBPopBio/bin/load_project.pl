@@ -28,12 +28,14 @@ my $json_file;
 my $json = JSON->new->pretty;
 my $samples_file;
 my $limit;
+my $delete_project;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "json=s"=>\$json_file,
 	   "sample-info|samples=s"=>\$samples_file,
 	   "limit=i"=>\$limit,
-    );
+	   "delete=s"=>\$delete_project,
+	  );
 
 $dry_run = 1 if ($limit);
 
@@ -43,6 +45,17 @@ $schema->txn_do_deferred
   ( sub {
 
       my $num_projects_before = $projects->count;
+
+      if ($delete_project) {
+	my $rip = $projects->find_by_stable_id($delete_project);
+	if ($rip) {
+	  $rip->delete;
+	} else {
+	  warn "can't find project $delete_project... continuing but will roll back at end\n";
+	  $schema->defer_exception("couldn't find project $delete_project to delete");
+	}
+      }
+
       my $project = $projects->create_from_isatab({ directory => $isatab_dir,
 						    sample_limit => $limit, });
 
