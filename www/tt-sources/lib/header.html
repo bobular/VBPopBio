@@ -1,12 +1,13 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+[% USE Date %]
 <html>
  <head>
-  <link rel="stylesheet" href="[% root_static %]css/main.css" type="text/css" />
+  <link rel="stylesheet" href="[% root_static %]css/main.css?[% template.modtime %]" type="text/css" />
   [% FOREACH script IN js %]
     [% IF script.match('^https?://') %]
       <script type="text/javascript" src="[% script %]"></script>
     [% ELSE %]
-      <script type="text/javascript" src="[% root_static %][% script %]"></script>
+      <script type="text/javascript" src="[% root_static %][% script %]?[% template.modtime %]"></script>
     [% END %]
   [% END %]
   <title>[% title %]</title>
