@@ -6140,6 +6140,14 @@ ALTER TABLE ONLY nd_experiment
 
 
 --
+-- Name: nd_experiment_project_c1; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY nd_experiment_project
+    ADD CONSTRAINT nd_experiment_project_c1 UNIQUE (nd_experiment_id, project_id);
+
+
+--
 -- Name: nd_experiment_project_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -7437,6 +7445,20 @@ CREATE INDEX genotypeprop_idx1 ON genotypeprop USING btree (genotype_id);
 --
 
 CREATE INDEX genotypeprop_idx2 ON genotypeprop USING btree (type_id);
+
+
+--
+-- Name: nd_experiment_project_idx1; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX nd_experiment_project_idx1 ON nd_experiment_project USING btree (project_id);
+
+
+--
+-- Name: nd_experiment_project_idx2; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX nd_experiment_project_idx2 ON nd_experiment_project USING btree (nd_experiment_id);
 
 
 --
