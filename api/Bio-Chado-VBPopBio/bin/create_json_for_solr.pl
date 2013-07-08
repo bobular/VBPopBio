@@ -39,6 +39,8 @@ GetOptions("dbname=s"=>\$dbname,
 
 my $dsn = "dbi:Pg:dbname=$dbname";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $dbuser, undef, { AutoCommit => 1 });
+# the next line is for extra speed - but check for identical results with/without
+$schema->storage->_use_join_optimizer(0);
 my $stocks = $schema->stocks;
 my $projects = $schema->projects;
 my $assays = $schema->assays;
@@ -165,7 +167,7 @@ while (my $stock = $stocks->next) {
 		    annotations => [ map { $_->as_string } $stock->multiprops ],
 		    annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($stock) ],
 
-		    projects => [ map { $_->stable_id } $stock->projects ],
+		    projects => [ map { quick_project_stable_id($_) } $stock->projects ],
 
 		    date => stock_date($stock),
 		   }
@@ -213,7 +215,7 @@ while (my $assay = $assays->next) {
 		    assay_type => $assay_type_name,
 		    # not expanding this because it's a flat
 
-		    projects => [ map { $_->stable_id } $assay->projects ],
+		    projects => [ map { quick_project_stable_id($_) } $assay->projects ],
 
 		    protocols => [ map { $_->name } @protocol_types ],
 		    protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
@@ -371,10 +373,10 @@ sub stock_date {
 sub assay_date {
   my $assay = shift;
   my @start_dates = $assay->multiprops($start_date_type);
-  my @dates = $assay->multiprops($date_type);
   if (@start_dates == 1) {
     return $start_dates[0]->value;
   }
+  my @dates = $assay->multiprops($date_type);
   if (@dates == 1) {
     return $dates[0]->value;
   }
@@ -389,7 +391,21 @@ sub assay_insecticides {
 }
 
 # returns an array of (name, accession, name, accession, ...)
+# now cached
+my %term_id_to_flattened_parents;
 sub flattened_parents {
   my $term = shift;
-  return map { ( $_->name, $_->dbxref->as_string ) } ($term, $term->recursive_parents);
+  my $id = $term->id;
+  $term_id_to_flattened_parents{$id} ||= [ map { ( $_->name, $_->dbxref->as_string ) } ($term, $term->recursive_parents) ];
+  return @{$term_id_to_flattened_parents{$id}};
+}
+
+#
+# cached quick version
+#
+my %project_id_to_stable_id;
+sub quick_project_stable_id {
+  my $project = shift;
+  my $id = $project->id;
+  return $project_id_to_stable_id{$id} ||= $project->stable_id;
 }
