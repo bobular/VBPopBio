@@ -93,8 +93,8 @@ sub as_data_structure {
   return {
 	  name => $self->name,
 	  uniquename => $self->uniquename,
-	  defined $self->observable ? (observable => $self->observable->as_data_structure) : (),
-	  defined $self->attr ? (attribute => $self->attr->as_data_structure) : (),
+	  observable => defined $self->observable ? $self->observable->as_data_structure : undef,
+	  attribute => defined $self->attr ? $self->attr->as_data_structure : undef,
 	  value => {
 		    text => $self->value,
 		    term => defined $self->cvalue ? $self->cvalue->as_data_structure : undef,
