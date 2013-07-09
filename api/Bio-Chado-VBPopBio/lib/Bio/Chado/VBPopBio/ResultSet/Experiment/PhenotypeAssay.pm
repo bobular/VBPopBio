@@ -95,14 +95,14 @@ sub create_from_isatab {
 	  my $uniquename = "$stable_id:$name";
 
 	  my $observable = $cvterms->find_by_accession($data->{observable});
-	  unless (defined $observable) {
-	    $schema->defer_exception_once("Cannot load Observable ontology term for phenotype $name in $p_file_name");
+	  unless (defined $observable || keys %{$data->{observable}} == 0) {
+	    $schema->defer_exception_once("Cannot load non-empty Observable ontology term for phenotype $name in $p_file_name");
 	    $observable = $schema->types->placeholder;
 	  }
 
 	  my $attribute = $cvterms->find_by_accession($data->{attribute});
-	  unless (defined $attribute) {
-	    $schema->defer_exception_once("Cannot load Attribute ontology term for phenotype $name in $p_file_name");
+	  unless (defined $attribute || keys %{$data->{attribute}} == 0) {
+	    $schema->defer_exception_once("Cannot load non-empty Attribute ontology term for phenotype $name in $p_file_name");
 	    $attribute = $schema->types->placeholder;
 	  }
 
