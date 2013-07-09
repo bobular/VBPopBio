@@ -1,5 +1,6 @@
 package Bio::Chado::VBPopBio::Result::Contact;
 
+use strict;
 use base 'Bio::Chado::Schema::Result::Contact::Contact';
 __PACKAGE__->load_components('+Bio::Chado::VBPopBio::Util::Subclass');
 __PACKAGE__->subclass({
@@ -62,7 +63,6 @@ returns a json-like hashref of arrayrefs and hashrefs
 
 sub as_data_structure {
   my ($self, $depth) = @_;
-  $depth = INT_MAX unless (defined $depth);
   return $self->description,
 }
 

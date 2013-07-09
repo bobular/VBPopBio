@@ -1,6 +1,6 @@
 package Bio::Chado::VBPopBio::Result::Experiment::FieldCollection;
 
-use POSIX;
+use strict;
 use base 'Bio::Chado::VBPopBio::Result::Experiment';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass/);
 __PACKAGE__->subclass({ }); # must call this routine even if not setting up relationships.
@@ -49,7 +49,6 @@ if $depth is defined and less than or equal to zero, no child objects will be re
 
 sub as_data_structure {
   my ($self, $depth) = @_;
-  $depth = INT_MAX unless (defined $depth);
 
   return {
 	  $self->basic_info,

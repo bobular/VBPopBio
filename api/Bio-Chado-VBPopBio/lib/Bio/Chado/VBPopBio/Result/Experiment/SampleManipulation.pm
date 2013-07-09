@@ -1,5 +1,6 @@
 package Bio::Chado::VBPopBio::Result::Experiment::SampleManipulation;
 
+use strict;
 use base 'Bio::Chado::VBPopBio::Result::Experiment';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass/);
 __PACKAGE__->subclass({ }); # must call this routine even if not setting up relationships.
@@ -47,7 +48,6 @@ nothing special added here yet.
 
 sub as_data_structure {
   my ($self, $depth) = @_;
-  $depth = INT_MAX unless (defined $depth);
 
   return {
 	  $self->basic_info,

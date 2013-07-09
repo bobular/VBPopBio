@@ -1,6 +1,6 @@
-
 package Bio::Chado::VBPopBio::Result::Experiment::PhenotypeAssay;
 
+use strict;
 use base 'Bio::Chado::VBPopBio::Result::Experiment';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass/);
 __PACKAGE__->subclass({ }); # must call this routine even if not setting up relationships.
@@ -27,6 +27,7 @@ sub result_summary {
   my $schema = $self->result_source->schema;
 
   my $method = 'unknown method';
+  my @protocols = $self->protocols->all;
   if (@protocols) {
     $method = join ', ', map { $_->type->name } @protocols;
   }
@@ -55,7 +56,6 @@ return data for jsonification
 
 sub as_data_structure {
   my ($self, $depth) = @_;
-  $depth = INT_MAX unless (defined $depth);
 
   return {
 	  $self->basic_info,

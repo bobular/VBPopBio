@@ -48,7 +48,7 @@ returns a json-like hashref of arrayrefs and hashrefs
 
 sub as_data_structure {
   my ($self, $depth) = @_;
-  $depth = INT_MAX unless (defined $depth);
+
   return {
 	  title => $self->title,
 	  pubmed_id => $self->miniref,
