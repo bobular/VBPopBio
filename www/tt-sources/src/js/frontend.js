@@ -232,7 +232,6 @@ function updateProjectFull(project, element, sandbox) {
 
     fillInListValues(vis_array, element.down('#project_visualisations'), 'no_shading').removeClassName('hide_on_load');
 
-
     if (vis_array.size())	assembleProject(project, $('project_load_status'));
 
     // fill in all textareas if we are in sandbox mode
@@ -255,6 +254,19 @@ function updateProjectFull(project, element, sandbox) {
 		    function(page) {
 			fillInPagedListValues(page, pstocks, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
 		    });
+
+    var pcomponents = element.down('#project_components');
+    var purl = 'project/'+project.id+'/components';
+
+    getPagedObjects(purl,
+		    limits,
+		    spinner,
+		    function(page) {
+			fillInPagedListValues(page, pcomponents, purl, limits).down('.hide_on_load').removeClassName('hide_on_load');
+			pcomponents.up('.hide_on_load').removeClassName('hide_on_load');
+		    });
+
+
 
     // now check every 2s for the full project to be loaded before loading the visualisations.
 

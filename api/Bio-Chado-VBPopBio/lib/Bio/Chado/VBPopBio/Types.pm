@@ -557,6 +557,22 @@ sub unknown {
 }
 memoize('unknown');
 
+=head2 metaproject
+
+=cut
+
+sub metaproject {
+  my $self = shift;
+  my $term = $self->schema->cvterms->create_with({ name => 'meta-project',
+						   cv => 'VBcv',
+						   db => 'VBcv',
+						 });
+  $term->definition('A project that consists of samples and assays entirely from pre-existing "primary" projects.');
+  $term->update;
+  return $term;
+}
+memoize('metaproject');
+
 #
 # this is a subsection - please add new terms above the previous head1
 #

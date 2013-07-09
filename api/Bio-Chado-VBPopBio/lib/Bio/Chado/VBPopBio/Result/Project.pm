@@ -13,6 +13,8 @@ __PACKAGE__->subclass({
 		       projectprops => 'Bio::Chado::VBPopBio::Result::Projectprop',
                        project_pubs => 'Bio::Chado::VBPopBio::Result::Linker::ProjectPublication',
                        project_contacts => 'Bio::Chado::VBPopBio::Result::Linker::ProjectContact',
+		       project_relationship_subject_projects => 'Bio::Chado::VBPopBio::Result::Linker::ProjectRelationship',
+		       project_relationship_object_projects => 'Bio::Chado::VBPopBio::Result::Linker::ProjectRelationship',
 		      });
 __PACKAGE__->resultset_attributes({ order_by => 'project_id' });
 

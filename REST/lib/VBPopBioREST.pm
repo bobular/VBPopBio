@@ -52,6 +52,37 @@ get qr{/project/(\w+)} => sub {
 			 });
   };
 
+# get the projects from which this (meta) project was derived
+get qr{/project/(\w+)/components} => sub {
+    my ($id) = splat;
+    my $l = params->{l} || 20;
+    my $o = params->{o} || 0;
+    memcached_get_or_set("project/$id/components-$o-$l", sub {
+			   my $project = schema->projects->find_by_stable_id($id);
+			   my $derives_from = schema->cvterms->find_by_name({term_source_ref=>'OBO_REL', term_name => 'derives_from' });
+
+			   if (defined $project && $derives_from) {
+			     my $results = $project->search_related
+			       ('project_relationship_subject_projects',
+				{ type_id => $derives_from->id })->
+				  search_related('object_project',
+						 undef,
+						 {
+						  rows => $l,
+						  offset => $o,
+						  page => 1,
+						 });
+			     return {
+				     records => [ map { $_->as_data_structure(0) } $results->all ],
+				     records_info($o, $l, $results)
+				    };
+			   } else {
+			     return { error_message => "can't find project or derives_from term" };
+			   }
+			 });
+  };
+
+
 # Projects
 # not cached any more - at least while in development
 # and until we can selectively flush parts of the cache

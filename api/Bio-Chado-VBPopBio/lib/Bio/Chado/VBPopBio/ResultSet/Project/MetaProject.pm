@@ -3,6 +3,10 @@ package Bio::Chado::VBPopBio::ResultSet::Project::MetaProject;
 use base 'Bio::Chado::VBPopBio::ResultSet::Project';
 use Carp;
 use strict;
+use warnings;
+use POSIX qw( strftime );
+use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
+
 
 =head1 NAME
 
@@ -13,6 +17,14 @@ Bio::Chado::VBPopBio::ResultSet::Project::MetaProject
 =head1 SUBROUTINES/METHODS
 
 =head2 create_with
+
+creates a metaproject from a resultset of stocks and a resultset of assays
+
+It will NOT automatically make links to the relevant projects (from
+the stocks/assays provided).  You need to provide a resultset of them.
+
+Metaproject objects retrieved from the database will have the vanilla
+Project class/type.
 
 Usage:
 
@@ -27,29 +39,27 @@ Usage:
                              ->search_by_nd_geolocationprop({ 'type_2.name' => 'collection site country',
                                                               'nd_geolocationprops.value' => 'Mali' });
 
-  $projects = $schema->projects->search({ name => 'UC Davis/UCLA population dataset' });
+
+  # or you can chug through objects and make your own resultsets
+  $stocks_cameroon = $schema->stocks;
+  $stocks_array = [ your stocks go here ];
+  $stocks_cameroon->set_cache($stocks_array);
+
+  # make sure all resultsets have not already been iterated over (call reset method if this is the case)
 
   $metaproject = $metaprojects->create_with( { name => 'xyz',
                                                description => 'blah blah',
+                                               external_id => 'META-ABC-DEF',
                                                stocks => $stocks,
+                                               assays => $assays,
                                                projects => $projects,
-                                               experimental_factors => [ $factor_cvterm_object ],
-                                               object_paths => [ 'object->path' ],
                                              } );
 
 Main method for creating a MetaProject
 
 The stocks argument is a resultset for the stocks you want to add to the new project.
 
-The projects argument tells us which projects to link the new project to (type derives_from).
-We can't do this automatically - linking metaproject to all projects that the stocks already
-belong to - because some of those may also be metaprojects.  E.g. first we make metaprojects
-based on country, then we make some based on year - the stocks already belong to the country
-project and we don't want country projects linked to the year projects.
-
-Maybe think about the relationship types more carefully...
-
-The experimental_factors must correspond one-to-one with the object_paths.
+Assays is similar.
 
 =cut
 
@@ -57,11 +67,15 @@ sub create_with {
   my ($self, $args) = @_;
 
   croak "no name and/or description\n" unless ($args->{name} && $args->{description});
+  croak "no external_id\n" unless ($args->{external_id});
   croak "stocks resultset not given or is empty\n" unless (defined $args->{stocks} && eval { $args->{stocks}->count });
+  croak "assays resultset not given or is empty\n" unless (defined $args->{assays} && eval { $args->{assays}->count });
   croak "projects resultset not given or is empty\n" unless (defined $args->{projects} && eval { $args->{projects}->count });
 
   my $stocks = $args->{stocks};
+  my $assays = $args->{assays};
   my $projects = $args->{projects};
+  my $external_id = $args->{external_id};
 
   my $schema = $self->result_source->schema;
   my $cvterms = $schema->cvterms;
@@ -72,38 +86,40 @@ sub create_with {
 				    description => $args->{description},
 				   } );
 
-  # add the experimental factors
+  # TO DO
+  $metaproject->external_id($external_id);
+  my $stable_id = $metaproject->stable_id;
+  my $date_stamp = strftime("%Y-%m-%d", localtime);
+  $metaproject->submission_date($date_stamp);
+  $metaproject->public_release_date($date_stamp);
 
-  if ($args->{experimental_factors} && ref($args->{experimental_factors}) eq 'ARRAY' &&
-      $args->{object_paths} && ref($args->{object_paths}) eq 'ARRAY') {
-    for (my $i=0; $i<@{$args->{experimental_factors}} && $i<@{$args->{object_paths}}; $i++) {
-      my $factor = $args->{experimental_factors}[$i];
-      my $path = $args->{object_paths}[$i];
-      $metaproject->find_or_create_related('projectprops',
-					   { type => $factor,
-					     value => $path,
-					   });
-    }
+  # same for creation date (create it by asking for it)
+  my $creation_date = $metaproject->creation_date;
+  # more explicit udpate for modification date
+  my $modification_date = $metaproject->update_modification_date;
+
+  # add a projectprop "meta project"
+  $metaproject->add_multiprop(Multiprop->new( cvterms=>[ $schema->types->metaproject ] ));
+
+  # go through each stock, linking any nd_experiments to the new metaproject
+  while (my $stock = $stocks->next) {
+    $stock->add_to_projects($metaproject);
   }
-  # link it to existing project(s)
-  my $derives_from = $cvterms->create_with({ name => 'derives_from', cv => 'relationship' });
 
+  # link assays
+  while (my $assay = $assays->next) {
+    my $project_link = $assay->find_or_create_related('nd_experiment_projects',
+						      { project => $metaproject });
+  }
+
+  # link it to existing project(s)
+  my $derives_from = $cvterms->find_by_name({term_source_ref=>'OBO_REL', term_name => 'derives_from' });
   while (my $project = $projects->next) {
     $metaproject->find_or_create_related('project_relationship_subject_projects',
 					 {
 					  object_project => $project,
 					  type => $derives_from,
 					 });
-  }
-
-  # go through each stock, linking any nd_experiments to the new metaproject
-  while (my $stock = $stocks->next) {
-    my $experiments = $stock->experiments;
-    while (my $experiment = $experiments->next) {
-      my $project_link = $experiment->find_or_create_related('nd_experiment_projects',
-							     { project => $metaproject,
-							     });
-    }
   }
 
   return $metaproject;
