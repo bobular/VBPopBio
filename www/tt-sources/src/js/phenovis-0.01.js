@@ -66,7 +66,7 @@ Cluster.prototype.addPVMark = function(panel, z) {
 	.textMargin(labelOffset)
 	.textStyle("white").font("bold 11px sans-serif")
 	.textShadow("-0.1em 0 0.2em black, 0 0.1em 0.2em black, 0.1em 0 0.2em black, 0 -0.1em 0.2em black")
-	.text(this.getSize()+" "+comp[0].z)
+	.text(this.getSize()) // +" "+comp[0].z)
 	;
     }
     else {
