@@ -387,12 +387,12 @@ Cluster.prototype.getMap = function() {
  * @constructor
  * @ignore
  */
-function ClusterSet(geoplot, data) {
+function ClusterSet(geoplot, data, args) {
   this.geoplot_ = geoplot;
   this.data_ = data;
 //  this.data.sort(function(d) {return d.y});
   this.map_ = geoplot.getMap();
-  this.markerSize_ = 5;
+  this.markerSize_ = args && args.pie_size || 5;
 
   this.clusters_ = [];
   this.makeClusters_();
@@ -754,7 +754,7 @@ function getDataLinks (xvals, y, data) {
 */
 
 
-function geoplot(posHash, div) {
+function geoplot(posHash, div, args) {
 
     function Legend(posHash, ldiv, zvals, z) {	
 	ldiv.setAttribute("class", "legend");
@@ -782,6 +782,9 @@ function geoplot(posHash, div) {
 	this.panel_ = new pv.Panel().overflow("visible");
 	this.clusters_ = [];
 	this.z = pv.Colors.category20();
+	if (args && args.color_map) {
+	    this.z = reorder_colors(this.z, args.color_map);
+	}
 	return this;
     }
     
@@ -850,7 +853,7 @@ function geoplot(posHash, div) {
 	
 	var projection = this.getProjection();
 	
-	var cSet = new ClusterSet(this, this.mapPoints);
+	var cSet = new ClusterSet(this, this.mapPoints, args);
 	this.clusters_ = cSet.getClusters();
 
 	var pixels = this.mapPoints.map(function(d) {
@@ -1046,6 +1049,9 @@ function dotplot(data, div, args) {
     var x = getScale(xvals, (w-legendSize), xType);
     var y = getScale(yvals, h, yType);
     var z = pv.Colors.category20(); //, s = x.range().band / 2;
+    if (args && args.color_map) {
+	z = reorder_colors(z, args.color_map);
+    }
     data = addPosnsToHash(data,x,y);
 
 
@@ -1249,6 +1255,9 @@ function groupedBarChart(data, div,args) {
   var x = pv.Scale.ordinal(pv.range(n)).splitBanded(0, w - legendSize, 9/10);
   var y = getScale(yvals, h, yType);
   var z = pv.Colors.category20(); //, s = x.range().band / 2;
+  if (args && args.color_map) {
+    z = reorder_colors(z, args.color_map);
+  }
 
 
   /* Make root panel. */
@@ -1441,6 +1450,22 @@ function guessAxis(panel, scaleVals, scale, anchor) {
     }
 }
 
+/**
+ * change the ordering colors in a pv.Colors object
+ * based on an input object/hash
+ * key = new color index
+ * value = old color index
+ */
+function reorder_colors(colors, mapping) {
+    var color_mapping = new Hash(mapping);
+    var old_range = colors.range();
+    var new_range = old_range.clone();
+    color_mapping.each(function(pair){
+	new_range[pair.key] = old_range[pair.value];
+    });
+    colors.range(new_range);
+    return colors;
+}
 
 
 /**

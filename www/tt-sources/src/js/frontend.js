@@ -326,7 +326,7 @@ function updateProjectFull(project, element, sandbox) {
 				    var vis = String.interpret(textArea.value).evalJSON();
 				    var vis_panel = textArea.up('.list_row_instance').down('.vis_panel');
 				    renderVisualisation(project, vis, vis_panel);
-				    if (vis.title) vis_panel.up('.list_row_instance').down('#title').update(vis.title);
+				    // if (vis.title) vis_panel.up('.list_row_instance').down('#title').update(vis.title); // no title element any more - now we have tabs
 				}
 			    } );
 			    textArea.insert({ after: button });
