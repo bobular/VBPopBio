@@ -23,11 +23,11 @@
 	};
 
 	getPagedObjects(url,
-									limits,
-									spinner,
-									function(page) {
-										fillInPagedListValues(page, samples, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
-									});
+	limits,
+	spinner,
+	function(page) {
+	fillInPagedListValues(page, samples, url, limits); //down('.hide_on_load').removeClassName('hide_on_load');
+	});
 
 </script>
 

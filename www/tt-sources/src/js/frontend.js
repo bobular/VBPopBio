@@ -57,7 +57,7 @@ function updateSampleFull(stock, element) {
 		    limits,
 		    spinner,
 		    function(page) {
-			fillInPagedListValues(page, sprojects, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
+			fillInPagedListValues(page, sprojects, url, limits); //down('.hide_on_load').removeClassName('hide_on_load');
 		    });
 
     // fill in assays' project provenance (at least the first 5)
@@ -184,14 +184,14 @@ function updateAssayFull(assay, element) {
                     limits,
                     spinner2,
                     function(page) {
-			fillInPagedListValues(page, eprojects, url2, limits).down('.hide_on_load').removeClassName('hide_on_load');
+			fillInPagedListValues(page, eprojects, url2, limits); //down('.hide_on_load').removeClassName('hide_on_load');
                     });
 
     getPagedObjects(url,
                     limits,
                     spinner,
                     function(page) {
-			fillInPagedListValues(page, estocks, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
+			fillInPagedListValues(page, estocks, url, limits); //down('.hide_on_load').removeClassName('hide_on_load');
                     });
 
     return element;
@@ -210,6 +210,8 @@ function updateAssayFull(assay, element) {
 
 function updateProjectFull(project, element, sandbox) {
     if (sandbox && (sandbox == '0' || sandbox == 'false' || sandbox == 'no')) sandbox = 0;
+
+    project.props = merge_repeated_props(project.props);
     fillInObjectValues(project, element.down('#project_info')).removeClassName('hide_on_load');
     var index = 1;
     var vis_array = new Array();
@@ -252,7 +254,7 @@ function updateProjectFull(project, element, sandbox) {
 		    limits,
 		    spinner,
 		    function(page) {
-			fillInPagedListValues(page, pstocks, url, limits).down('.hide_on_load').removeClassName('hide_on_load');
+			fillInPagedListValues(page, pstocks, url, limits); //down('.hide_on_load').removeClassName('hide_on_load');
 		    });
 
     var pcomponents = element.down('#project_components');
@@ -262,7 +264,7 @@ function updateProjectFull(project, element, sandbox) {
 		    limits,
 		    spinner,
 		    function(page) {
-			fillInPagedListValues(page, pcomponents, purl, limits).down('.hide_on_load').removeClassName('hide_on_load');
+			fillInPagedListValues(page, pcomponents, purl, limits); //down('.hide_on_load').removeClassName('hide_on_load');
 			pcomponents.up('.hide_on_load').removeClassName('hide_on_load');
 		    });
 
@@ -621,15 +623,15 @@ function fillInProp(prop, element) {
     // separate the units cvterms away from the normal terms
     var units = prop.cvterms.filter(function(term){return term.accession.match(/^UO:/)});
     var cvterms = prop.cvterms.reject(function(term){return term.accession.match(/^UO:/)});
+    var type_term = cvterms.shift();
     var delimiter = type_element.readAttribute('delimiter') || ', ';
     // now build the text to be displayed
-
     var comment_type;
     if (prop.value) {
 	if (units.size()) {
 	    value_element.update(prop.value + " ("+renderCvterm(units.first())+")");
 	} else {
-	    if (cvterms.first().name == 'comment') {
+	    if (type_term.name == 'comment') {
 		// special treatment for comments
 		// save the content of square brackets for the left hand side
 		var match=prop.value.match(/\[(.+?)\]/);
@@ -652,15 +654,18 @@ function fillInProp(prop, element) {
 		value_element.update(prop.value);
 	    }
 	}
-    } else if (cvterms.size() > 1) {
-	// display the last cvterm as the value
-	value_element.update(renderCvterm(cvterms.pop()));
+    }
+    if (cvterms.size() >= 1) {
+	// prepend the remaining joined cvterms
+	var cvterms_span = new Element('span');
+	cvterms_span.update(cvterms.collect(function(term){return renderCvterm(term)}).join(delimiter));
+	value_element.insert({ top: cvterms_span });
     }
     // now fill in the type element
     if (comment_type != null) {
-	type_element.update("comment ["+comment_type+"]");
+	type_element.update(comment_type); // ("comment ["+comment_type+"]");
     } else {
-	type_element.update(cvterms.collect(function(term){return renderCvterm(term)}).join(delimiter));
+	type_element.update(renderCvterm(type_term)); // cvterms.collect(function(term){return renderCvterm(term)}).join(delimiter));
     }
     return element;
 }
@@ -765,13 +770,19 @@ function fillInPagedListValues(page, element, url, limits) {
 	    
 	});
     }
-    
+
     if (page.records && page.records.size()) {
 	fillInListValues(page.records, element);
     } else {
 	// blank out if no items
 	element.update();
     }
+
+    var down_hidden = element.down('.hide_on_load');
+    if (down_hidden) down_hidden.removeClassName('hide_on_load');
+    var up_hidden = element.up('.hide_on_load');
+    if (up_hidden) up_hidden.removeClassName('hide_on_load');
+
     return element;
 }
 
@@ -908,4 +919,29 @@ function getPagedObjects(url, limits, spinner, callback) {
 	},
 	onFailure: function(t){alert('Sorry, an error occurred. '+url+' did not load')},
     });
+}
+
+/*
+ * a props list might contain many "study design" props
+ * merge all the values into one prop
+ *
+ * can only merge cvterm,cvterm props (a prop can't hold >1 plain text values)
+ */
+
+function merge_repeated_props(props) {
+    var newprops = new Array();
+    var prop_key_to_prop = new Hash();
+    props.each(function(prop) {
+	var accession = prop.cvterms[0].accession;
+	if (prop.cvterms.size() == 2 && !prop.value) {
+	    var old_prop = prop_key_to_prop.get(accession);
+	    if (!old_prop) {
+		old_prop = prop_key_to_prop.set(accession, prop);
+		newprops.push(old_prop);
+	    }
+	    old_prop.cvterms.push(prop.cvterms[1]);
+	}
+    });
+
+    return newprops;
 }

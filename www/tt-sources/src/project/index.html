@@ -29,16 +29,13 @@
         <td class="object_value comma_separated" id="contacts"></td>
       </tr>
       <tr>
-	<th class="row_heading">Submission date</th>
-	<td class="object_value scalar na_if_empty date" id="submission_date"></td>
-      </tr>
-      <tr>
-	<th class="row_heading">Public release date</th>
-	<td class="object_value scalar na_if_empty date" id="public_release_date"></td>
-      </tr>
-      <tr>
-	<th class="row_heading">Last modified date</th>
-	<td class="object_value scalar date" id="last_modified_date"></td>
+	<th class="row_heading">Dates</th>
+	<td class="master_cell"><table style="width:100%;"><tr>
+	      <td><i>Submitted:</i>&nbsp;<span class="object_value scalar na_if_empty date" id="submission_date"></span></td>
+	  <td><i>Public release:</i>&nbsp;<span class="object_value scalar na_if_empty date" id="public_release_date"></span></td>
+	  <td><i>Last modified:</i>&nbsp;<span class="object_value scalar date" id="last_modified_date"></span></td>
+            </tr></table>
+        </td>
       </tr>
     </table>
     <table class="nested_props_list no_shading">
@@ -83,7 +80,9 @@
 
   <!-- to do: props, pubs, contacts, metaproject relationships? -->
   
+<div class="hide_on_load">
 [% INCLUDE 'list/samples.html' id='project_stocks' title='Samples' %]
+</div>
 
 <div class="hide_on_load">
 [% INCLUDE 'list/projects.html' id='project_components' title='This meta-project contains data from primary project(s)'%]

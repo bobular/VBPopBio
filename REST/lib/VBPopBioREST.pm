@@ -91,7 +91,7 @@ get qr{/projects/head} => sub {
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
 
-#    memcached_get_or_set("projects$head-$o-$l", sub {
+    memcached_get_or_set("projects$head-$o-$l", sub {
 
                            # for ordering by submission date
                            my $sub_date_type = schema->types->submission_date;
@@ -111,7 +111,7 @@ get qr{/projects/head} => sub {
 				   records => [ map { $_->as_data_structure($depth) } $results->all ],
 				   records_info($o, $l, $results)
 				  };
-#			 });
+			 });
   };
 
 # Stocks
