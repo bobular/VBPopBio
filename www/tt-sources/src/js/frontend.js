@@ -408,6 +408,27 @@ function getFilteredDataHash_jsp(project, vis) {
 	    
 	}
 
+	/*
+	  e.g.
+	  "filters": { "substring" : { "z": [ 0, 4 ] }
+
+	  same start/end as javascript/perl substring
+
+	  will probably die if applied to numbers or arrays (e.g. multiple z values)
+	 */
+	if (vis.filters.substring) {
+	    var spec = vis.filters.substring;
+	    hashJSP = hashJSP.collect(
+		function(hash) {
+		    if (spec.x)	hash.x = hash.x.substring(spec.x[0], spec.x[1]);
+		    if (spec.y)	hash.y = hash.y.substring(spec.y[0], spec.y[1]);
+		    if (spec.z)	hash.z = hash.z.substring(spec.z[0], spec.z[1]);
+		    return hash;
+		}
+	    );
+	    
+	}
+
 	if (vis.filters.noFalseZ) {
 	    /*
 	     * we don't want to encourage filtering away points from the dataset
