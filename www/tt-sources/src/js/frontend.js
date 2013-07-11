@@ -938,8 +938,9 @@ function merge_repeated_props(props) {
 	    if (!old_prop) {
 		old_prop = prop_key_to_prop.set(accession, prop);
 		newprops.push(old_prop);
+	    } else {
+		old_prop.cvterms.push(prop.cvterms[1]);
 	    }
-	    old_prop.cvterms.push(prop.cvterms[1]);
 	}
     });
 
