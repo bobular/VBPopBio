@@ -429,13 +429,11 @@ function getFilteredDataHash_jsp(project, vis) {
 	    
 	}
 
-	if (vis.filters.noFalseZ) {
-	    /*
-	     * we don't want to encourage filtering away points from the dataset
-	     * because we will probably have more dynamic z labelling (by exptal factor radio buttone)
-	     */
-	    console.log("Advance warning: vis.filters.noFalseZ will be deprecated and is not recommended");
-	    hashJSP = hashJSP.filter(function(hash){ return hash.z !== false; });
+	/* e.g.
+	   "filters": { "noEmptyCoords" : 1 }
+	*/
+	if (vis.filters.no_empty_coords) {
+	    hashJSP = hashJSP.filter(function(hash){ return hash.x || hash.y });
 	}
 
     }
