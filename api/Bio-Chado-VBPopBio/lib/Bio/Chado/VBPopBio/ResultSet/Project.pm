@@ -196,7 +196,7 @@ sub create_from_isatab {
       if ($assay->{study_assay_measurement_type} eq 'field collection') {
 	if (defined(my $sample_data = $assay->{samples}{$sample_id})) {
 	  while (my ($assay_name, $assay_data) = each %{$sample_data->{assays}}) {
-	    $field_collections{$assay_name} ||= $schema->field_collections->create_from_isatab($assay_name, $assay_data, $project, $ontologies, $study);
+	    $field_collections{$assay_name} ||= $schema->field_collections->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study);
 	    # link each field collection (newly created or already existing) to the stock
 	    $field_collections{$assay_name}->add_to_stocks($stock, { type => $assay_creates_stock }) ;
 	    # you could have added linker props with the following inside the second argument
@@ -212,7 +212,7 @@ sub create_from_isatab {
       elsif ($assay->{study_assay_measurement_type} eq 'species identification assay') {
 	if (defined(my $sample_data = $assay->{samples}{$sample_id})) {
 	  while (my ($assay_name, $assay_data) = each %{$sample_data->{assays}}) {
-	    $species_identification_assays{$assay_name} ||= $schema->species_identification_assays->create_from_isatab($assay_name, $assay_data, $project, $ontologies, $study);
+	    $species_identification_assays{$assay_name} ||= $schema->species_identification_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study);
 	    $species_identification_assays{$assay_name}->add_to_stocks($stock, { type => $assay_uses_stock });
 	    # this assay also 'produces' a stock (which contains the organism information)
 	    # but that is linked within ResultSet::SpeciesIdentificationAssay
@@ -225,7 +225,7 @@ sub create_from_isatab {
       elsif ($assay->{study_assay_measurement_type} eq 'genotype assay') {
 	if (defined(my $sample_data = $assay->{samples}{$sample_id})) {
 	  while (my ($assay_name, $assay_data) = each %{$sample_data->{assays}}) {
-	    $genotype_assays{$assay_name} ||= $schema->genotype_assays->create_from_isatab($assay_name, $assay_data, $project, $ontologies, $study, $parser);
+	    $genotype_assays{$assay_name} ||= $schema->genotype_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study, $parser);
 	    $genotype_assays{$assay_name}->add_to_stocks($stock, { type => $assay_uses_stock });
 	  }
 	}
@@ -235,7 +235,7 @@ sub create_from_isatab {
       elsif ($assay->{study_assay_measurement_type} eq 'phenotype assay') {
 	if (defined(my $sample_data = $assay->{samples}{$sample_id})) {
 	  while (my ($assay_name, $assay_data) = each %{$sample_data->{assays}}) {
-	    $phenotype_assays{$assay_name} ||= $schema->phenotype_assays->create_from_isatab($assay_name, $assay_data, $project, $ontologies, $study, $parser);
+	    $phenotype_assays{$assay_name} ||= $schema->phenotype_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study, $parser);
 	    $phenotype_assays{$assay_name}->add_to_stocks($stock, { type => $assay_uses_stock });
 	  }
 	}

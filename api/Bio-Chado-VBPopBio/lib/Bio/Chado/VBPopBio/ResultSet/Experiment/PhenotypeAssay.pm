@@ -33,7 +33,7 @@ sub new {
 
 =head2 create_from_isatab
 
- Usage: $phenotype_assays->create_from_isatab($assay_name, $assay_data, $project, $ontologies, $study, $isa_parser);
+ Usage: $phenotype_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study, $isa_parser);
 
  Desc: This method creates genoype assay nd_experiment from the isatab assay sample hashref
  Ret : a new Experiment::PhenotypeAssay row (is a NdExperiment)
@@ -47,11 +47,11 @@ sub new {
 =cut
 
 sub create_from_isatab {
-  my ($self, $assay_name, $assay_data, $project, $ontologies, $study, $isa_parser) = @_;
+  my ($self, $assay_name, $assay_data, $project, $stock, $ontologies, $study, $isa_parser) = @_;
 
   # maybe the assay is in use by another project so wasn't deleted
   # but we still need to delete it and relink it afterwards
-  my $saved_links = $self->find_and_delete_existing($assay_name, $project);
+  my $saved_links = $self->find_and_delete_existing($assay_name, $project, $stock);
   # maybe $assay_name is a stable ID and we just need to "borrow" an assay from an existing project
   my $phenotype_assay = $self->find_and_link_existing($assay_name, $project);
 

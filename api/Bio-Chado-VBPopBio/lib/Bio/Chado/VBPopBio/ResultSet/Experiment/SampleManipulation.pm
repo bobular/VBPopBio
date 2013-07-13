@@ -29,7 +29,7 @@ sub new {
 
 =head2 create_from_isatab_NOT_YET
 
- Usage: $sample_manipulations->create_from_isatab($assay_name, $isatab_assay_data, $project, $ontologies, $study);
+ Usage: $sample_manipulations->create_from_isatab($assay_name, $isatab_assay_data, $project, $stock, $ontologies, $study);
 
  Desc: This method creates a stock object from the isatab assay sample hashref
  Ret : a new Experiment::SampleManipulation row (is a NdExperiment)
@@ -41,11 +41,11 @@ sub new {
 =cut
 
 sub create_from_isatab_NOT_YET {
-  my ($self, $assay_name, $assay_data, $project, $ontologies, $study) = @_;
+  my ($self, $assay_name, $assay_data, $project, $stock, $ontologies, $study) = @_;
 
   # maybe the assay is in use by another project so wasn't deleted
   # but we still need to delete it and relink it afterwards
-  my $saved_links = $self->find_and_delete_existing($assay_name, $project);
+  my $saved_links = $self->find_and_delete_existing($assay_name, $project, $stock);
   # maybe $assay_name is a stable ID and we just need to "borrow" an assay from an existing project
   my $species_identification_assay = $self->find_and_link_existing($assay_name, $project);
 

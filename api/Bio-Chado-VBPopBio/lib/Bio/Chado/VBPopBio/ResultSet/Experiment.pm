@@ -51,7 +51,7 @@ Returns undef if existing assay not found.
 my $VBA_db; # cached
 
 sub find_and_delete_existing {
-  my ($self, $assay_name, $project) = @_;
+  my ($self, $assay_name, $project, $stock) = @_;
   my $schema = $self->result_source->schema;
   $VBA_db //= $schema->dbs->find_or_create({ name => 'VBA' });
 
@@ -79,9 +79,11 @@ sub find_and_delete_existing {
 	  my $assay = $first_linker->nd_experiment;
 
 	  # save the projects and stocks to link to
-	  my $links = { projects => [ $assay->projects->all ],
-			stocks =>  [ $assay->stocks->all ],
-		        stock_link_type_ids => [ $assay->nd_experiment_stocks->get_column('type_id')->all ],
+	  # except the stock and project that are making this assay
+	  # because those links will be remade anyway
+	  my $links = { projects => [ grep { $_->id != $project->id } $assay->projects->all ],
+			stocks =>  [ grep { $_->id != $stock->id } $assay->stocks->all ],
+		        stock_link_type_ids => [ $assay->nd_experiment_stocks->search({ stock_id => { '!=' => $stock->id } })->get_column('type_id')->all ],
 		      };
 	  # then delete the linkers
 	  $assay->nd_experiment_projects->delete;

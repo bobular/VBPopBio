@@ -6180,6 +6180,14 @@ ALTER TABLE ONLY nd_experiment_pub
 
 
 --
+-- Name: nd_experiment_stock_c1; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY nd_experiment_stock
+    ADD CONSTRAINT nd_experiment_stock_c1 UNIQUE (nd_experiment_id, stock_id);
+
+
+--
 -- Name: nd_experiment_stock_dbxref_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -7473,6 +7481,20 @@ CREATE INDEX nd_experiment_pub_idx1 ON nd_experiment_pub USING btree (nd_experim
 --
 
 CREATE INDEX nd_experiment_pub_idx2 ON nd_experiment_pub USING btree (pub_id);
+
+
+--
+-- Name: nd_experiment_stock_idx1; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX nd_experiment_stock_idx1 ON nd_experiment_stock USING btree (stock_id);
+
+
+--
+-- Name: nd_experiment_stock_idx2; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX nd_experiment_stock_idx2 ON nd_experiment_stock USING btree (nd_experiment_id);
 
 
 --

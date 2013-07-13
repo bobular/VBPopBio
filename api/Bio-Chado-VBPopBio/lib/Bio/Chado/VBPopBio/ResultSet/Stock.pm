@@ -399,7 +399,8 @@ sub find_and_delete_existing {
       if (defined $stock) {
 	if (!defined $stocks->next) { # should be only one!
 	  # save the projects and stocks to link to
-	  my $links = { projects => [ $stock->projects->all ],
+	  # except the current project which will be linked again anyway
+	  my $links = { projects => [ grep { $_->id != $project->id } $stock->projects->all ],
 			assays =>  [ $stock->nd_experiments->all ],
 		        assay_link_type_ids => [ $stock->nd_experiment_stocks->get_column('type_id')->all ],
 		      };
