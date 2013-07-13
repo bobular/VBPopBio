@@ -401,8 +401,8 @@ sub find_and_delete_existing {
 	  # save the projects and stocks to link to
 	  # except the current project which will be linked again anyway
 	  my $links = { projects => [ grep { $_->id != $project->id } $stock->projects->all ],
-			assays =>  [ $stock->nd_experiments->all ],
-		        assay_link_type_ids => [ $stock->nd_experiment_stocks->get_column('type_id')->all ],
+			assays =>  [ $stock->nd_experiments->search({}, {order_by => 'nd_experiment_id' })->all ],
+		        assay_link_type_ids => [ $stock->nd_experiment_stocks->search({}, {order_by => 'nd_experiment_id'})->get_column('type_id')->all ],
 		      };
 	  # then delete the linkers
 	  $stock->nd_experiment_stocks->delete;

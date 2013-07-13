@@ -196,9 +196,11 @@ sub create_from_isatab {
       if ($assay->{study_assay_measurement_type} eq 'field collection') {
 	if (defined(my $sample_data = $assay->{samples}{$sample_id})) {
 	  while (my ($assay_name, $assay_data) = each %{$sample_data->{assays}}) {
-	    $field_collections{$assay_name} ||= $schema->field_collections->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study);
+	    my $assay = $field_collections{$assay_name} ||= $schema->field_collections->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study);
 	    # link each field collection (newly created or already existing) to the stock
-	    $field_collections{$assay_name}->add_to_stocks($stock, { type => $assay_creates_stock }) ;
+	    $assay->add_to_stocks($stock, { type => $assay_creates_stock })
+	      unless ($assay->search_related('nd_experiment_stocks',
+					     { stock_id => $stock->id, type_id => $assay_creates_stock->id })->count);
 	    # you could have added linker props with the following inside the second argument
 	    # nd_experiment_stockprops => [ { type => $some_cvterm, value => 77 } ]
 	  }
@@ -212,8 +214,11 @@ sub create_from_isatab {
       elsif ($assay->{study_assay_measurement_type} eq 'species identification assay') {
 	if (defined(my $sample_data = $assay->{samples}{$sample_id})) {
 	  while (my ($assay_name, $assay_data) = each %{$sample_data->{assays}}) {
-	    $species_identification_assays{$assay_name} ||= $schema->species_identification_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study);
-	    $species_identification_assays{$assay_name}->add_to_stocks($stock, { type => $assay_uses_stock });
+	    my $assay = $species_identification_assays{$assay_name} ||=
+ $schema->species_identification_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study);
+	    $assay->add_to_stocks($stock, { type => $assay_uses_stock })
+	      unless ($assay->search_related('nd_experiment_stocks',
+					     { stock_id => $stock->id, type_id => $assay_uses_stock->id })->count);
 	    # this assay also 'produces' a stock (which contains the organism information)
 	    # but that is linked within ResultSet::SpeciesIdentificationAssay
 	  }
@@ -225,8 +230,10 @@ sub create_from_isatab {
       elsif ($assay->{study_assay_measurement_type} eq 'genotype assay') {
 	if (defined(my $sample_data = $assay->{samples}{$sample_id})) {
 	  while (my ($assay_name, $assay_data) = each %{$sample_data->{assays}}) {
-	    $genotype_assays{$assay_name} ||= $schema->genotype_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study, $parser);
-	    $genotype_assays{$assay_name}->add_to_stocks($stock, { type => $assay_uses_stock });
+	    my $assay = $genotype_assays{$assay_name} ||= $schema->genotype_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study, $parser);
+	    $assay->add_to_stocks($stock, { type => $assay_uses_stock })
+	      unless ($assay->search_related('nd_experiment_stocks',
+					     { stock_id => $stock->id, type_id => $assay_uses_stock->id })->count);
 	  }
 	}
       }
@@ -235,8 +242,10 @@ sub create_from_isatab {
       elsif ($assay->{study_assay_measurement_type} eq 'phenotype assay') {
 	if (defined(my $sample_data = $assay->{samples}{$sample_id})) {
 	  while (my ($assay_name, $assay_data) = each %{$sample_data->{assays}}) {
-	    $phenotype_assays{$assay_name} ||= $schema->phenotype_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study, $parser);
-	    $phenotype_assays{$assay_name}->add_to_stocks($stock, { type => $assay_uses_stock });
+	    my $assay = $phenotype_assays{$assay_name} ||= $schema->phenotype_assays->create_from_isatab($assay_name, $assay_data, $project, $stock, $ontologies, $study, $parser);
+	    $assay->add_to_stocks($stock, { type => $assay_uses_stock })
+	      unless ($assay->search_related('nd_experiment_stocks',
+					     { stock_id => $stock->id, type_id => $assay_uses_stock->id })->count);
 	  }
 	}
       }

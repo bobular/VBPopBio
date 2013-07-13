@@ -527,8 +527,11 @@ sub relink {
     }
   }
   if ($links->{assays}) {
+    # warn sprintf "%d and %d assays and links\n", scalar(@{$links->{assays}}), scalar(@{$links->{assay_link_type_ids}});
     foreach my $assay (@{$links->{assays}}) {
-      $self->add_to_nd_experiments($assay, { type_id => shift @{$links->{assay_link_type_ids}} });
+      my $link_type_id = shift @{$links->{assay_link_type_ids}};
+      # warn "relinking ".$self->stable_id." to ".$assay->stable_id." type $link_type_id\n";
+      $self->add_to_nd_experiments($assay, { type_id => $link_type_id });
     }
   }
 }

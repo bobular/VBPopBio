@@ -82,8 +82,8 @@ sub find_and_delete_existing {
 	  # except the stock and project that are making this assay
 	  # because those links will be remade anyway
 	  my $links = { projects => [ grep { $_->id != $project->id } $assay->projects->all ],
-			stocks =>  [ grep { $_->id != $stock->id } $assay->stocks->all ],
-		        stock_link_type_ids => [ $assay->nd_experiment_stocks->search({ stock_id => { '!=' => $stock->id } })->get_column('type_id')->all ],
+			stocks =>  [ $assay->stocks->search({ 'stock.stock_id' => { '!=' => $stock->id } }, { order_by => 'stock.stock_id' })->all ],
+		        stock_link_type_ids => [ $assay->nd_experiment_stocks->search({ stock_id => { '!=' => $stock->id } }, { order_by => 'stock_id' })->get_column('type_id')->all ],
 		      };
 	  # then delete the linkers
 	  $assay->nd_experiment_projects->delete;

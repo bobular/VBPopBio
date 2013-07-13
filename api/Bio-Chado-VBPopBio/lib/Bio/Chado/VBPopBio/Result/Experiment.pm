@@ -580,9 +580,11 @@ sub relink {
     }
   }
   if ($links->{stocks}) {
+#    warn sprintf "%d and %d stocks and links for object %s\n", scalar(@{$links->{stocks}}), scalar(@{$links->{stock_link_type_ids}}), $self->stable_id;
     foreach my $stock (@{$links->{stocks}}) {
-      # warn "relinking ".$self->stable_id." to ".$stock->stable_id."\n";
-      $self->add_to_stocks($stock, { type_id => shift @{$links->{stock_link_type_ids}} });
+      my $link_type_id = shift @{$links->{stock_link_type_ids}};
+#      warn "relinking ".$self->stable_id." to ".$stock->stable_id." type $link_type_id\n";
+      $self->add_to_stocks($stock, { type_id => $link_type_id });
     }
   }
 }
