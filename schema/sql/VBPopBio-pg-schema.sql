@@ -6184,7 +6184,7 @@ ALTER TABLE ONLY nd_experiment_pub
 --
 
 ALTER TABLE ONLY nd_experiment_stock
-    ADD CONSTRAINT nd_experiment_stock_c1 UNIQUE (nd_experiment_id, stock_id);
+    ADD CONSTRAINT nd_experiment_stock_c1 UNIQUE (nd_experiment_id, stock_id, type_id);
 
 
 --
