@@ -117,10 +117,10 @@ sub genome_browser_path {
       }
     }
 
-    # /Anopheles_gambiae/Location?db=core;r=2L:39215647-39228146;contigviewbottom=variation_set_AgSNP01=normal
+    # /Anopheles_gambiae/Location/View?db=core;r=2L:39215647-39228146;contigviewbottom=variation_set_AgSNP01=normal
     if ($ref && $var_set && $region) {
       # $var_set needs any url-escaping?
-      return "/$ref/Location?db=core;r=$region;contigviewbottom=variation_set_$var_set=normal";
+      return "/$ref/Location/View?db=core;r=$region;contigviewbottom=variation_set_$var_set=normal";
     }
   }
   return undef;
