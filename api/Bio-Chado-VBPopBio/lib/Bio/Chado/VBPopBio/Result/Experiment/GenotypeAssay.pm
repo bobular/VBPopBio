@@ -119,8 +119,11 @@ sub genome_browser_path {
 
     # /Anopheles_gambiae/Location/View?db=core;r=2L:39215647-39228146;contigviewbottom=variation_set_AgSNP01=normal
     if ($ref && $var_set && $region) {
-      # $var_set needs any url-escaping?
-      return "/$ref/Location/View?db=core;r=$region;contigviewbottom=variation_set_$var_set=normal";
+      # $var_set needs any url-escaping? no but it needs sanitising in the same way as Ensembl browser
+      # see https://www.ebi.ac.uk/panda/jira/browse/VB-2285
+      my $var_set_sanitised = $var_set;
+      $var_set_sanitised =~ s/[^\w-]/_/g;
+      return "/$ref/Location/View?db=core;r=$region;contigviewbottom=variation_set_$var_set_sanitised=normal";
     }
   }
   return undef;
