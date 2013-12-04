@@ -396,7 +396,7 @@ my %term_id_to_flattened_parents;
 sub flattened_parents {
   my $term = shift;
   my $id = $term->id;
-  $term_id_to_flattened_parents{$id} ||= [ map { ( $_->name, $_->dbxref->as_string ) } ($term, $term->recursive_parents) ];
+  $term_id_to_flattened_parents{$id} ||= [ map { ( $_->name, $_->cvtermsynonyms->get_column('synonym')->all, $_->dbxref->as_string ) } ($term, $term->recursive_parents) ];
   return @{$term_id_to_flattened_parents{$id}};
 }
 
