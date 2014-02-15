@@ -24,7 +24,7 @@ schema->storage->_use_join_optimizer(0);
 
 get '/' => sub {
   return {
-	  message => "Testing Dancer for VBPopBio REST service",
+	  message => "Welcome to the VBPopBio REST service.  Available endpoints are described in the source code here:  https://github.com/bobular/VBPopBio/blob/master/REST/lib/VBPopBioREST.pm",
 	  connection => schema->storage->connect_info->[0]
 	 };
 };
@@ -308,7 +308,7 @@ get qr{/cvterm/(\w+):(\w+)} => sub {
     my $parents = params->{parents} || 0;
     my $children = params->{children} || 0;
 
-#    memcached_get_or_set("cvterm/$onto:$accession/$all_parents/$parents/$children", sub {
+    memcached_get_or_set("cvterm/$onto:$accession/$all_parents/$parents/$children", sub {
 			   my $cvterm = schema->cvterms->find_by_accession
 			     ({ term_source_ref => $onto,
 				term_accession_number => $accession,
@@ -336,7 +336,7 @@ get qr{/cvterm/(\w+):(\w+)} => sub {
 			   } else {
 			     return { error_message => "can't find cvterm" };
 			   }
-#			 });
+			 });
   };
 
 # fall back 404
