@@ -22,8 +22,11 @@ schema->storage->_use_join_optimizer(0);
 ##############################
 
 
-get '/' => sub{
-    return {message => "Testing Dancer for VBPopBio REST service"};
+get '/' => sub {
+  return {
+	  message => "Testing Dancer for VBPopBio REST service",
+	  connection => schema->storage->connect_info->[0]
+	 };
 };
 
 
@@ -287,6 +290,53 @@ get qr{/(?:stock|sample)/(\w+)/assays} => sub {
 				   records_info($o, $l, $experiments)
 				  };
 			 });
+  };
+
+# cvterm - by accession: e.g. MIRO:1000123
+#
+# examples:
+#
+# /cvterm/OBI:0300311?parents=1   => gets immediate parents
+# /cvterm/OBI:0300311?all_parents=1   => gets all parents to root (in same namespace)
+# /cvterm/OBI:0300311?children=1   => gets immediate children
+#
+# there is no all_children option (as this could return a crazy number of terms)
+#
+get qr{/cvterm/(\w+):(\w+)} => sub {
+    my ($onto, $accession) = splat;
+    my $all_parents = params->{all_parents} || 0;
+    my $parents = params->{parents} || 0;
+    my $children = params->{children} || 0;
+
+#    memcached_get_or_set("cvterm/$onto:$accession/$all_parents/$parents/$children", sub {
+			   my $cvterm = schema->cvterms->find_by_accession
+			     ({ term_source_ref => $onto,
+				term_accession_number => $accession,
+			      });
+			   if (defined $cvterm) {
+			     # could use $cvterm->as_data_structure();
+			     # but we need to add synonyms etc and don't want
+			     # to add extra work to one of the most used API methods
+			     my $data = {
+				     name => $cvterm->name,
+				     accession => $cvterm->dbxref->as_string,
+				     synonyms => [ $cvterm->cvtermsynonyms->get_column('synonym')->all ],
+				    };
+
+			     if ($all_parents) {
+			       $data->{all_parents} = [ map { $_->as_data_structure } $cvterm->recursive_parents->all ];
+			     }
+			     if ($parents) {
+			       $data->{parents} = [ map { $_->object->as_data_structure } $cvterm->parents->all ];
+			     }
+			     if ($children) {
+			       $data->{children} = [ map { $_->object->as_data_structure } $cvterm->children->all ];
+			     }
+			     return $data;
+			   } else {
+			     return { error_message => "can't find cvterm" };
+			   }
+#			 });
   };
 
 # fall back 404
