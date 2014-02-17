@@ -318,10 +318,11 @@ get qr{/cvterm/(\w+):(\w+)} => sub {
 			     # but we need to add synonyms etc and don't want
 			     # to add extra work to one of the most used API methods
 			     my $data = {
-				     name => $cvterm->name,
-				     accession => $cvterm->dbxref->as_string,
-				     synonyms => [ $cvterm->cvtermsynonyms->get_column('synonym')->all ],
-				    };
+					 name => $cvterm->name,
+					 definition => $cvterm->definition,
+					 accession => $cvterm->dbxref->as_string,
+					 synonyms => [ $cvterm->cvtermsynonyms->get_column('synonym')->all ],
+					};
 
 			     if ($all_parents) {
 			       $data->{all_parents} = [ map { $_->as_data_structure } $cvterm->recursive_parents->all ];
