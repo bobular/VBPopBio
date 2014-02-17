@@ -153,11 +153,11 @@ while (my $stock = $stocks->next) {
 		    geolocations => [ map { $_->geolocation->summary } (@tmp = $stock->field_collections) ],
 		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation) } @tmp ],
 
-		    genotypes =>  [ map { $_->result_summary } (@tmp = $stock->genotype_assays) ],
-		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } map { $_->genotypes->all } @tmp ],
+		    genotypes =>  [ map { ($_->description, $_->name) } (@tmp = map { $_->genotypes->all } $stock->genotype_assays) ],
+		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @tmp ],
 
-		    phenotypes =>  [ map { $_->result_summary } (@tmp = $stock->phenotype_assays) ],
-		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } map { $_->phenotypes->all } @tmp ],
+		    phenotypes =>  [ map { $_->name } (@tmp = map { $_->phenotypes->all } $stock->phenotype_assays) ],
+		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @tmp ],
 
 		    ($stock_best_species ? (
 					    species => [ $stock_best_species->name ],
