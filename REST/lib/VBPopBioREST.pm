@@ -331,7 +331,7 @@ get qr{/cvterm/(\w+):(\w+)} => sub {
 			       $data->{parents} = [ map { $_->object->as_data_structure } $cvterm->parents->all ];
 			     }
 			     if ($children) {
-			       $data->{children} = [ map { $_->object->as_data_structure } $cvterm->children->all ];
+			       $data->{children} = [ map { $_->subject->as_data_structure } $cvterm->children->all ];
 			     }
 			     return $data;
 			   } else {
