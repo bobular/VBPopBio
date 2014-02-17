@@ -442,3 +442,33 @@ div#vbpg_page .vbpg_pager_pending a {
 }
 */
 
+.vbpg_cvterm_popup {
+    position: absolute;
+    width: 300px;
+    background: white;
+    border: 2px solid black;
+    border-radius: 3px;
+    padding: 5px;
+
+    font-size: 12px;
+    font-style: normal;
+    color: black;
+    font-weight: normal;
+    z-index: 2000;
+}
+
+.vbpg_cvterm_popup_close {
+    background: white;
+    float: right;
+    color: black;
+    border: 2px solid black;
+    padding-left: 2px;
+    padding-right: 2px;
+    font-size: 10px;
+
+}
+
+.vbpg_cvterm_popup_scrolldiv {
+    max-height: 100px;
+    overflow: auto;
+}

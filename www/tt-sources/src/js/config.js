@@ -3,6 +3,7 @@
 configTxt = {
     'REST':'[% json_root %]',
     'ROOT':'[% root %]',
+    'VBROOT':'[% vb_root %]',
     'ROOT_STATIC':'[% root_static %]',
     'linkouts' : {
 	'MR4 accession' : 'http://www.mr4.org/MR4ReagentsSearch/Results.aspx?BEINum=####&Template=livingMosquitoes',

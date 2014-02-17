@@ -813,11 +813,9 @@ function fillInPagedListValues(page, element, url, limits) {
 function renderCvterm(term) {
     if (term != null) {
 	if (term.accession.match(/^\w+:\d+$/)) {
-	    if (term.accession.match(/^VBsp:/)) { // !!warning: copy and paste next two lines!!
-		return '<span class="cvterm species_name" title="Ontology term '+term.accession+'" alt="Ontology term '+term.accession+'" accession="'+term.accession+'">'+term.name+'</span>';
-	    } else {
-		return '<span class="cvterm" title="Ontology term '+term.accession+'" alt="Ontology term '+term.accession+'" accession="'+term.accession+'">'+term.name+'</span>';
-	    }
+	    var classes = term.accession.match(/^VBsp:/) ? "cvterm species_name" : "cvterm";
+	    return '<span class="'+classes+'" title="Click for more information about this ontology term." accession="'+term.accession+'" onclick="handle_cvterm_click(this)">'+term.name+'</span>';
+
 	} else {
 	    return term.name;
 	}
@@ -826,6 +824,59 @@ function renderCvterm(term) {
     }
 }
 
+
+function handle_cvterm_click(element) {
+    // TO DO - prevent multiple clicks and popups or make second click hide the popup
+    var accession = element.readAttribute('accession');
+    var cvterm_popup = new Element('div').addClassName('vbpg_cvterm_popup');
+
+    var spinner = new Element('div');
+    spinner.insert({top: new Element('img', { src: config.ROOT_STATIC+'vbpg_images/bigrotation2.gif' }) });
+    cvterm_popup.insert({top: spinner});
+
+    var info_div = new Element('div').
+	addClassName('cvterm_info').
+	addClassName('hide_on_load').
+	update('<b>Ontology term:</b> <span class="object_value scalar" id="name"></span><br/>\
+<b>Accession:</b> <a class="object_value auto_link" title="Search VectorBase" href="'+config.VBROOT+'search/site/####"><span class="object_value scalar" id="accession"></span></a><br/>\
+<div class="vbpg_cvterm_popup_scrolldiv">\
+<b>Definition:</b> <span class="object_value scalar" id="definition"></span><br/>\
+</div>\
+<b>Synonyms:</b> <span class="object_value comma_separated" id="synonyms"></span><br/>\
+<div class="nested_object_list" id="parents">\
+<div class="list_row_template cvterm_parent">\
+<b>Parent term:</b> <span class="object_value cvterm" id="."></span><br/>\
+</div>\
+</div>\
+<div class="nested_object_list vbpg_cvterm_popup_scrolldiv" id="children">\
+<div class="list_row_template cvterm_child">\
+<b>Child term:</b> <span class="object_value cvterm" id="."></span><br/>\
+</div>\
+</div>\
+'
+	       );
+    cvterm_popup.insert({bottom: info_div})
+
+    var close_popup = new Element('div').addClassName('vbpg_cvterm_popup_close').update('close');
+    cvterm_popup.insert({ top: close_popup });
+    close_popup.observe('click', function() { handle_cvterm_close(cvterm_popup) });
+
+    element.insert({ before: cvterm_popup });
+
+    getObject('cvterm/'+accession+'?parents=1&children=1',
+	      spinner,
+	      function(cvterm) {
+		  
+		  fillInObjectValues(cvterm, cvterm_popup.down('.cvterm_info')).removeClassName('hide_on_load');
+   
+
+			     
+	      });
+}
+
+function handle_cvterm_close(element) {
+    element.remove();
+}
 
 /*
  * AJAX wrapper of a wrapper to get just one object by its url (NO app root; NO leading slash)
