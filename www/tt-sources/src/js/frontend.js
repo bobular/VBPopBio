@@ -866,12 +866,17 @@ function handle_cvterm_click(element) {
     getObject('cvterm/'+accession+'?parents=1&children=1',
 	      spinner,
 	      function(cvterm) {
-		  
+		  // only show child/parent terms with numeric accessions
+		  cvterm.parents = cvterm.parents.filter(
+			 function(term) {
+			     return term.accession.match(/^\w+:\d+$/);
+			 });
+		  cvterm.children = cvterm.children.filter(
+			 function(term) {
+			     return term.accession.match(/^\w+:\d+$/);
+			 });
 		  fillInObjectValues(cvterm, cvterm_popup.down('.cvterm_info')).removeClassName('hide_on_load');
-   
-
-			     
-	      });
+   	      });
 }
 
 function handle_cvterm_close(element) {

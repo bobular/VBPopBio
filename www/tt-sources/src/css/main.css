@@ -454,6 +454,7 @@ div#vbpg_page .vbpg_pager_pending a {
     font-style: normal;
     color: black;
     font-weight: normal;
+
     z-index: 2000;
 }
 
@@ -462,6 +463,7 @@ div#vbpg_page .vbpg_pager_pending a {
     float: right;
     color: black;
     border: 2px solid black;
+    border-radius: 3px;
     padding-left: 2px;
     padding-right: 2px;
     font-size: 10px;
@@ -469,6 +471,12 @@ div#vbpg_page .vbpg_pager_pending a {
 }
 
 .vbpg_cvterm_popup_scrolldiv {
-    max-height: 100px;
+    max-height: 120px;
     overflow: auto;
+}
+
+/* this is needed to allow for the cvterm "underline" border which
+   was not being calculated by FF properly */
+.vbpg_cvterm_popup_scrolldiv div {
+    padding-bottom: 1px;
 }
