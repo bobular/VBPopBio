@@ -23,6 +23,8 @@ use lib 'lib';
 use Getopt::Long;
 use Bio::Chado::VBPopBio;
 use JSON;
+use DateTime::Format::ISO8601;
+use DateTime;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -68,6 +70,7 @@ my $ir_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref =
 my $insecticidal_substance = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '10000239' });
 
+my $iso8601 = DateTime::Format::ISO8601->new;
 
 print "{\n";
 
@@ -94,7 +97,7 @@ while (my $project = $projects->next) {
 		    entity_type => 'popbio',
 		    entity_id => $project->id,
 		    description => $project->description ? $project->description : '',
-		    date => $project->public_release_date,
+		    date => iso8601_date($project->public_release_date),
 		    authors => [
 				map { $_->description } $project->contacts
 			       ],
@@ -363,7 +366,7 @@ sub stock_date {
   my $stock = shift;
   foreach my $assay ($stock->nd_experiments) {
     my $date = assay_date($assay);
-    return $date if ($date);
+    return iso8601_date($date) if ($date);
   }
   return undef;
 }
@@ -378,7 +381,16 @@ sub assay_date {
   }
   my @dates = $assay->multiprops($date_type);
   if (@dates == 1) {
-    return $dates[0]->value;
+    return iso8601_date($dates[0]->value);
+  }
+}
+
+# converts poss truncated string date into ISO8601 Zulu time (hacked with an extra Z for now)
+sub iso8601_date {
+  my $string = shift;
+  my $datetime = $iso8601->parse_datetime($string);
+  if (defined $datetime) {
+    return $datetime->datetime."Z";
   }
 }
 
