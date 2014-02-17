@@ -678,6 +678,7 @@ function fillInProp(prop, element) {
 	// prepend the remaining joined cvterms
 	var cvterms_span = new Element('span');
 	cvterms_span.update(cvterms.collect(function(term){return renderCvterm(term)}).join(delimiter));
+	value_element.insert({ top: " " });
 	value_element.insert({ top: cvterms_span });
     }
     // now fill in the type element
