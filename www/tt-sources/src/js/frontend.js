@@ -104,6 +104,15 @@ function updateSampleFull(stock, element) {
 function updateAssayFull(assay, element) {
     var species_div = element.down('#species_results');
 
+    // replace drupal title if present
+    var drupal_main = $('main-content-area');
+    if (drupal_main) {
+	var drupal_h1 = drupal_main.down('h1.title');
+	if (drupal_h1) {
+	    drupal_h1.update(assay.type.capitalize());
+	}
+    }
+
     // general props cleanup
     assay.props.each(function(prop) {
 	if (prop.cvterms[0].name == 'species list') {

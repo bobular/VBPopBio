@@ -90,11 +90,19 @@ Cluster.prototype.addPVMark = function(panel, z) {
 	;
     }
 
-    mark.
-    cursor("pointer")
-//    event("click", function() {c.popUp()})
+    mark.cursor("pointer")
+    .event("click", function() {
+	    var uniq_vb_ids = markers.collect(function(m){ return m.o.id }).uniq();
+	    if (uniq_vb_ids.length <= 100) { // 100*(10+3) is safely under 2000 char limit
+		window.open("[% vb_root %]/search/site/"+uniq_vb_ids.join("%20"), "_blank");
+	    } else {
+		alert("Sorry, too many items to link to! Please try zooming in.");
+	    }
+	}) 
+
     ;
     
+/*
 
     var sqrt = Math.ceil(Math.sqrt(c.getSize()));
 //    console.log(sqrt+" x "+dotSize);
@@ -115,17 +123,22 @@ Cluster.prototype.addPVMark = function(panel, z) {
     .top(function(d) {return Math.floor(((this.index) / sqrt) + 1) * dotSize * 3})
     .fillStyle(function(d) {return z(d.z)})
     .strokeStyle(function(d) {return z(d.z)})
-//    .cursor("pointer")
+    .cursor("pointer")
+*/
+    //    .event("click", function(d) {console.log("clicked "+Object.toJSON(d));})
 //    .event("mouseover", function(d) {/*console.log(d.o.id); */self.status = ("sample  "+d.o.id);})
 //    .event("mouseout", function() {self.status = "";})
 //    .event("click", function(d) {self.location = config.ROOT+"/sample/?id="+d.o.id})
 //    event("click",function(d) {console.log("clicked "+Object.toJSON(d.o.id));})
-    ; 
+    //  ; 
+    /*
 
    this.popup_
     .def("active", false)
     .visible(function() {return this.active()})
     ;
+
+*/
 
     return mark;
 }
@@ -539,6 +552,8 @@ function getDataHash_jsp (json, est, xst, yst, zst) {
 	return undefined;
     }
 
+
+
     var paths = jsonPath(json, est,{resultType:"PATH"});
     var dataHash = paths.map(function(d,i) {
 
@@ -562,6 +577,25 @@ function getDataHash_jsp (json, est, xst, yst, zst) {
 			z: zresult,
 			o: getVal(json, est, d, est)
 		       };
+
+	if (!('id' in retHash.o)) {
+	    /* the thing that d points to may not have an id, it could be
+	     * a genotype or a geolocation or something, so strip back d
+	     * and add .id until you get an ID
+	     *
+	     * btw an id field is needed for link-outs!
+	     */
+	    var dParts = d.split('[');
+	    for (var i = dParts.length; i> 1; i--) {
+		var dTrunc = dParts.slice(0,i).join('[');
+		var idVal = jsonPath(json, dTrunc+".id");
+		if (idVal) {
+		    retHash.o.id = idVal[0];
+		    break;
+		}
+	    }
+	}
+
 	return retHash;});
 	
 //    dataHash.sortBy(function(d) {return Number(d.y)});
