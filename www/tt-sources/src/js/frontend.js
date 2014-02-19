@@ -105,7 +105,7 @@ function updateAssayFull(assay, element) {
     var species_div = element.down('#species_results');
 
     // replace drupal title if present
-    var drupal_main = $('main-content-area');
+    var drupal_main = $('content-region-inner');
     if (drupal_main) {
 	var drupal_h1 = drupal_main.down('h1.title');
 	if (drupal_h1) {
