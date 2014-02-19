@@ -94,7 +94,9 @@ Cluster.prototype.addPVMark = function(panel, z) {
     .event("click", function() {
 	    var uniq_vb_ids = markers.collect(function(m){ return m.o.id }).uniq();
 	    if (uniq_vb_ids.length <= 100) { // 100*(10+3) is safely under 2000 char limit
-		window.open("[% vb_root %]/search/site/"+uniq_vb_ids.join("%20"), "_blank");
+		// we have to engineer a full URL it seems, so this won't
+		// work on developer instances
+		window.open(window.location.protocol+'//'+window.location.host+"/search/site/"+uniq_vb_ids.join("%20"), "_blank");
 	    } else {
 		alert("Sorry, too many items to link to! Please try zooming in.");
 	    }
