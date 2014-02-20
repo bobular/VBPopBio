@@ -96,7 +96,26 @@ Cluster.prototype.addPVMark = function(panel, z) {
 	    if (uniq_vb_ids.length <= 100) { // 100*(10+3) is safely under 2000 char limit
 		// we have to engineer a full URL it seems, so this won't
 		// work on developer instances
-		window.open(window.location.protocol+'//'+window.location.host+"/search/site/"+uniq_vb_ids.join("%20"), "_blank");
+
+		// now check to see if the IDs are all the same: assay OR sample (or maybe project)
+		// then set the search subdomain appropriately
+		var uniq_id_third_chars = uniq_vb_ids.collect(function(id) { return id.substring(2,3) }).uniq();
+		var domain_param = "?site=Population%20Biology";
+		var subdomain_param = "";
+		if (uniq_id_third_chars.length == 1) { // only one type of ID in list:
+		    switch (uniq_id_third_chars[0]) {
+		    case 'S':
+			subdomain_param = "&bundle_name=Sample";
+			break;
+		    case 'A':
+			subdomain_param = "&bundle_name=Assay";
+			break;
+		    case 'P':
+			subdomain_param = "&bundle_name=Project";
+			break;
+		    }
+		}
+		window.open(window.location.protocol+'//'+window.location.host+"/search/site/"+uniq_vb_ids.join("%20")+domain_param+subdomain_param, "_blank");
 	    } else {
 		alert("Sorry, too many items to link to! Please try zooming in.");
 	    }
