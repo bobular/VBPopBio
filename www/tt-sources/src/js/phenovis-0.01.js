@@ -1142,10 +1142,30 @@ function dotplot(data, div, args) {
   /* The dot plot! */
   dots = dataPanel.add(pv.Dot)
       .data(data)
-    .bottom(function(d) {return d.ypos})
-    .left(function(d) {return d.xpos})
-    .strokeStyle(function(d) {return z(d.z)})
-    ;
+      .bottom(function(d) {return d.ypos})
+      .left(function(d) {return d.xpos})
+      .strokeStyle(function(d) {return z(d.z)})
+      .lineWidth(3)
+      .cursor("pointer")
+      .event("click", function(d) {
+	      if (d.o.id) {
+		  var domain_param = "?site=Population%20Biology";
+		  var subdomain_param = "";
+		  switch (d.o.id.substring(2,3)) {
+		    case 'S':
+			subdomain_param = "&bundle_name=Sample";
+			break;
+		    case 'A':
+			subdomain_param = "&bundle_name=Assay";
+			break;
+		    case 'P':
+			subdomain_param = "&bundle_name=Project";
+			break;
+		  }
+		  window.open(window.location.protocol+'//'+window.location.host+"/search/site/"+d.o.id+domain_param+subdomain_param, "_blank");
+	      }
+	  })
+	  ;
   
   addLegend(legendPanel, zvals, z);
 
