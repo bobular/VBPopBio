@@ -366,7 +366,7 @@ sub stock_date {
   my $stock = shift;
   foreach my $assay ($stock->nd_experiments) {
     my $date = assay_date($assay);
-    return iso8601_date($date) if ($date);
+    return $date if ($date); # already iso8601 from assay_date
   }
   return undef;
 }
@@ -377,7 +377,7 @@ sub assay_date {
   my $assay = shift;
   my @start_dates = $assay->multiprops($start_date_type);
   if (@start_dates == 1) {
-    return $start_dates[0]->value;
+    return iso8601_date($start_dates[0]->value);
   }
   my @dates = $assay->multiprops($date_type);
   if (@dates == 1) {
