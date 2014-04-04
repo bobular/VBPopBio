@@ -309,7 +309,7 @@ sub add_to_protocols_from_isatab {
       my $protocol_info = $study->{study_protocol_lookup}{$protocol_ref};
 
       unless ($study->{study_protocol_lookup}{$protocol_ref}) {
-	$schema->defer_exception("Protocol REF $protocol_ref not described in ISA-Tab.");
+	$schema->defer_exception_once("Protocol REF $protocol_ref not described in ISA-Tab.");
 	next;
       }
 
@@ -332,7 +332,7 @@ sub add_to_protocols_from_isatab {
       if (!defined $protocol_type) {
 	# maybe create a placeholder here and store the error
 	# $protocol_info->{study_protocol_type}
-	$schema->defer_exception("Study Protocol Type ontology term for protocol $protocol_ref missing or not found\n");
+	$schema->defer_exception_once("Study Protocol Type ontology term for protocol $protocol_ref missing or not found\n");
 	$protocol_type = $types->placeholder;
       }
 
