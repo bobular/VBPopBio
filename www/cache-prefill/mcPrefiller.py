@@ -6,15 +6,20 @@
 # waits until there no more AJAX requests.
 #
 #
-# Requirements: 
+# Requirements (note: these have all been installed globally on vb-dev): 
 # - PhantomJS
 # - python::selenium
 # - python::multiprocessing
 #
 #
 # Command line parameters:
-# - URL of the PopBio projects list
-# - if empty, directs to http://www.vectorbase.org/popbio/projects
+# - URL of the PopBio projects list (if empty, defaults to http://www.vectorbase.org/popbio/projects)
+#
+#
+# Usage example:
+# - python mcPrefiller.py
+# - python mcPrefiller.py http://www.vectorbase.org/popbio/projects
+# - python mcPrefiller.py http://pre.vectorbase.org/popbio/projects
 #
 #
 #
@@ -31,7 +36,7 @@ import sys, multiprocessing
 
 
 
-# the url of the popbio projects list page
+# URL of the popbio projects list page
 # if empty, defaults to http://www.vectorbase.org/popbio/projects
 try:
 	sys.argv[1]
@@ -89,7 +94,6 @@ urls = set(linkArray)
 w_driver.quit()
 
 
-# multiprocessing
 # multiple instances to navigate to each project's page
 pool = multiprocessing.Pool(numInstances)
 pool.map(navigator, urls)
