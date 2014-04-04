@@ -5,6 +5,8 @@
 # Opens the PopBio projects page, grabs the list of projects and URLs, opens each one and 
 # waits until there no more AJAX requests.
 #
+# Prints each URL as it iterates.
+#
 #
 # Requirements (note: these have already been installed globally on vb-dev): 
 # - PhantomJS
