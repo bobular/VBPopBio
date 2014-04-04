@@ -3,9 +3,7 @@
 # Script to automatically prefill the mem-cache for PopBio.
 #
 # Opens the PopBio projects page, grabs the list of projects and URLs, opens each one and 
-# waits until there no more AJAX requests.
-#
-# Prints each URL as it iterates.
+# waits until there no more AJAX requests. Option to print each URL as it iterates.
 #
 #
 # Requirements (note: these have already been installed globally on vb-dev): 
@@ -15,13 +13,16 @@
 #
 #
 # Command line parameters:
-# - URL of the PopBio projects list
-# - if empty, defaults to http://www.vectorbase.org/popbio/projects
+# -   -w <URL of the PopBio projects list> defaults to http://www.vectorbase.org/popbio/projects
+# -   -i  <number of parallel threads> defaults to 3
+# -   -v <verbose. Prints out URLS of each project page at end of each execution> defaults to false
 #
 # 
-# Usage example:
+# Usage examples:
 # - python mcPrefiller.py
-# - python mcPrefiller.py http://pre.vectorbase.org/popbio/projects
+# - python mcPrefiller.py -w http://pre.vectorbase.org/popbio/projects
+# - python mcPrefiller.py -w http://pre.vectorbase.org/popbio/projects -i 5 
+# - python mcPrefiller.py -i 5 -v
 #
 #
 #
@@ -34,21 +35,12 @@
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import WebDriverException
-import sys, multiprocessing
+import sys, multiprocessing, getopt
 
 
 
 # the url of the popbio projects list page
-# if empty, defaults to http://www.vectorbase.org/popbio/projects
-try:
-	sys.argv[1]
-except: 
-	projectpage = "http://www.vectorbase.org/popbio/projects"
-else:
-	projectpage = sys.argv[1]
-
-	
-
+projectpage = "http://www.vectorbase.org/popbio/projects"
 
 # time in seconds to timeout per URL
 timeout_max = 3600 # = 1hr
@@ -56,7 +48,21 @@ timeout_max = 3600 # = 1hr
 # number of instances to navigate to each project page
 numInstances = 3
 
+# print out each project's URL.
+verbose = False
 
+try:
+	opt, args = getopt.getopt(sys.argv[1:], "w:i:v")
+	for o, arg in opt:
+		if o == "-w":
+			projectpage = arg
+		elif o == "-i":
+			numInstances = int(arg)
+		elif o == "-v":
+			verbose = True
+except: 	
+	print 'Usage: python mcPrefiller.py -w <URL> -i <numInstances> -v <verbose>'
+     	sys.exit(2)
 
 
 # get number of active AJAX requests. Returns True if no active connections
@@ -68,11 +74,12 @@ def ajax_complete(driver):
 
 
 # navigates to given URL and waits until Ajax commands have finished
-def navigator(url):
-	print url
+def navigator(url):	
 	driver = webdriver.PhantomJS()
 	driver.get(url)
 	WebDriverWait(driver, timeout_max).until(ajax_complete,  "Timeout")
+	if verbose:
+		print url
 	driver.quit()
 
 
@@ -100,6 +107,5 @@ w_driver.quit()
 pool = multiprocessing.Pool(numInstances)
 pool.map(navigator, urls)
 pool.close()
-
 
 
