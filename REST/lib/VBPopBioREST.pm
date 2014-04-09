@@ -120,6 +120,7 @@ get qr{/projects/head} => sub {
 # Stocks
 get qr{/(?:stocks|samples)(/head)?} => sub {
     my ($head) = splat;
+    $head //= '';
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
 
@@ -143,6 +144,7 @@ get qr{/(?:stocks|samples)(/head)?} => sub {
 # Stock
 get qr{/(?:stock|sample)/(\w+)(/head)?} => sub {
     my ($id, $head) = splat;
+    $head //= '';
 
     memcached_get_or_set("sample/$id$head", sub {
 			   my $stock = schema->stocks->find_by_stable_id($id);
@@ -173,6 +175,7 @@ get qr{/assay/(\w+)(/head)?} => sub {
 # Project/stocks
 get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
     my ($id, $head) = splat;
+    $head //= '';
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
 
@@ -198,6 +201,7 @@ get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
 # assay/stocks
 get qr{/assay/(\w+)/(?:stocks|samples)(/head)?} => sub {
     my ($id, $head) = splat;
+    $head //= '';
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
 
@@ -223,6 +227,7 @@ get qr{/assay/(\w+)/(?:stocks|samples)(/head)?} => sub {
 # assay/projects
 get qr{/assay/(\w+)/projects(/head)?} => sub {
     my ($id, $head) = splat;
+    $head //= '';
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
 
@@ -248,6 +253,7 @@ get qr{/assay/(\w+)/projects(/head)?} => sub {
 # Stock/projects
 get qr{/(?:stock|sample)/(\w+)/projects(/head)?} => sub {
     my ($id, $head) = splat;
+    $head //= '';
     my $l = params->{l} || 20;
     my $o = params->{o} || 0;
 
