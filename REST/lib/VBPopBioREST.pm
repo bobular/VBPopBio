@@ -160,6 +160,7 @@ get qr{/(?:stock|sample)/(\w+)(/head)?} => sub {
 # Assay
 get qr{/assay/(\w+)(/head)?} => sub {
     my ($id, $head) = splat;
+    $head //= '';
 
     memcached_get_or_set("assay/$id$head", sub {
 			   my $assay = schema->experiments->find_by_stable_id($id);
