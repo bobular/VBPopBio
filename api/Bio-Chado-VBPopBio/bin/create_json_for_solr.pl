@@ -383,6 +383,7 @@ sub assay_date {
   if (@dates == 1) {
     return iso8601_date($dates[0]->value);
   }
+  return undef;
 }
 
 # converts poss truncated string date into ISO8601 Zulu time (hacked with an extra Z for now)
