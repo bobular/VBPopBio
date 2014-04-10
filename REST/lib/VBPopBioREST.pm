@@ -150,7 +150,7 @@ get qr{/(?:stock|sample)/(\w+)(/head)?} => sub {
 			   my $stock = schema->stocks->find_by_stable_id($id);
 
 			   if (defined $stock) {
-			     return $stock->as_data_structure(defined $head ? 0 : undef);
+			     return $stock->as_data_structure($head ? 0 : undef);
 			   } else {
 			     return { error_message => "can't find stock" };
 			   }
@@ -166,7 +166,7 @@ get qr{/assay/(\w+)(/head)?} => sub {
 			   my $assay = schema->experiments->find_by_stable_id($id);
 
 			   if (defined $assay) {
-			     return $assay->as_data_structure(defined $head ? 0 : undef);
+			     return $assay->as_data_structure($head ? 0 : undef);
 			   } else {
 			     return { error_message => "can't find assay" };
 			   }
@@ -193,7 +193,7 @@ get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
 								);
 
 			   return {
-				   records => [ map { $_->as_data_structure(defined $head ? 0 : undef, $project) } $stocks->all ],
+				   records => [ map { $_->as_data_structure($head ? 0 : undef, $project) } $stocks->all ],
 				   records_info($o, $l, $stocks)
 				  };
 			 });
@@ -219,7 +219,7 @@ get qr{/assay/(\w+)/(?:stocks|samples)(/head)?} => sub {
 							      );
 
 			   return {
-				   records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $stocks->all ],
+				   records => [ map { $_->as_data_structure($head ? 0 : undef) } $stocks->all ],
 				   records_info($o, $l, $stocks)
 				  };
 			 });
@@ -245,7 +245,7 @@ get qr{/assay/(\w+)/projects(/head)?} => sub {
 								  );
 
 			   return {
-				   records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $projects->all ],
+				   records => [ map { $_->as_data_structure($head ? 0 : undef) } $projects->all ],
 				   records_info($o, $l, $projects)
 				  };
 			 });
@@ -270,7 +270,7 @@ get qr{/(?:stock|sample)/(\w+)/projects(/head)?} => sub {
 								  );
 
 			   return {
-				   records => [ map { $_->as_data_structure(defined $head ? 0 : undef) } $projects->all ],
+				   records => [ map { $_->as_data_structure($head ? 0 : undef) } $projects->all ],
 				   records_info($o, $l, $projects)
 				  };
 			 });
