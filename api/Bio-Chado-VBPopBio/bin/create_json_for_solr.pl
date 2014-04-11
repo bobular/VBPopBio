@@ -141,7 +141,7 @@ while (my $stock = $stocks->next) {
 		    url => '/popbio/sample/?id='.$stable_id,
 		    entity_type => 'popbio',
 		    entity_id => $stock->id,
-		    description => $stock->description,
+		    description => $stock->description || join(' ', ($stock_best_species ? $stock_best_species->name : ()), $stock->type->name, ($fc ? $fc->geolocation->summary : ())),
 
 		    sample_type => $stock->type->name,
 		    sample_type_cvterms => [ flattened_parents($stock->type) ],
@@ -213,7 +213,7 @@ while (my $assay = $assays->next) {
 		    url => '/popbio/assay/?id='.$stable_id,
 		    entity_type => 'popbio',
 		    entity_id => $assay->id,
-		    description => $assay->description,
+		    description => $assay->description || $assay->result_summary,
 
 		    assay_type => $assay_type_name,
 		    # not expanding this because it's a flat
@@ -289,7 +289,7 @@ while (my $assay = $assays->next) {
 	     url => '/popbio/assay/?id='.$stable_id,
 	     entity_type => 'popbio',
 	     entity_id => $assay->id,
-	     description => $assay->description,
+	     description => $assay->description || $assay->result_summary,
 
 	     date => assay_date($assay),
 
