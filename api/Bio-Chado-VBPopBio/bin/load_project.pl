@@ -41,6 +41,9 @@ $dry_run = 1 if ($limit);
 
 my ($isatab_dir) = @ARGV;
 
+# should speed things up
+$schema->storage->_use_join_optimizer(0);
+
 $schema->txn_do_deferred
   ( sub {
 
