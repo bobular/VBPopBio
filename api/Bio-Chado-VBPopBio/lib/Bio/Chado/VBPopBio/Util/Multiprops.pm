@@ -48,8 +48,9 @@ sub add_multiprop {
   %args and confess "invalid option(s): ".join(', ', sort keys %args);
 
   # perform the (expensive!) check for existing multiprops
-  my $input_json = $multiprop->as_json;
+  my $input_json = undef;
   foreach my $existing_multiprop ($row->multiprops) {
+    $input_json //= $multiprop->as_json; # only make $input_json if there are existing multiprops
     return $existing_multiprop if ($existing_multiprop->as_json eq $input_json);
   }
 
@@ -69,7 +70,7 @@ sub add_multiprop {
 
   my $last_prop; # keep track so we can add the value if needed
   foreach my $cvterm ($multiprop->cvterms) {
-    $last_prop = $row->find_or_create_related($prop_relation_name,
+    $last_prop = $row->create_related($prop_relation_name,
 					      { type => $cvterm,
 						rank => $rank++,
 						value => $MAGIC_VALUE # subject to change below

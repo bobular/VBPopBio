@@ -3,6 +3,7 @@ package Bio::Chado::VBPopBio::ResultSet::Cvterm;
 use strict;
 use base 'Bio::Chado::Schema::Result::Cv::Cvterm::ResultSet';
 use Carp;
+use Memoize;
 
 =head1 NAME
 
@@ -104,6 +105,14 @@ sub find_by_accession {
   }
   return undef; # on failure
 }
+sub normalize_fba_args {
+  my ($self, $arg) = @_;
+  if (defined $arg->{term_source_ref} && defined $arg->{term_accession_number}) {
+    return "$arg->{term_source_ref}:$arg->{term_accession_number}";
+  }
+  return '';
+}
+memoize('find_by_accession', NORMALIZER=>'normalize_fba_args');
 
 =head2 find_by_name
 
