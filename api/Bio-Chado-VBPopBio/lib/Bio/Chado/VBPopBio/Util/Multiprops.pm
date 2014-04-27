@@ -146,6 +146,7 @@ sub get_multiprops {
     my @cvterm_ids = map { $_->{type}->{cvterm_id} } @{$prop_group};
     my $rank = $prop_group->[0]->{rank};
     my $value = pop(@{$prop_group})->{value};
+
     confess "value should not be magic value '$MAGIC_VALUE'"
       if (defined $value && $value eq $MAGIC_VALUE);
     if (!defined $filter || $filter->cvterm_id == $cvterm_ids[0]) {
@@ -167,7 +168,7 @@ sub get_multiprops {
 sub build_multiprop {
   my ($row, $value, $rank, @cvterm_ids) = @_;
   my $cvterms = $row->result_source->schema->cvterms;
-  return Multiprop->new( cvterms => [ map { $cvterms->find($_) } @cvterm_ids ] );
+  return Multiprop->new( cvterms => [ map { $cvterms->find($_) } @cvterm_ids ], value => $value, rank => $rank );
 }
 sub normalise_bm_args {
   my ($row_ignore, @args) = @_;
