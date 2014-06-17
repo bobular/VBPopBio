@@ -107,7 +107,7 @@ while (my $project = $projects->next) {
 		    study_designs_cvterms => [
 					      map { flattened_parents($_) } @design_terms
 					     ],
-		    pubmed => [ grep { $_ } map { $_->miniref } $project->publications ],
+		    pubmed => [ map { "PMID:$_" } grep { $_ } map { $_->miniref } $project->publications ],
 		   }
 		 };
   my $json_text = $json->encode($document);
@@ -175,7 +175,7 @@ while (my $stock = $stocks->next) {
 
 		    date => stock_date($stock),
 
-		    pubmed => [ multiprops_pubmed_ids($stock) ],
+		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
 		   }
 		 };
 
@@ -204,7 +204,7 @@ while (my $assay = $assays->next) {
     $assay_best_species = $assay->best_species;
   }
 
-  my @assay_pubmed_ids = multiprops_pubmed_ids($assay);
+  my @assay_pubmed_ids = map { "PMID:$_" } multiprops_pubmed_ids($assay);
 
   my $document = { doc =>
 		   {
