@@ -107,6 +107,7 @@ while (my $project = $projects->next) {
 		    study_designs_cvterms => [
 					      map { flattened_parents($_) } @design_terms
 					     ],
+		    pubmed => [ grep { $_ } map { $_->miniref } $project->publications ],
 		   }
 		 };
   my $json_text = $json->encode($document);
@@ -173,6 +174,8 @@ while (my $stock = $stocks->next) {
 		    projects => [ map { quick_project_stable_id($_) } $stock->projects ],
 
 		    date => stock_date($stock),
+
+		    pubmed => [ multiprops_pubmed_ids($stock) ],
 		   }
 		 };
 
@@ -200,6 +203,8 @@ while (my $assay = $assays->next) {
     $assay_type_name = 'species identification assay';
     $assay_best_species = $assay->best_species;
   }
+
+  my @assay_pubmed_ids = multiprops_pubmed_ids($assay);
 
   my $document = { doc =>
 		   {
@@ -250,6 +255,8 @@ while (my $assay = $assays->next) {
 					    species => [ $assay_best_species->name ],
 					    species_cvterms => [ flattened_parents($assay_best_species) ],
 					   ) : ()),
+
+		    pubmed => \@assay_pubmed_ids,
 
 		   }
 		 };
@@ -318,6 +325,7 @@ while (my $assay = $assays->next) {
 	     insecticides => [ map { $_->name } @insecticides ],
 	     insecticides_cvterms => [ map { flattened_parents($_) } @insecticides ],
 
+	     pubmed => \@assay_pubmed_ids,
 	    }
 	  };
 
@@ -344,6 +352,12 @@ sub multiprops_cvterms {
   return grep { $_->dbxref->as_string =~ /^(?!VBcv)\w+:\d+$/ } map { $_->cvterms } $object->multiprops;
 }
 
+# returns a list of pubmed ids (or empty list)
+# if any multiprop comment value contains /pubmed/i and ends with (\d+)$
+sub multiprops_pubmed_ids {
+  my $object = shift;
+  return map { $_->value =~ /pubmed.+?(\d+)$/i } grep { ($_->cvterms)[0]->name eq 'comment'  } $object->multiprops;
+}
 
 # returns $lat, $long
 sub stock_latlong {
