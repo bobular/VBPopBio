@@ -236,7 +236,7 @@ function updateProjectFull(project, element, sandbox) {
 	    "x": "$.stocks.*.field_collections.*.geolocation.latitude",
 	    "y": "$.stocks.*.field_collections.*.geolocation.longitude",
 	    "z": "$.stocks.*.species.name",
-	    "e": "$.stocks.*.field_collections[?(@.geolocation.latitude && @.geolocation.longitude)]]"
+	    "e": "$.stocks.*.field_collections[?(@.geolocation.latitude || @.geolocation.longitude)]]"
 	});
 
     }
