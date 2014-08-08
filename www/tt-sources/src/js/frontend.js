@@ -238,7 +238,7 @@ function updateProjectFull(project, element, sandbox) {
 	    "z": "$.stocks.*.species.name",
 	    "e": "$.stocks.*.field_collections[?(@.geolocation.latitude || @.geolocation.longitude)]]"
 	});
-
+	$('external_id_row').removeClassName('hide_on_load');
     }
 
     fillInListValues(vis_array, element.down('#project_visualisations'), 'no_shading').removeClassName('hide_on_load');
