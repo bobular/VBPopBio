@@ -18,7 +18,8 @@ function Cluster(geoplot) {
   this.center_ = null;
   this.markers_ = [];
   this.bounds_ = null;
-  this.projection_ = geoplot.getProjection();;
+  this.projection_ = geoplot.getProjection();
+  this.distanceToClosestNeighbour_ = 0;
 }
 
 /**
@@ -213,16 +214,35 @@ Cluster.prototype.isMarkerAlreadyAdded = function(marker) {
  *
  * @param {dataMarker} marker The marker to add.
  * @return {boolean} True if the marker was added.
+ *
+ * notes:
+ *
+ * looks like cluster.center_ is not really the centre
+ * but is just the centre of the first marker added
+ *
+ * but given that cluster merging is done small-into-big
+ * I think this is OK - certainly would be good to avoid
+ * recalculating centres every time a cluster is merged
+ *
+ * averageCenter_ is not used anywhere
+ * that code is not reachable - must be legacy.
  */
 Cluster.prototype.addMarker = function(marker) {
   if (this.isMarkerAlreadyAdded(marker)) {
     return false;
   }
 
+  var newLatLng = new google.maps.LatLng(marker.x, marker.y);
   if (!this.center_) {
-    this.center_ = new google.maps.LatLng(marker.x, marker.y);
-  } 
-  else {    
+      this.center_ = newLatLng;
+  } else {    
+    var newsize = this.markers_.length + 1;
+    // if adding 1 point to an existing 3, then move the centre 1/4 towards the new point.
+    this.center_ = google.maps.geometry.spherical.interpolate(this.center_, newLatLng, 1/newsize)
+  }
+
+  /*
+  if (0) {
     if (this.averageCenter_) {
       var l = this.markers_.length + 1;
       var lat = (this.center_.lat() * (l-1) + marker.x) / l;
@@ -230,6 +250,7 @@ Cluster.prototype.addMarker = function(marker) {
       this.center_ = new google.maps.LatLng(lat, lng);
     }
   }
+  */
 
   marker.isAdded = true;
   this.markers_.push(marker);
@@ -324,6 +345,8 @@ Cluster.prototype.getPxY = function() {
 
 /**
  * Calculated the extended bounds of the cluster with the grid.
+ *
+ * purely with respect to the pie chart glyph - not its constituent markers
  *
  * @private
  */
@@ -463,24 +486,61 @@ ClusterSet.prototype.makeClusters_ = function() {
 
 }
 
+
+/*
+ *
+ *
+ */
+
 ClusterSet.prototype.checkClusterOLs = function() {
-    for (var i =0; i<this.clusters_.length; i++) {
+    // compute closest neighbour distance for each point.
+    for (var i=0; i<this.clusters_.length-1; i++) {
+	var LatLngI = this.clusters_[i].center_;
+	var closest = null;
+	var neighbourIndex = null;
+	for (var j=i+1; j<this.clusters_.length; j++) {
+	    var LatLngJ = this.clusters_[j].center_;
+	    var dist = google.maps.geometry.spherical.computeDistanceBetween(LatLngI, LatLngJ);
+	    if (closest == null || dist < closest) {
+		closest = dist;
+		neighbourIndex = j;
+	    }
+	}
+	// set the closest distance for both "i" and its closest neighbour
+	this.clusters_[i].distanceToClosestNeighbour_ = closest;
+	this.clusters_[neighbourIndex].distanceToClosestNeighbour_ = closest;
+    }
+
+    // sort clusters with the closest neighbours first
+    this.clusters_.sort(
+			function(a, b) {
+			    return a.distanceToClosestNeighbour_ - b.distanceToClosestNeighbour_;
+			}
+			);
+
+    for (var i=0; i<this.clusters_.length; i++) {
 	for (var j=0; j<this.clusters_.length; j++) {
 	    var clI = this.clusters_[i];
 	    var clJ = this.clusters_[j];
-	    if((j != i) && clI.doesClusterOverlap(clJ)) {
+	    if(i != j && clI.doesClusterOverlap(clJ)) {
 //		console.log(clI.getSize()+" overlaps "+clJ.getSize());
-		
-		// only do in most efficient direction 
-		// (if not leave till overlap is found in other direction)
-		if(clI.getSize() > clJ.getSize()) {
+
+		// do in most efficient direction (merge small into big)
+		if (clI.getSize() > clJ.getSize()) {
 		    this.clusters_.splice(j,1);
 		    var mergedMarkers = clJ.getMarkers();
-		    for(var k = 0; k< mergedMarkers.length; k++) {
+		    for(var k=0; k<mergedMarkers.length; k++) {
 			clI.addMarker(mergedMarkers[k]);
-			}
-		    j=0; i=0;
+		    }
+		} else {
+		    this.clusters_.splice(i,1);
+		    var mergedMarkers = clI.getMarkers();
+		    for(var k=0; k<mergedMarkers.length; k++) {
+			clJ.addMarker(mergedMarkers[k]);
+		    }
 		}
+		// now start again with the all vs all (but now fewer clusters)
+		i=0; j=0;
 	    }
 	}	
     }

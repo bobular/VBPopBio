@@ -3,6 +3,7 @@ package Bio::Chado::VBPopBio::Util::Multiprops;
 use strict;
 use warnings;
 use Carp;
+use Memoize;
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 
@@ -48,8 +49,9 @@ sub add_multiprop {
   %args and confess "invalid option(s): ".join(', ', sort keys %args);
 
   # perform the (expensive!) check for existing multiprops
-  my $input_json = $multiprop->as_json;
+  my $input_json = undef;
   foreach my $existing_multiprop ($row->multiprops) {
+    $input_json //= $multiprop->as_json; # only make $input_json if there are existing multiprops
     return $existing_multiprop if ($existing_multiprop->as_json eq $input_json);
   }
 
@@ -69,7 +71,7 @@ sub add_multiprop {
 
   my $last_prop; # keep track so we can add the value if needed
   foreach my $cvterm ($multiprop->cvterms) {
-    $last_prop = $row->find_or_create_related($prop_relation_name,
+    $last_prop = $row->create_related($prop_relation_name,
 					      { type => $cvterm,
 						rank => $rank++,
 						value => $MAGIC_VALUE # subject to change below
@@ -123,7 +125,11 @@ sub get_multiprops {
   # get the positive-ranked props and order them by rank
   my $props = $row->$prop_relation_name->search({}, { where => { rank => { '>' => 0 } },
 						      order_by => 'rank',
-						      prefetch => { type => { 'dbxref' => 'db' } } });
+						      prefetch => { type => { 'dbxref' => 'db' } },
+						      result_class => 'DBIx::Class::ResultClass::HashRefInflator',
+						    });
+
+  # props resultset returns PLAIN HASHREF results - for speed
 
   # step through the props pushing them into different baskets
   # splitting on an undefined value or non-comma value.
@@ -131,26 +137,44 @@ sub get_multiprops {
   my $index = 0;
   while (my $prop = $props->next) {
     push @{$prop_groups[$index]}, $prop;
-    $index++ unless (defined $prop->value && $prop->value eq $MAGIC_VALUE);
+    $index++ unless (defined $prop->{value} && $prop->{value} eq $MAGIC_VALUE);
   }
 
   # convert prop groups into multiprops
   my @multiprops;
   foreach my $prop_group (@prop_groups) {
-    my @cvterms = map { $_->type } @{$prop_group};
-    my $rank = $prop_group->[0]->rank;
-    my $value = pop(@{$prop_group})->value;
+    my @cvterm_ids = map { $_->{type}->{cvterm_id} } @{$prop_group};
+    my $rank = $prop_group->[0]->{rank};
+    my $value = pop(@{$prop_group})->{value};
+
     confess "value should not be magic value '$MAGIC_VALUE'"
       if (defined $value && $value eq $MAGIC_VALUE);
-    if (!defined $filter || $filter->cvterm_id == $cvterms[0]->cvterm_id) {
-      push @multiprops, Multiprop->new(cvterms => \@cvterms,
-				       value => $value,
-				       rank => $rank,);
+    if (!defined $filter || $filter->cvterm_id == $cvterm_ids[0]) {
+      push @multiprops, build_multiprop($row, $value, $rank, @cvterm_ids);
+# was
+#     push @multiprops, Multiprop->new(cvterms => \@cvterms,
+#				       value => $value,
+#				       rank => $rank,);
     }
   }
   # if we're filtering (and didn't find the multiprop we wanted) then return nothing!
   return @multiprops;
 }
+
+
+#
+# private helper that is memoized
+#
+sub build_multiprop {
+  my ($row, $value, $rank, @cvterm_ids) = @_;
+  my $cvterms = $row->result_source->schema->cvterms;
+  return Multiprop->new( cvterms => [ map { $cvterms->find($_) } @cvterm_ids ], value => $value, rank => $rank );
+}
+sub normalise_bm_args {
+  my ($row_ignore, @args) = @_;
+  return join ':', map { $_ // '' } @args;
+}
+memoize('build_multiprop', NORMALIZER=>'normalise_bm_args');
 
 =head2 add_multiprops_from_isatab_characteristics
 

@@ -236,9 +236,9 @@ function updateProjectFull(project, element, sandbox) {
 	    "x": "$.stocks.*.field_collections.*.geolocation.latitude",
 	    "y": "$.stocks.*.field_collections.*.geolocation.longitude",
 	    "z": "$.stocks.*.species.name",
-	    "e": "$.stocks.*.field_collections[?(@.geolocation.latitude && @.geolocation.longitude)]]"
+	    "e": "$.stocks.*.field_collections[?(@.geolocation.latitude || @.geolocation.longitude)]]"
 	});
-
+	$('external_id_row').removeClassName('hide_on_load');
     }
 
     fillInListValues(vis_array, element.down('#project_visualisations'), 'no_shading').removeClassName('hide_on_load');
@@ -395,27 +395,6 @@ function getFilteredDataHash_jsp(project, vis) {
     var hashJSP = getDataHash_jsp(project,vis.e,vis.x,vis.y,vis.z);
 
     if (vis.filters) {
-	if (vis.filters.histogram) {
-	    var counts = { };
-	    hashJSP.each(function(hash) {
-		var xval = hash.x !== false ? hash.x : 'no data';
-		var zval = hash.z !== false ? hash.z : 'no data';
-		if (!counts[xval]) counts[xval] = {};
-		if (!counts[xval][zval]) counts[xval][zval] = 0;
-		counts[xval][zval] += 1;
-	    });
-
-	    // new hash just using the number of times each combination of x and z is seen
-	    // y input is ignored
-	    hashJSP = new Array()
-	    for (var xval in counts) {
-		for (var zval in counts[xval]) {
-		    var count = counts[xval][zval];
-		    hashJSP.push({ x: xval, y: count, z: zval });
-		}
-	    }
-	    
-	}
 
 	/*
 	  e.g.
@@ -435,6 +414,28 @@ function getFilteredDataHash_jsp(project, vis) {
 		    return hash;
 		}
 	    );
+	    
+	}
+
+	if (vis.filters.histogram) {
+	    var counts = { };
+	    hashJSP.each(function(hash) {
+		var xval = hash.x !== false ? hash.x : 'no data';
+		var zval = hash.z !== false ? hash.z : 'no data';
+		if (!counts[xval]) counts[xval] = {};
+		if (!counts[xval][zval]) counts[xval][zval] = 0;
+		counts[xval][zval] += 1;
+	    });
+
+	    // new hash just using the number of times each combination of x and z is seen
+	    // y input is ignored
+	    hashJSP = new Array()
+	    for (var xval in counts) {
+		for (var zval in counts[xval]) {
+		    var count = counts[xval][zval];
+		    hashJSP.push({ x: xval, y: count, z: zval });
+		}
+	    }
 	    
 	}
 

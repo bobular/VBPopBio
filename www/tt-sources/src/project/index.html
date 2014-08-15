@@ -1,7 +1,7 @@
 [% INCLUDE header.html
    title = 'VectorBase Population Browser - Project'
    js = [
-'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', 'https://ajax.googleapis.com/ajax/libs/scriptaculous/1.9.0/scriptaculous.js', 'js/config.js', 'js/phenovis-0.01.js', 'js/frontend.js', 'js/protovis-d3.2.js', 'https://maps.google.com/maps/api/js?sensor=false', 'js/stereotabs.js' ]
+'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', 'https://ajax.googleapis.com/ajax/libs/scriptaculous/1.9.0/scriptaculous.js', 'js/config.js', 'js/phenovis-0.01.js', 'js/frontend.js', 'js/protovis-d3.2.js', 'https://maps.google.com/maps/api/js?libraries=geometry&sensor=false', 'js/stereotabs.js' ]
 %]
 <div id="project_load_status"></div>
 
@@ -15,6 +15,10 @@
       <tr>
 	<th class="row_heading">VectorBase stable ID</th>
 	<td class="object_value scalar" id="id"></td>
+      </tr>
+      <tr class="hide_on_load" id="external_id_row">
+	<th class="row_heading">External ID</th>
+	<td class="object_value scalar" id="external_id"></td>
       </tr>
       <tr>
 	<th class="row_heading">Name</th>

@@ -18,7 +18,7 @@ js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', '
   var url = 'projects/head';
   var limits = {
   offset: 0,
-  limit: 100
+  limit: 200
   };
 
   getPagedObjects(url,
@@ -26,7 +26,7 @@ js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.0.0/prototype.js', '
   spinner,
   function(page) {
 
-  // sort by project stable ID - will not make sense with >100 projects
+  // sort by project stable ID - will not make sense with >200 projects
   page.records = page.records.sortBy(function(project){ return project.id });
 
   fillInPagedListValues(page, projects, url, limits); //down('.hide_on_load').removeClassName('hide_on_load');
