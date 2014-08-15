@@ -51,6 +51,10 @@ numInstances = 3
 # print out each project's URL.
 verbose = False
 
+# list of project urls
+urls = []
+
+
 try:
 	opt, args = getopt.getopt(sys.argv[1:], "w:i:v")
 	for o, arg in opt:
@@ -75,7 +79,7 @@ def ajax_complete(driver):
 
 # navigates to given URL and waits until Ajax commands have finished
 def navigator(url):	
-	driver = webdriver.PhantomJS()
+	driver = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '5000000'})
 	driver.get(url)
 	WebDriverWait(driver, timeout_max).until(ajax_complete,  "Timeout")
 	if verbose:
@@ -83,24 +87,24 @@ def navigator(url):
 	driver.quit()
 
 
+while (len(urls) == 0):
+	# load instance of webdriver
+	w_driver = webdriver.PhantomJS() 
 
-# load instance of webdriver
-w_driver = webdriver.PhantomJS() 
-
-# opens the pop bio main page with list of projects and URLS
-w_driver.get(projectpage)
-WebDriverWait(w_driver, timeout_max).until(ajax_complete,  "Timeout") # wait to load completely
+	# opens the pop bio main page with list of projects and URLS
+	w_driver.get(projectpage)
+	WebDriverWait(w_driver, timeout_max).until(ajax_complete,  "Timeout") # wait to load completely
 
 
-# get all the URL's that matches ?id=VBP - these are the URLS for each project
-linkArray = []
-ListlinkerHref = w_driver.find_elements_by_tag_name("a")
-for i in ListlinkerHref:
-	link = i.get_attribute('href')
-	if str(link).count("?id=VBP") > 0:
-		linkArray.append(link)
-urls = set(linkArray)
-w_driver.quit()
+	# get all the URL's that matches ?id=VBP - these are the URLS for each project
+	linkArray = []
+	ListlinkerHref = w_driver.find_elements_by_tag_name("a")
+	for i in ListlinkerHref:
+		link = i.get_attribute('href')
+		if str(link).count("?id=VBP") > 0:
+			linkArray.append(link)
+	urls = set(linkArray)
+	w_driver.quit()
 
 
 # multiple instances to navigate to each project's page
