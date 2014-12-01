@@ -40,6 +40,36 @@ __PACKAGE__->many_to_many
 
 =head1 SUBROUTINES/METHODS
 
+=head2 pubmed_id
+
+simple renamed accessor for 'miniref' column (so 'pubmed_id' cannot be used in $pubs->search())
+
+=cut
+
+sub pubmed_id { my $self = shift; return $self->miniref }
+
+=head2 doi
+
+simple renamed accessor for 'volumetitle' column (so 'doi' cannot be used in $pubs->search())
+
+=cut
+
+sub doi { my $self = shift; return $self->volumetitle }
+
+
+=head2 authors
+
+convenience access to pub.pubauthors
+
+returns a list of "Surname INITIALS"
+
+=cut
+
+sub authors {
+  my $self = shift;
+  return map { $_->surname } sort { $a->rank <=> $b->rank } $self->pubauthors;
+}
+
 =head2 as_data_structure
 
 returns a json-like hashref of arrayrefs and hashrefs
@@ -51,12 +81,13 @@ sub as_data_structure {
 
   return {
 	  title => $self->title,
-	  pubmed_id => $self->miniref,
-	  doi => $self->volumetitle,
-	  authors => [ map { $_->surname } sort { $a->rank <=> $b->rank } $self->pubauthors ],
+	  pubmed_id => $self->pubmed_id,
+	  doi => $self->doi,
+	  authors => [ $self->authors ],
 	  status => $self->type->as_data_structure,
 	 };
 }
+
 
 =head1 AUTHOR
 
