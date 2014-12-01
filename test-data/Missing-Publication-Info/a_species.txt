@@ -1,0 +1,3 @@
+Sample Name	Assay Name	Description	Protocol REF	Performer	Date	Characteristics [species assay result (VBcv:0000961)]	Term Source REF	Term Accession Number
+IRBS67	IRBSID67		species_identification			Anopheles gambiae	MIRO	40003829
+IRBS68	IRBSID68		species_identification			Culex quinquefasciatus	MIRO	40002654

@@ -1,0 +1,13 @@
+Assay Name	Phenotype Name	Observable	Term Source REF	Term Accession Number	Attribute	Term Source REF	Term Accession Number	Value	Term Source REF	Term Accession Number	Unit	Term Source REF	Term Accession Number
+IRBRA485	Mortality percentage: 100, 25mg ai/m2 deltamethrin				mortality percentage	VBcv	0000703	100			percent	UO	0000187
+IRBRA486	Mortality percentage: 99.7, 6.25mg ai/m2 deltamethrin				mortality percentage	VBcv	0000703	99.7			percent	UO	0000187
+IRBRA487	Mortality percentage: 88.7, 50mg ai/m2 cyfluthrin				mortality percentage	VBcv	0000703	88.7			percent	UO	0000187
+IRBRA488	Mortality percentage: 80.2, 12.5mg ai/m2 cyfluthrin				mortality percentage	VBcv	0000703	80.2			percent	UO	0000187
+IRBRA489	Mortality percentage: 96.4, 40mg ai/m2 alpha-cypermethrin				mortality percentage	VBcv	0000703	96.4			percent	UO	0000187
+IRBRA490	Mortality percentage: 93.5, 10mg ai/m2 alpha-cypermethrin				mortality percentage	VBcv	0000703	93.5			percent	UO	0000187
+IRBRA491	Mortality percentage: 80.9, 25mg ai/m2 deltamethrin				mortality percentage	VBcv	0000703	80.9			percent	UO	0000187
+IRBRA492	Mortality percentage: 50.4, 6.25mg ai/ deltamethrin				mortality percentage	VBcv	0000703	50.4			percent	UO	0000187
+IRBRA493	Mortality percentage: 65.3, 50mg ai/m2 cyfluthrin				mortality percentage	VBcv	0000703	65.3			percent	UO	0000187
+IRBRA494	Mortality percentage: 63.4, 12.5mg ai/ cyfluthrin				mortality percentage	VBcv	0000703	63.4			percent	UO	0000187
+IRBRA495	Mortality percentage: 74.4, 40mg ai/m2 alpha-cypermethrin				mortality percentage	VBcv	0000703	74.4			percent	UO	0000187
+IRBRA496	Mortality percentage: 56.4, 10mg ai/m2 alpha-cypermethrin				mortality percentage	VBcv	0000703	56.4			percent	UO	0000187

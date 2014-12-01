@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 # -*- mode: cperl -*-
 #
-# finds projects' publications which have no pubmed_id and no DOI and make sure
-# that their status is "in preparation" (many were "published")
+# finds projects' publications which have no pubmed_id and no DOI and status="published"
+# and fixes their status to "in preparation"
 #
 #
 # usage: CHADO_DB_NAME=my_chado_instance bin/fix_empty_pubs.pl [--dry-run]
@@ -42,9 +42,8 @@ my ($isatab_dir) = @ARGV;
 # should speed things up
 $schema->storage->_use_join_optimizer(0);
 
-my $in_preparation_id = $schema->cvterms->find_by_name({ term_source_ref => 'EFO',
-							 term_name => 'in preparation' })->id;
-
+my $in_preparation_id = $schema->types->in_preparation->id;
+my $published_id = $schema->types->published->id;
 
 $schema->txn_do_deferred
   ( sub {
@@ -58,7 +57,7 @@ $schema->txn_do_deferred
 	my $done_something = 0;
 	foreach my $pub ($project->publications->all) {
 
-	  if (not $pub->pubmed_id and not $pub->doi and $pub->type_id != $in_preparation_id) {
+	  if (not $pub->pubmed_id and not $pub->doi and $pub->type_id == $published_id) {
 	    $pub->update({ type_id => $in_preparation_id });
 	    $done_something++;
 	  }

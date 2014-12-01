@@ -1,0 +1,73 @@
+ONTOLOGY SOURCE REFERENCE
+Term Source Name	MO	NCI Metathesaurus 	EFO	OBI	UO	GAZ	NCBITaxon	PATO
+Term Source File	http://mged.sourceforge.net/ontologies/MGEDontology.php	http://bioportal.bioontology.org/ontologies/45339	http://bioportal.bioontology.org/ontologies/45155	http://bioportal.bioontology.org/ontologies/44899	http://bioportal.bioontology.org/ontologies/45413	http:...	http://www.ncbi.nlm.nih.gov/Taxonomy/
+Term Source Version	1.3.0.1	201010D	144	"2010-10-26 Vancouver 2010 release, RC2"
+Term Source Description	The Microarray Ontology	NCI Metathesaurus	Experimental Factor Ontology	Ontology for Biomedical Investigations	Units of measurement	Gazetteer	NCBI Taxonomy	Phenotypic quality
+
+STUDY
+Study identifier	IRbase11963974
+Study title	Comparative insecticidal power of three pyrethroids on netting.
+Study Submission Date	2004-01-01
+Study Public Release Date	2002
+Study Description	Insecticide resistance study imported from IRBase. Study undertaken for the PSI/Malawi/ITN project as part of the Blantyre Integrated Malaria Initiative using standard polyester bednets.
+Study File Name	s_samples.txt
+
+STUDY DESIGN DESCRIPTORS
+Study Design Type	observational design	compound design treatment
+Study Design Type Term Accession Number	0300311	0001755
+Study Design Type Term Source REF	OBI	EFO
+
+STUDY PUBLICATIONS
+Study PubMed ID
+Study Publication DOI
+Study Publication Author list	Adams KJ, Chavasse DC, Mount DL, Carneiro IA, Curtis CF
+Study Publication Title	Comparative insecticidal power of three pyrethroids on netting.
+Study Publication Status	published
+Study Publication Status Term Accession Number	0001796
+Study Publication Status Term Source REF	EFO
+
+STUDY FACTORS
+Study Factor Name
+Study Factor Type
+Study Factor Type Term Accession Number
+Study Factor Type Term Source REF
+
+STUDY ASSAYS
+Study Assay Measurement Type	field collection	species identification assay	phenotype assay
+Study Assay Measurement Type Term Accession Number
+Study Assay Measurement Type Term Source REF
+Study Assay Technology Type
+Study Assay Technology Type Term Accession Number
+Study Assay Technology Type Term Source REF
+Study Assay Technology Platform
+Study Assay File Name	a_collection.txt	a_species.txt	a_phenotypes.txt
+
+STUDY PROTOCOLS
+Study Protocol Name	CollectionProtocol_0	species_identification	AssayProtocol_0
+Study Protocol Type	field population catch	morphological examination	direct bioassay
+Study Protocol Type Term Accession Number	30000044	30000039	20000044
+Study Protocol Type Term Source REF	MIRO	MIRO	MIRO
+Study Protocol Description		Species were determined by morphological and genotypic examination	
+Study Protocol URI
+Study Protocol Version
+Study Protocol Parameters Name			first.insecticide;first.concentration
+Study Protocol Parameters Name Term Accession Number			10000239;0000033
+Study Protocol Parameters Name Term Source REF			MIRO;PATO
+Study Protocol Components Name
+Study Protocol Components Type
+Study Protocol Components Type Term Accession Number
+Study Protocol Components Type Term Source REF
+
+STUDY CONTACTS
+Study Person First Name	KJ	DC	DL	IA	CF
+Study Person Last Name	Adams	Chavasse	Mount	Carneiro	Curtis
+Study Person Mid Initials
+Study Person Email	kjadams@popbio-ir.vectorbase.org	dcchavasse@popbio-ir.vectorbase.org	dlmount@popbio-ir.vectorbase.org	iacarneiro@popbio-ir.vectorbase.org	cfcurtis@popbio-ir.vectorbase.org
+Study Person Phone
+Study Person Fax
+Study Person Address
+Study Person Affiliation
+Study Person Roles
+Study Person Roles Term Accession Number
+Study Person Roles Term Source REF
+

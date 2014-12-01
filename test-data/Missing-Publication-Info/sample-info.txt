@@ -1,0 +1,4 @@
+# Project IRbase11963974 (VBP0000109) loaded into database popbio-v4.1.1-VB-2014-10-prod-03 (which contained 108 projects) by maccallr on Wed Oct 15 17:09:31 2014
+#Sample Name	VB PopBio Stable ID	VCF file(s)	Comments...
+IRBS67	VBS0057361	
+IRBS68	VBS0057362	

@@ -573,6 +573,36 @@ sub metaproject {
 }
 memoize('metaproject');
 
+=head2 published
+
+EFO:published
+
+=cut
+
+sub published {
+  my $self = shift;
+  return $self->schema->cvterms->find_by_accession( { term_source_ref => 'EFO',
+						      term_accession_number => '0001796',
+						    } );
+}
+memoize('published');
+
+=head2 in_preparation
+
+EFO:in preparation
+
+=cut
+
+sub in_preparation {
+  my $self = shift;
+  return $self->schema->cvterms->find_by_accession( { term_source_ref => 'EFO',
+						      term_accession_number => '0001795',
+						    } );
+}
+memoize('in_preparation');
+
+
+
 #
 # this is a subsection - please add new terms above the previous head1
 #

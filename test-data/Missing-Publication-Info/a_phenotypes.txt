@@ -1,0 +1,13 @@
+Sample Name	Assay Name	Protocol REF	Parameter Value [first.insecticide]	Term Source REF	Term Accession Number	Parameter Value [first.concentration]	Unit	Term Source REF	Term Accession Number	Characteristics[sample size (VBcv:0000983)]	Raw Data File
+IRBS67	IRBRA485	AssayProtocol_0	deltamethrin	MIRO	10000133						p_phenotypes.txt
+IRBS67	IRBRA486	AssayProtocol_0	deltamethrin	MIRO	10000133						p_phenotypes.txt
+IRBS67	IRBRA487	AssayProtocol_0	cyfluthrin	MIRO	10000122						p_phenotypes.txt
+IRBS67	IRBRA488	AssayProtocol_0	cyfluthrin	MIRO	10000122						p_phenotypes.txt
+IRBS67	IRBRA489	AssayProtocol_0	alpha-cypermethrin	MIRO	10000128						p_phenotypes.txt
+IRBS67	IRBRA490	AssayProtocol_0	alpha-cypermethrin	MIRO	10000128						p_phenotypes.txt
+IRBS68	IRBRA491	AssayProtocol_0	deltamethrin	MIRO	10000133						p_phenotypes.txt
+IRBS68	IRBRA492	AssayProtocol_0	deltamethrin	MIRO	10000133						p_phenotypes.txt
+IRBS68	IRBRA493	AssayProtocol_0	cyfluthrin	MIRO	10000122						p_phenotypes.txt
+IRBS68	IRBRA494	AssayProtocol_0	cyfluthrin	MIRO	10000122						p_phenotypes.txt
+IRBS68	IRBRA495	AssayProtocol_0	alpha-cypermethrin	MIRO	10000128						p_phenotypes.txt
+IRBS68	IRBRA496	AssayProtocol_0	alpha-cypermethrin	MIRO	10000128						p_phenotypes.txt

@@ -75,6 +75,10 @@ sub find_or_create_from_isatab {
     return;
   }
 
+  if (not $pubmed_id and not $doi and $status->id == $schema->types->published->id) {
+    $schema->defer_exception("publication was annotated as published but does not have a PubMed ID or DOI");
+  }
+
   # uniquename is the mechanism by which we retrieve a previously-used publication
   # it's not perfect but it should be useful further down the line if we want to
   # use publication-project links
