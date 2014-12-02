@@ -50,6 +50,9 @@ my $assays = $schema->assays;
 my $json = JSON->new->pretty; # useful for debugging
 my $done;
 
+# stops "wide character in print" warnings
+binmode(STDOUT, ":utf8");
+
 #
 # debug only
 #
@@ -349,7 +352,7 @@ print qq!\"commit\" : { } }\n!;
 # of the argument
 sub multiprops_cvterms {
   my $object = shift;
-  return grep { $_->dbxref->as_string =~ /^(?!VBcv)\w+:\d+$/ } map { $_->cvterms } $object->multiprops;
+  return grep { $_->dbxref->as_string =~ /^\w+:\d+$/ } map { $_->cvterms } $object->multiprops;
 }
 
 # returns a list of pubmed ids (or empty list)
