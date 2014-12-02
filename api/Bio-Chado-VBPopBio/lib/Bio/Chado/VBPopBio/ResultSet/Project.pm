@@ -68,6 +68,8 @@ sub create_from_isatab {
   my $study = shift @studies;
   Bio::Parser::ISATab::create_lookup($study, 'study_contacts', 'study_contact_lookup', 'study_person_email');
 
+  croak "Study has no contacts\n" unless (keys %{$study->{study_contact_lookup}});
+
   # do some sanity checks
   my $study_title = $study->{study_title};
   croak "Study has no title" unless ($study_title);

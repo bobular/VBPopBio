@@ -52,7 +52,7 @@ sub find_or_create_from_isatab {
 
   my $material_type = $cvterms->find_by_accession($sample_data->{material_type});
 
-  croak "Sample material type not found (REF=$sample_data->{material_type}{term_source_ref},ACC=$sample_data->{material_type}{term_accession_number})\n" unless (defined $material_type);
+  croak "Sample ($sample_name) material type not found (REF=$sample_data->{material_type}{term_source_ref},ACC=$sample_data->{material_type}{term_accession_number})\n" unless (defined $material_type);
 
   # first check to see if we have a sample stable ID that's already in the db
   if ($self->looks_like_stable_id($sample_name)) {

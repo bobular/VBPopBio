@@ -55,15 +55,15 @@ sub find_or_create_from_isatab {
 
   # some arg checking
   if (!defined $surname && !defined $email) {
-    $schema->defer_exception_once("One or more study contacts is missing mandatory info.");
+    $schema->defer_exception_once("A study contact is missing mandatory surname and email info. Only data provided was: >".join(":", values %$contact_data)."<");
     return;
   }
   unless (defined $surname) {
-    $schema->defer_exception("Missing last name for study person $email");
+    $schema->defer_exception_once("Missing last name for study person $email");
     return;
   }
   unless (defined $email) {
-    $schema->defer_exception("Missing email for study person $surname");
+    $schema->defer_exception_once("Missing email for study person $surname");
     return;
   }
 
