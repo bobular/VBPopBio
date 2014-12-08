@@ -128,7 +128,7 @@ while (my $stock = $stocks->next) {
   die "stock with db id ".$stock->id." does not have a stable id" unless ($stable_id);
 
   my @collection_protocol_types = map { $_->type } map { $_->protocols->all } $stock->field_collections;
-  my ($lat, $long) = stock_latlong($stock);
+  my $latlong = stock_latlong($stock);
   my $stock_best_species = $stock->best_species();
   my $fc = $stock->field_collections->first;
   my @tmp;
@@ -153,9 +153,8 @@ while (my $stock = $stocks->next) {
 		    collection_protocols => [ map { $_->name } @collection_protocol_types ],
 		    collection_protocols_cvterms => [ map { flattened_parents($_) } @collection_protocol_types ],
 
-		    has_geodata => ($lat || $long ? 'true' : 'false'), # one could be zero!
-
-		    ($lat || $long ? ( latitude=>$lat||0, longitude=>$long||0 ) : ()),
+		    has_geodata => (defined $latlong ? 'true' : 'false'),
+		    (defined $latlong ? ( geo_coords=>$latlong ) : ()),
 
 		    geolocations => [ map { $_->geolocation->summary } (@tmp = $stock->field_collections) ],
 		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation) } @tmp ],
@@ -197,11 +196,12 @@ while (my $assay = $assays->next) {
 
   my @protocol_types = map { $_->type } $assay->protocols->all;
   my $assay_type_name = $assay->type->name;
-  my ($lat, $long, $geoloc, $assay_best_species, @tmp);
+  my ($latlong, $geoloc, $assay_best_species, @tmp);
   if ($assay_type_name eq 'field collection') {
     $geoloc = $assay->geolocation;
-    $lat = $geoloc->latitude;
-    $long = $geoloc->longitude;
+    my $lat = $geoloc->latitude;
+    my $long = $geoloc->longitude;
+    $latlong = "$lat,$long" if (defined $lat && defined $long);
   } elsif ($assay_type_name eq 'species identification method') {
     $assay_type_name = 'species identification assay';
     $assay_best_species = $assay->best_species;
@@ -234,10 +234,8 @@ while (my $assay = $assays->next) {
 		    date => assay_date($assay),
 
 
-		    has_geodata => ($lat || $long ? 'true' : 'false'), # one could be zero!
-
-		    ($lat || $long ? ( latitude=>$lat||0, longitude=>$long||0 ) : ()),
-
+		    has_geodata => (defined $latlong ? 'true' : 'false'),
+		    (defined $latlong ? ( geo_coords=>$latlong ) : ()),
 
 		    ( $geoloc ? (
 				 geolocations => [ $geoloc->summary ],
@@ -280,7 +278,9 @@ while (my $assay = $assays->next) {
     if (defined $sample) {
       my $fc = $sample->field_collections->first;
       if (defined $fc) {
+	my $latlong;
 	my ($lat, $long) = ($fc->geolocation->latitude, $fc->geolocation->longitude);
+	$latlong = "$lat,$long" if (defined $lat && defined $long);
 
 	my @collection_protocol_types = map { $_->type } $fc->protocols->all;
 	my $sample_best_species = $sample->best_species;
@@ -305,8 +305,8 @@ while (my $assay = $assays->next) {
 
 	     collection_date => $fc ? assay_date($fc) : undef,
 
-	     has_geodata => ($lat || $long ? 'true' : 'false'), # one could be zero!
-	     ($lat || $long ? ( latitude=>$lat||0, longitude=>$long||0 ) : ()),
+	     has_geodata => (defined $latlong ? 'true' : 'false'),
+	     (defined $latlong ? ( geo_coords=>$latlong ) : ()),
 
 	     geolocations => [ $fc->geolocation->summary ],
 	     geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($fc->geolocation) ],
@@ -371,11 +371,11 @@ sub stock_latlong {
     if ($stock->field_collections->count == 1) {
       my $geo = $experiment->nd_geolocation;
       if (defined $geo->latitude && defined $geo->longitude) {
-	return ( $geo->latitude, $geo->longitude );
+	return ( join ",", $geo->latitude, $geo->longitude );
       }
     }
   }
-  return (); # empty array
+  return undef;
 }
 
 # returns date of first assay with a date
