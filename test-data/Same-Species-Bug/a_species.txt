@@ -1,0 +1,11 @@
+"Sample Name"	"Assay Name"	Description	"Protocol REF"	Performer	Date	"Characteristics [species assay result (VBcv:0000961)]"	"Term Source Ref"	"Term Accession Number"
+"Corrales-El Playón"	"Corrales-El Playón.spid1.taxonomical identification"	"taxonomical identification"	SPECIES			"Anopheles nuneztovari"	MIRO	40000165
+Encharcazón	"Encharcazón.spid1.taxonomical identification"	"taxonomical identification"	SPECIES			"Anopheles nuneztovari"	MIRO	40000165
+Socuavó	"Socuavó.spid1.taxonomical identification"	"taxonomical identification"	SPECIES			"Anopheles nuneztovari"	MIRO	40000165
+"Santa Rosa"	"Santa Rosa.spid1.taxonomical identification"	"taxonomical identification"	SPECIES			"Anopheles nuneztovari"	MIRO	40000165
+"Caño Victoria"	"Caño Victoria.spid1.taxonomical identification"	"taxonomical identification"	SPECIES			"Anopheles nuneztovari"	MIRO	40000165
+"Corrales-El Playón"	"Corrales-El Playón.spid1.PCR-RFLP"	PCR-RFLP	SPECIES_PCR-RFLP			"Anopheles nuneztovari"	MIRO	40000165
+Encharcazón	Encharcazón.spid1.PCR-RFLP	PCR-RFLP	SPECIES_PCR-RFLP			"Anopheles nuneztovari"	MIRO	40000165
+Socuavó	Socuavó.spid1.PCR-RFLP	PCR-RFLP	SPECIES_PCR-RFLP			"Anopheles nuneztovari"	MIRO	40000165
+"Santa Rosa"	"Santa Rosa.spid1.PCR-RFLP"	PCR-RFLP	SPECIES_PCR-RFLP			"Anopheles nuneztovari"	MIRO	40000165
+"Caño Victoria"	"Caño Victoria.spid1.PCR-RFLP"	PCR-RFLP	SPECIES_PCR-RFLP			"Anopheles nuneztovari"	MIRO	40000165

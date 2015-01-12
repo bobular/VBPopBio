@@ -472,7 +472,7 @@ sub best_species {
       } elsif ($result->has_child($species_term)) {
 	# return the leaf-wards term unless we already chose an internal node
 	$result = $species_term unless ($internal_result);
-      } elsif ($species_term->has_child($result)) {
+      } elsif ($species_term->id == $result->id  || $species_term->has_child($result)) {
 	# that's fine - stick with the leaf term
       } else {
 	# we need to return a common 'ancestral' internal node
