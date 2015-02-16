@@ -25,6 +25,7 @@ use Bio::Chado::VBPopBio;
 use JSON;
 use DateTime::Format::ISO8601;
 use DateTime;
+use Geohash;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -48,6 +49,7 @@ my $projects = $schema->projects;
 my $assays = $schema->assays;
 
 my $json = JSON->new->pretty; # useful for debugging
+my $gh = Geohash->new();
 my $done;
 
 # stops "wide character in print" warnings
@@ -154,7 +156,7 @@ while (my $stock = $stocks->next) {
 		    collection_protocols_cvterms => [ map { flattened_parents($_) } @collection_protocol_types ],
 
 		    has_geodata => (defined $latlong ? 'true' : 'false'),
-		    (defined $latlong ? ( geo_coords=>$latlong ) : ()),
+		    (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
 
 		    geolocations => [ map { $_->geolocation->summary } (@tmp = $stock->field_collections) ],
 		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation) } @tmp ],
@@ -235,7 +237,7 @@ while (my $assay = $assays->next) {
 
 
 		    has_geodata => (defined $latlong ? 'true' : 'false'),
-		    (defined $latlong ? ( geo_coords=>$latlong ) : ()),
+		    (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
 
 		    ( $geoloc ? (
 				 geolocations => [ $geoloc->summary ],
@@ -306,7 +308,7 @@ while (my $assay = $assays->next) {
 	     collection_date => $fc ? assay_date($fc) : undef,
 
 	     has_geodata => (defined $latlong ? 'true' : 'false'),
-	     (defined $latlong ? ( geo_coords=>$latlong ) : ()),
+	     (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
 
 	     geolocations => [ $fc->geolocation->summary ],
 	     geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($fc->geolocation) ],
@@ -438,4 +440,29 @@ sub quick_project_stable_id {
   my $project = shift;
   my $id = $project->id;
   return $project_id_to_stable_id{$id} ||= $project->stable_id;
+}
+
+
+#
+# returns list of all key-value pairs for geo-coordinates
+#
+# arg 1 = latlong comma separated string
+#
+# uses global $gh object
+#
+sub geo_coords_fields {
+  my $latlong = shift;
+  my ($lat, $long) = split /,/, $latlong;
+  die "some unexpected problem with latlog arg to geo_coords_fields\n"
+    unless (defined $lat && defined $long);
+
+  my $geohash = $gh->encode($lat, $long, 6);
+
+  return (geo_coords => $latlong,
+	  geohash_6 => $geohash,
+	  geohash_5 => substr($geohash, 0, 5),
+	  geohash_4 => substr($geohash, 0, 4),
+	  geohash_3 => substr($geohash, 0, 3),
+	  geohash_2 => substr($geohash, 0, 2),
+	  geohash_1 => substr($geohash, 0, 1));
 }
