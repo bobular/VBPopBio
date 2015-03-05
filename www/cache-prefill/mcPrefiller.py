@@ -14,8 +14,9 @@
 #
 # Command line parameters:
 # -   -w <URL of the PopBio projects list> defaults to http://www.vectorbase.org/popbio/projects
-# -   -i  <number of parallel threads> defaults to 3
+# -   -i  <number of parallel threads> defaults to 1
 # -   -v <verbose. Prints out URLS of each project page at end of each execution> defaults to false
+# -   -r <randomise. Shuffles the list of project URLS> defaults to false
 #
 # 
 # Usage examples:
@@ -23,6 +24,7 @@
 # - python mcPrefiller.py -w http://pre.vectorbase.org/popbio/projects
 # - python mcPrefiller.py -w http://pre.vectorbase.org/popbio/projects -i 5 
 # - python mcPrefiller.py -i 5 -v
+# - python mcPrefiller.py -i 5 -v -r
 #
 #
 #
@@ -35,7 +37,7 @@
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import WebDriverException
-import sys, multiprocessing, getopt
+import sys, multiprocessing, getopt, random
 
 
 
@@ -46,17 +48,20 @@ projectpage = "http://www.vectorbase.org/popbio/projects"
 timeout_max = 3600 # = 1hr
 
 # number of instances to navigate to each project page
-numInstances = 3
+numInstances = 1
 
 # print out each project's URL.
 verbose = False
+
+# randomise the list of project URL's
+randomise = False
 
 # list of project urls
 urls = []
 
 
 try:
-	opt, args = getopt.getopt(sys.argv[1:], "w:i:v")
+	opt, args = getopt.getopt(sys.argv[1:], "w:i:vr")
 	for o, arg in opt:
 		if o == "-w":
 			projectpage = arg
@@ -64,21 +69,28 @@ try:
 			numInstances = int(arg)
 		elif o == "-v":
 			verbose = True
+		elif o == "-r":
+			randomise = True
+
 except: 	
-	print 'Usage: python mcPrefiller.py -w <URL> -i <numInstances> -v <verbose>'
+	print 'Usage: python mcPrefiller.py -w <URL> -i <numInstances> -v <verbose> -r <randomise>'
      	sys.exit(2)
 
 
 # get number of active AJAX requests. Returns True if no active connections
 def ajax_complete(driver):
-	if (driver.execute_script("return Ajax.activeRequestCount") > 0):
+	try:
+		if (driver.execute_script("return Ajax.activeRequestCount") > 0):
+			return False
+		else:
+			return True
+	except WebDriverException:
+		print '--- WDE ---'
 		return False
-	else:
-		return True
 
 
 # navigates to given URL and waits until Ajax commands have finished
-def navigator(url):	
+def navigator(url):		
 	driver = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '5000000'})
 	driver.get(url)
 	WebDriverWait(driver, timeout_max).until(ajax_complete,  "Timeout")
@@ -86,6 +98,7 @@ def navigator(url):
 		print url
 	driver.quit()
 
+	
 
 while (len(urls) == 0):
 	# load instance of webdriver
@@ -105,6 +118,13 @@ while (len(urls) == 0):
 			linkArray.append(link)
 	urls = set(linkArray)
 	w_driver.quit()
+
+
+# randomise the list of urls
+if randomise == True:
+	urlsRandom = list(urls)
+	random.shuffle(urlsRandom, random.random)
+	urls = list(urlsRandom)
 
 
 # multiple instances to navigate to each project's page
