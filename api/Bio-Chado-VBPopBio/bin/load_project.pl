@@ -79,12 +79,14 @@ $schema->txn_do_deferred
             $project->stable_id,
 	      $ENV{CHADO_DB_NAME}, $num_projects_before, $ENV{USER}, scalar(localtime);
 
-	  print $sfile "#Sample Name\tVB PopBio Stable ID\tVCF file(s)\tComments...\n";
+	  print $sfile "#Sample Name\tVB PopBio Stable ID\tVCF file(s)\tSpecies\tComments...\n";
 	  foreach my $stock ($project->stocks) {
+	    my $species = $stock->best_species();
 	    print $sfile join("\t",
 			    $stock->external_id,
 			    $stock->stable_id,
 			    join(",", grep defined, map { $_->vcf_file } $stock->genotype_assays),
+			    $species->name,
 			    map { my $c = $_->value; # change "[topic] comment"
 				  $c =~ s/^\[//;     # to "topic<tab>comment"
 				  $c =~ s/\] /\t/;
