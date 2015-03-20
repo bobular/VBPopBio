@@ -184,7 +184,7 @@ sub _recurse {
   my $subject = $subjects->[-1];
 
   my $objects = $subject->cvterm_relationship_subjects->
-    search({ 'type.name' => { -in => $rel_types } }, { join => 'type' })->search_related('object');
+    search({ 'type.name' => { -in => $rel_types } }, { join => 'type' })->search_related('object', { 'object.is_obsolete' => 0 });
 
   while (my $object = $objects->next) {
     my $tdist = $dist;
