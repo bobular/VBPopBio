@@ -2,7 +2,7 @@
 # -*- mode: cperl -*-
 #
 #
-# usage: CHADO_DB_NAME=my_chado_instance -inversions 2La,2Rjbcdu  bin/create-genotypes-for-karyotype-summaries.pl VBP0000003
+# usage: bin/create-genotypes-for-karyotype-summaries.pl -inversions 2La,2Rjbcdu VBP0000003
 #
 #
 #

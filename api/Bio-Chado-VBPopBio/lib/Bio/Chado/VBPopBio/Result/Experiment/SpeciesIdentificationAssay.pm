@@ -33,8 +33,10 @@ sub result_summary {
       $method = join ', ', map { $_->type->name } @protocols;
     }
     return '<span class="species_name">'.$best_species->name."</span> ($method)";
+  } elsif ($self->search_related('nd_experimentprops', { 'type_id' => $self->result_source->schema->types->deprecated->id })->next) {
+    return 'deprecated data';
   } else {
-    return 'no results';
+    return 'no data';
   }
 }
 
@@ -46,6 +48,8 @@ NOTE: Mostly copied from Stock::best_species()
 interrogates results of this assay and returns the most "detailed" species ontology term
 
 returns undefined if nothing suitable found
+
+Will return undefined if this assay is tagged as deprecated.
 
 In list context returns ($species_term, @qualification_terms) where the
 latter is a list of (one) internal term (maybe later formalised into VBcv) to
@@ -72,23 +76,28 @@ sub best_species {
   my $result;
   my $qualification = $schema->types->unambiguous;
   my $internal_result; # are we returning a non-leaf node?
-  foreach my $result_multiprop ($self->multiprops($sar)) {
-    my $species_term = $result_multiprop->cvterms->[-1]; # second/last term in chain
-    if (!defined $result) {
-      $result = $species_term;
-    } elsif ($result->has_child($species_term)) {
-      # return the leaf-wards term unless we already chose an internal node
-      $result = $species_term unless ($internal_result);
-    } elsif ($species_term->id == $result->id || $species_term->has_child($result)) {
-      # that's fine - stick with the leaf term
-    } else {
-      # we need to return a common 'ancestral' internal node
-      foreach my $parent ($species_term->recursive_parents_same_ontology) {
-	if ($parent->has_child($result)) {
-	  $result = $parent;
-	  $internal_result = 1;
-	  $qualification = $schema->types->ambiguous;
-	  last;
+  my $deprecated_term = $schema->types->deprecated;
+
+  # don't process results from this assay if it's deprecated
+  unless ($self->search_related('nd_experimentprops', { 'type_id' => $deprecated_term->id })->next) {
+    foreach my $result_multiprop ($self->multiprops($sar)) {
+      my $species_term = $result_multiprop->cvterms->[-1]; # second/last term in chain
+      if (!defined $result) {
+	$result = $species_term;
+      } elsif ($result->has_child($species_term)) {
+	# return the leaf-wards term unless we already chose an internal node
+	$result = $species_term unless ($internal_result);
+      } elsif ($species_term->id == $result->id || $species_term->has_child($result)) {
+	# that's fine - stick with the leaf term
+      } else {
+	# we need to return a common 'ancestral' internal node
+	foreach my $parent ($species_term->recursive_parents_same_ontology) {
+	  if ($parent->has_child($result)) {
+	    $result = $parent;
+	    $internal_result = 1;
+	    $qualification = $schema->types->ambiguous;
+	    last;
+	  }
 	}
       }
     }

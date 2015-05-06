@@ -459,29 +459,35 @@ sub best_species {
   my $schema = $self->result_source->schema;
 
   my $sar = $schema->types->species_assay_result;
+  my $deprecated_term = $schema->types->deprecated;
 
   my $result;
   my $qualification = $schema->types->unambiguous;
   my $internal_result; # are we returning a non-leaf node?
   my @sp_id_assays = $self->species_identification_assays->filter_on_project($project)->all;
   foreach my $assay (@sp_id_assays) {
-    foreach my $result_multiprop ($assay->multiprops($sar)) {
-      my $species_term = $result_multiprop->cvterms->[-1]; # second/last term in chain
-      if (!defined $result) {
-	$result = $species_term;
-      } elsif ($result->has_child($species_term)) {
-	# return the leaf-wards term unless we already chose an internal node
-	$result = $species_term unless ($internal_result);
-      } elsif ($species_term->id == $result->id  || $species_term->has_child($result)) {
-	# that's fine - stick with the leaf term
-      } else {
-	# we need to return a common 'ancestral' internal node
-	foreach my $parent ($species_term->recursive_parents_same_ontology) {
-	  if ($parent->has_child($result)) {
-	    $result = $parent;
-	    $internal_result = 1;
-	    $qualification = $schema->types->ambiguous;
-	    last;
+
+    # don't process results from this assay if it's deprecated
+    unless ($assay->search_related('nd_experimentprops', { 'type_id' => $deprecated_term->id })->next) {
+
+      foreach my $result_multiprop ($assay->multiprops($sar)) {
+	my $species_term = $result_multiprop->cvterms->[-1]; # second/last term in chain
+	if (!defined $result) {
+	  $result = $species_term;
+	} elsif ($result->has_child($species_term)) {
+	  # return the leaf-wards term unless we already chose an internal node
+	  $result = $species_term unless ($internal_result);
+	} elsif ($species_term->id == $result->id  || $species_term->has_child($result)) {
+	  # that's fine - stick with the leaf term
+	} else {
+	  # we need to return a common 'ancestral' internal node
+	  foreach my $parent ($species_term->recursive_parents_same_ontology) {
+	    if ($parent->has_child($result)) {
+	      $result = $parent;
+	      $internal_result = 1;
+	      $qualification = $schema->types->ambiguous;
+	      last;
+	    }
 	  }
 	}
       }

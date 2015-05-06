@@ -603,6 +603,24 @@ memoize('in_preparation');
 
 
 
+=head2 deprecated
+
+=cut
+
+sub deprecated {
+  my $self = shift;
+  my $term = $self->schema->cvterms->create_with({ name => 'deprecated',
+						   cv => 'VBcv',
+						   db => 'VBcv',
+						 });
+  $term->definition('A flag for legacy species determination assays that should no longer be used when calculating the "best fit" species from a number of species assays');
+  $term->update;
+  return $term;
+}
+memoize('deprecated');
+
+
+
 #
 # this is a subsection - please add new terms above the previous head1
 #
