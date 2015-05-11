@@ -2,7 +2,7 @@
 # -*- mode: cperl -*-
 #
 #
-# usage: bin/create-genotypes-for-karyotype-summaries.pl --assay-type species_identification_assay --protocol-type MIRO:30000037 --project VBP0000005 --message "due to species taxonomy changes"
+# usage: bin/flag-deprecated-assays.pl --assay-type species_identification_assay --protocol-type MIRO:30000037 --project VBP0000005 --message "due to species taxonomy changes"
 #
 #
 #
@@ -24,7 +24,7 @@
 #
 #   --limit 2              : only does 2 assays
 #
-# Author: Bob MacCallum (completed in 2015)
+# Author: Bob MacCallum
 #
 
 use strict;
