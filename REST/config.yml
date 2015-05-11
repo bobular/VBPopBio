@@ -19,6 +19,9 @@ plugins:
         default_timeout: 0
         namespace: "popbio:"
         compress_threshold: 10000
+        serialize_methods:
+          - JSON::encode_json
+          - JSON::decode_json
 
 logger: 'file'
 log: 'debug'
