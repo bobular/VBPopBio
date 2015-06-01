@@ -1,6 +1,7 @@
 [% root = '/popbio/' 
-   root_static ='/popbio_static/'
+   root_static ='/sites/all/modules/custom/popbio/htdocs/'
    vb_root = '/'
    json_root = '/popbio/REST/'
    development_environment = 0
+   drupal_environment = 1
 %]

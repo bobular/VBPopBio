@@ -1,9 +1,11 @@
 </div> <!-- vbpg_content -->
 </div> <!-- vbpg_page -->
-<div id="vbpg_debug"></div>
-</body>
 <!-- spinning progress disk CC 
   -- http://www.sanbaldo.com/wordpress/1/ajax_gif/
   -- Creative Commons BY
   -->
+[% IF !drupal_environment %]
+<div id="vbpg_debug"></div>
+</body>
 </html>
+[% END %]
