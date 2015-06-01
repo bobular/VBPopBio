@@ -5,6 +5,7 @@
 
 <div id="welcome">
 
+[% IF development_environment %]
   <h1>VectorBase "new" PopBio demo server</h2>
 
   <p style="width:600px">
@@ -16,6 +17,120 @@
     You may <a href="[% root %]projects/">browse all demo projects</a>.
   </p>
 
-</div>
+[% ELSE %]
+
+<a href="/popbio/project/?id=VBP0000013"><img align="right" src="/sites/default/files/ftp/styles/medium-300/public/burkina.png?itok=9B_xkJYm" width="300" height="165" alt=""  class="image-medium-300" /></a>
+
+<p>Welcome to the new and improved VectorBase Population Biology resource, which is part of our ongoing efforts to integrate genomic, phenotypic (including insecticide resistance) and population data.  What's new?
+<ul>
+<li>Stable IDs for projects, samples and assays (so you can bookmark pages and refer to entries in our database in publications).</li>
+<li>Much simplified submission procedure</li>
+<li>Improved data representation and search</li> 
+<li>New clean design</li>
+</ul>
+</p>
+<p>
+You are very welcome to <a href="/popbio/submission">submit data</a> for any field or laboratory based studies of genotypic and/or phenotypic diversity.
+</p>
+<p>
+You can <a href="/popbio/project/?id=VBP0000003">view an example project</a>, browse a <a href="/popbio/projects">list of projects</a>, or search using the forms below (or search at any time from the site-wide <a href="/search/site">top-right search box</a>).
+</p>
+
+<script type="text/javascript">
+      function doSearch( bundle_id, bundle ){
+            var term = '';
+            if (bundle_id == 0) {
+               term = document.getElementById('pop-bio-project-search').value;
+            } else if (bundle_id == 1) {
+               term = document.getElementById('pop-bio-sample-search').value;
+            } else if (bundle_id == 2) {
+               term = document.getElementById('pop-bio-assay-search').value;
+            } else if (bundle_id == 3) {
+               term = document.getElementById('pop-bio-irassay-search').value;
+            }
+            var searchURL = '/search/site/' + encodeURIComponent(encodeURIComponent(term)) + '?site=%22Population%20Biology%22&bundle_name=%22'+bundle+'%22';
+            window.location = searchURL;
+            return false;
+      }
+</script>
+
+<form accept-charset="UTF-8" id="project-search-block-form" onsubmit="return doSearch(0, 'Project');">
+    <div>
+        <div class="container-inline" id="search">
+            <div id="search-inner">
+                <div class="form-item form-type-textfield form-item-search-block-form">
+                    <label for="pop-bio-project-search" class="element-invisible">Search </label>
+                    <input type="text" class="form-text" maxlength="128" size="15" value="" name="search_block_form" id="pop-bio-project-search" placeholder="Search projects" title="Enter the terms you wish to search for.">
+                </div>
+                <div id="edit-actions" class="form-actions form-wrapper">
+                    <input type="button" class="form-submit" value="Go" name="op" id="edit-submit" onclick="doSearch(0, 'Project');">
+                </div>
+                <div id="search-examples" class="form-actions form-wrapper">
+                  <span>e.g. <a href="/search/site/Donnelly?site=%22Population%20Biology%22&bundle_name=%22Project%22">Donnelly</a>, <a href="/search/site/sequencing?site=%22Population%20Biology%22&bundle_name=%22Project%22">sequencing</a></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+<br />
+<form accept-charset="UTF-8" id="sample-search-block-form" onsubmit="return doSearch(1, 'Sample');">
+    <div>
+        <div class="container-inline" id="search">
+            <div id="search-inner">
+                <div class="form-item form-type-textfield form-item-search-block-form">
+                    <label for="pop-bio-sample-search" class="element-invisible">Search </label>
+                    <input type="text" class="form-text" maxlength="128" size="15" value="" name="search_block_form" id="pop-bio-sample-search" placeholder="Search samples" title="Enter the terms you wish to search for.">
+                </div>
+                <div id="edit-actions" class="form-actions form-wrapper">
+                    <input type="button" class="form-submit" value="Go" name="op" id="edit-submit" onclick="doSearch(1, 'Sample');">
+                </div>
+                <div id="search-examples" class="form-actions form-wrapper">
+                  <span>e.g. <a href="/search/site/%2522laboratory%2520population%2522?site=%22Population Biology%22&bundle_name=%22Sample%22">"laboratory population"</a>,  <a href="/search/site/Ghana?site=%22Population Biology%22&bundle_name=%22Sample%22">Ghana</a></span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</form>
+<br />
+<form accept-charset="UTF-8" id="assay-search-block-form" onsubmit="return doSearch(2, 'Assay');">
+    <div>
+        <div class="container-inline" id="search">
+            <div id="search-inner">
+                <div class="form-item form-type-textfield form-item-search-block-form">
+                    <label for="pop-bio-assay-search" class="element-invisible">Search </label>
+                    <input type="text" class="form-text" maxlength="128" size="15" value="" name="search_block_form" id="pop-bio-assay-search" placeholder="Search assays" title="Enter the terms you wish to search for.">
+                </div>
+                <div id="edit-actions" class="form-actions form-wrapper">
+                    <input type="button" class="form-submit" value="Go" name="op" id="edit-submit" onclick="doSearch(2, 'Assay');">
+                </div>
+                <div id="search-examples" class="form-actions form-wrapper">
+                  <span>e.g. <a href="/search/site/microsatellite%20AG3H312?site=%22Population%20Biology%22&bundle_name=%22Assay%22">microsatellite AG3H312</a>,  <a href="/search/site/2La%252F%252B?site=%22Population%20Biology%22&bundle_name=%22Assay%22">2La/+</a></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+<br />
+<form accept-charset="UTF-8" id="irassay-search-block-form" onsubmit="return doSearch(3, 'Insecticide%20resistance%20assay');">
+    <div>
+        <div class="container-inline" id="search">
+            <div id="search-inner">
+                <div class="form-item form-type-textfield form-item-search-block-form">
+                    <label for="pop-bio-irassay-search" class="element-invisible">Search </label>
+                    <input type="text" class="form-text" maxlength="128" size="15" value="" name="search_block_form" id="pop-bio-irassay-search" placeholder="Search insecticide resistance assays" title="Enter the terms you wish to search for.">
+                </div>
+                <div id="edit-actions" class="form-actions form-wrapper">
+                    <input type="button" class="form-submit" value="Go" name="op" id="edit-submit" onclick="doSearch(3, 'Insecticide%20resistance%20assay');">
+                </div>
+                <div id="search-examples" class="form-actions form-wrapper">
+                  <span>e.g. <a href="/search/site/pyrethroid?site=%22Population%20Biology%22&bundle_name=%22Insecticide%20resistance%20assay%22">pyrethroid</a>,  <a href="/search/site/Cameroon?site=%22Population%20Biology%22&bundle_name=%22Insecticide%20resistance%20assay%22">Cameroon</a></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+[% END %]
 
 [% INCLUDE footer.html %]
