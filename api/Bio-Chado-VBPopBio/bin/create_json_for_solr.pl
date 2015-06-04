@@ -62,6 +62,7 @@ if ($project_stable_id) {
   my $project = $projects->find_by_stable_id($project_stable_id);
   $stocks = $project->stocks;
   $assays = $project->experiments;
+  $projects = $schema->projects->search({ project_id => $project->id });
 }
 
 
@@ -177,7 +178,9 @@ while (my $stock = $stocks->next) {
 
 		    projects => [ map { quick_project_stable_id($_) } $stock->projects ],
 
-		    date => stock_date($stock),
+		    # used to be plain 'date' from any assay
+		    # now it's collection_date if there's an unambiguous collection
+		    (defined $latlong ? ( collection_date => assay_date($fc) ) : ()),
 
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
 		   }
@@ -210,6 +213,9 @@ while (my $assay = $assays->next) {
   }
 
   my @assay_pubmed_ids = map { "PMID:$_" } multiprops_pubmed_ids($assay);
+
+  my @genotypes = $assay->genotypes;
+  my @phenotypes = $assay->phenotypes;
 
   my $document = { doc =>
 		   {
@@ -244,11 +250,11 @@ while (my $assay = $assays->next) {
 				 geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($geoloc) ],
 				) : () ),
 
-		    genotypes =>  [ map { ($_->description, $_->name) } (@tmp = $assay->genotypes) ],
-		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @tmp ],
+		    genotypes =>  [ map { ($_->description, $_->name) } @genotypes ],
+		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @genotypes ],
 
-		    phenotypes =>  [ map { $_->name } (@tmp = $assay->phenotypes) ],
-		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @tmp ],
+		    phenotypes =>  [ map { $_->name } @phenotypes ],
+		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @phenotypes ],
 
 
 		    annotations => [ map { $_->as_string } $assay->multiprops ],
@@ -278,12 +284,10 @@ while (my $assay = $assays->next) {
 
     my $sample = $assay->stocks->count == 1 ? $assay->stocks->first : undef;
     if (defined $sample) {
-      my $fc = $sample->field_collections->first;
-      if (defined $fc) {
-	my $latlong;
-	my ($lat, $long) = ($fc->geolocation->latitude, $fc->geolocation->longitude);
-	$latlong = "$lat,$long" if (defined $lat && defined $long);
-
+      my $latlong = stock_latlong($sample);
+      if (defined $latlong) {
+	# due to stock_latlong() behaviour, there must only be one field collection
+	my $fc = $sample->field_collections->first;
 	my @collection_protocol_types = map { $_->type } $fc->protocols->all;
 	my $sample_best_species = $sample->best_species;
 	my @insecticides = assay_insecticides($assay);
@@ -324,13 +328,16 @@ while (my $assay = $assays->next) {
 	     protocols => [ map { $_->name } @protocol_types ],
 	     protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
 
-	     phenotypes =>  [ map { $_->name } (@tmp = $assay->phenotypes) ],
-	     phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @tmp ],
+	     phenotypes =>  [ map { $_->name } @phenotypes ],
+	     phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @phenotypes ],
 
 	     insecticides => [ map { $_->name } @insecticides ],
 	     insecticides_cvterms => [ map { flattened_parents($_) } @insecticides ],
 
 	     pubmed => \@assay_pubmed_ids,
+
+
+	     projects => [ map { quick_project_stable_id($_) } $assay->projects ],
 	    }
 	  };
 
