@@ -26,6 +26,8 @@ use JSON;
 use DateTime::Format::ISO8601;
 use DateTime;
 use Geohash;
+use Clone qw(clone);
+use Tie::IxHash;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -76,6 +78,19 @@ my $ir_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref =
 my $insecticidal_substance = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '10000239' });
 
+# quantitative qualifier
+my $quantitative_qualifier = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
+							       term_accession_number => '0000702' });
+
+my $concentration_term = $schema->cvterms->find_by_accession({ term_source_ref => 'PATO',
+							       term_accession_number => '0000033' });
+
+my $duration_term = $schema->cvterms->find_by_accession({ term_source_ref => 'EFO',
+							       term_accession_number => '0000433' });
+
+my $sample_size_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
+							       term_accession_number => '0000983' });
+
 my $iso8601 = DateTime::Format::ISO8601->new;
 
 print "{\n";
@@ -91,7 +106,7 @@ while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
   my @design_terms = map { $_->cvterms->[1] } $project->multiprops($study_design_type);
   my $document = { doc =>
-		   {
+		   ohr(
 		    label => $project->name,
 		    id => $stable_id,
 		    accession => $stable_id,
@@ -114,7 +129,7 @@ while (my $project = $projects->next) {
 					      map { flattened_parents($_) } @design_terms
 					     ],
 		    pubmed => [ map { "PMID:$_" } grep { $_ } map { $_->miniref } $project->publications ],
-		   }
+		   )
 		 };
   my $json_text = $json->encode($document);
   chomp($json_text);
@@ -131,13 +146,20 @@ while (my $stock = $stocks->next) {
   die "stock with db id ".$stock->id." does not have a stable id" unless ($stable_id);
 
   my @collection_protocol_types = map { $_->type } map { $_->protocols->all } $stock->field_collections;
-  my $latlong = stock_latlong($stock);
+  my $latlong = stock_latlong($stock); # only returns coords if one site
   my $stock_best_species = $stock->best_species();
   my $fc = $stock->field_collections->first;
-  my @tmp;
+
+  my @field_collections = $stock->field_collections;
+
+  my @phenotype_assays = $stock->phenotype_assays;
+  my @phenotypes = map { $_->phenotypes->all } @phenotype_assays;
+
+  my @genotype_assays = $stock->genotype_assays;
+  my @genotypes = map { $_->genotypes->all } @genotype_assays;
 
   my $document = { doc =>
-		   {
+		   ohr(
 		    label => $stock->name,
 		    id => $stable_id,
 		    # type => 'sample', # doesn't seem to be in schema
@@ -159,14 +181,14 @@ while (my $stock = $stocks->next) {
 		    has_geodata => (defined $latlong ? 'true' : 'false'),
 		    (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
 
-		    geolocations => [ map { $_->geolocation->summary } (@tmp = $stock->field_collections) ],
-		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation) } @tmp ],
+		    geolocations => [ map { $_->geolocation->summary } @field_collections ],
+		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation) } @field_collections ],
 
-		    genotypes =>  [ map { ($_->description, $_->name) } (@tmp = map { $_->genotypes->all } $stock->genotype_assays) ],
-		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @tmp ],
+		    genotypes =>  [ map { ($_->description, $_->name) } @genotypes ],
+		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @genotypes ],
 
-		    phenotypes =>  [ map { $_->name } (@tmp = map { $_->phenotypes->all } $stock->phenotype_assays) ],
-		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @tmp ],
+		    phenotypes =>  [ map { $_->name } @phenotypes ],
+		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @phenotypes ],
 
 		    ($stock_best_species ? (
 					    species => [ $stock_best_species->name ],
@@ -183,173 +205,124 @@ while (my $stock = $stocks->next) {
 		    (defined $latlong ? ( collection_date => assay_date($fc) ) : ()),
 
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
-		   }
+		   )
 		 };
 
   my $json_text = $json->encode($document);
   chomp($json_text);
   print qq!"add": $json_text,\n!;
 
-  last if ($limit && ++$done >= $limit);
-}
+  # now handle phenotypes
 
-### ASSAYS ###
-$done = 0;
-while (my $assay = $assays->next) {
-  my $stable_id = $assay->stable_id;
-  die "assay with db id ".$assay->id." does not have a stable id" unless ($stable_id);
+  # reuse the sample document data structure
+  # to avoid having to do a lot of cvterms fields over and over again
+  foreach my $phenotype_assay (@phenotype_assays) {
+    # is it a phenotype that we can use?
+    my @protocol_types = map { $_->type } $phenotype_assay->protocols->all;
 
-  my @protocol_types = map { $_->type } $assay->protocols->all;
-  my $assay_type_name = $assay->type->name;
-  my ($latlong, $geoloc, $assay_best_species, @tmp);
-  if ($assay_type_name eq 'field collection') {
-    $geoloc = $assay->geolocation;
-    my $lat = $geoloc->latitude;
-    my $long = $geoloc->longitude;
-    $latlong = "$lat,$long" if (defined $lat && defined $long);
-  } elsif ($assay_type_name eq 'species identification method') {
-    $assay_type_name = 'species identification assay';
-    $assay_best_species = $assay->best_species;
-  }
-
-  my @assay_pubmed_ids = map { "PMID:$_" } multiprops_pubmed_ids($assay);
-
-  my @genotypes = $assay->genotypes;
-  my @phenotypes = $assay->phenotypes;
-
-  my $document = { doc =>
-		   {
-		    label => $assay->external_id,
-		    id => $stable_id,
-		    # type => 'sample', # doesn't seem to be in schema
-		    accession => $stable_id,
-		    bundle => 'pop_assay',
-		    bundle_name => 'Assay',
-	  	    site => 'Population Biology',
-		    url => '/popbio/assay/?id='.$stable_id,
-		    entity_type => 'popbio',
-		    entity_id => $assay->id,
-		    description => $assay->description || $assay->result_summary,
-
-		    assay_type => $assay_type_name,
-		    # not expanding this because it's a flat
-
-		    projects => [ map { quick_project_stable_id($_) } $assay->projects ],
-
-		    protocols => [ map { $_->name } @protocol_types ],
-		    protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
-
-		    date => assay_date($assay),
-
-
-		    has_geodata => (defined $latlong ? 'true' : 'false'),
-		    (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
-
-		    ( $geoloc ? (
-				 geolocations => [ $geoloc->summary ],
-				 geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($geoloc) ],
-				) : () ),
-
-		    genotypes =>  [ map { ($_->description, $_->name) } @genotypes ],
-		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @genotypes ],
-
-		    phenotypes =>  [ map { $_->name } @phenotypes ],
-		    phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @phenotypes ],
-
-
-		    annotations => [ map { $_->as_string } $assay->multiprops ],
-		    annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($assay) ],
-
-		    ($assay_best_species ? (
-					    species => [ $assay_best_species->name ],
-					    species_cvterms => [ flattened_parents($assay_best_species) ],
-					   ) : ()),
-
-		    pubmed => \@assay_pubmed_ids,
-
-		   }
-		 };
-
-
-  my $json_text = $json->encode($document);
-  chomp($json_text);
-  print qq!"add": $json_text,\n!;
-
-
-  ### IR assay special case ###
-  if (grep { $_->id == $ir_assay_base_term->id ||
+    if (grep { $_->id == $ir_assay_base_term->id ||
 	       $ir_assay_base_term->has_child($_) } @protocol_types) {
 
-    # warn "I found an IR assay for $stable_id ".join("\n", map { $_->name } @protocol_types)."\n\n";
+      # yes we have an INSECTICIDE RESISTANCE BIOASSAY
 
-    my $sample = $assay->stocks->count == 1 ? $assay->stocks->first : undef;
-    if (defined $sample) {
-      my $latlong = stock_latlong($sample);
-      if (defined $latlong) {
-	# due to stock_latlong() behaviour, there must only be one field collection
-	my $fc = $sample->field_collections->first;
-	my @collection_protocol_types = map { $_->type } $fc->protocols->all;
-	my $sample_best_species = $sample->best_species;
-	my @insecticides = assay_insecticides($assay);
+      # cloning is safer and simpler (but more expensive) than re-using $document
+      my $doc = clone($document->{doc});
 
-	my $document =
-	  { doc =>
-	    {
-	     label => $assay->external_id,
-	     accession => $stable_id,
-	     site => 'Population Biology',
-	     bundle => 'pop_ir_assay',
-	     bundle_name => 'Insecticide resistance assay',
-	     id => $stable_id.".IR", # must be unique across whole of Solr
+      my $assay_stable_id = $phenotype_assay->stable_id;
 
-	     url => '/popbio/assay/?id='.$stable_id,
-	     entity_type => 'popbio',
-	     entity_id => $assay->id,
-	     description => $assay->description || $assay->result_summary,
+      # always change these fields
+      $doc->{bundle} = 'pop_sample_phenotype';
+      $doc->{bundle_name} = 'Sample phenotype';
 
-	     date => assay_date($assay),
+      delete $doc->{phenotypes};
+      delete $doc->{phenotypes_cvterms};
 
-	     collection_date => $fc ? assay_date($fc) : undef,
+      # NEW fields
+      $doc->{phenotype_type_s} = "insecticide resistance";
+      $doc->{protocols} = [ map { $_->name } @protocol_types ];
+      $doc->{protocols_cvterms} = [ map { flattened_parents($_) } @protocol_types ];
 
-	     has_geodata => (defined $latlong ? 'true' : 'false'),
-	     (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
+      foreach my $phenotype ($phenotype_assay->phenotypes) {
 
-	     geolocations => [ $fc->geolocation->summary ],
-	     geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($fc->geolocation) ],
+	# alter fields
+	$doc->{id} = $stable_id.".".$phenotype->id;
+	$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
+	$doc->{label} = $phenotype->name;
 
-	     collection_protocols => [ map { $_->name } @collection_protocol_types ],
-	     collection_protocols_cvterms => [ map { flattened_parents($_) } @collection_protocol_types ],
+	# NEW fields
 
-	     ($sample_best_species ? (
-				      species => [ $sample_best_species->name ],
-				      species_cvterms => [ flattened_parents($sample_best_species) ],
-				     ) : () ),
+	# figure out what kind of value
+	$doc->{phenotype_value_f} = $phenotype->value;
+	# should we check it's a value (or at least not undefined/empty??) <<<<<
 
-	     protocols => [ map { $_->name } @protocol_types ],
-	     protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
+	my $value_unit = $phenotype->unit;
+	if (defined $value_unit) {
+	  $doc->{phenotype_value_unit_s} = $value_unit->name;
+	  $doc->{phenotype_value_unit_cvterms} = [ flattened_parents($value_unit) ];
+	}
 
-	     phenotypes =>  [ map { $_->name } @phenotypes ],
-	     phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @phenotypes ],
+	my $value_type = phenotype_value_type($phenotype); # e.g. mortality rate, LT50 etc
+	if (defined $value_type) {
+	  $doc->{phenotype_value_type_s} = $value_type->name;
+	  $doc->{phenotype_value_type_cvterms} = [ flattened_parents($value_type) ];
 
-	     insecticides => [ map { $_->name } @insecticides ],
-	     insecticides_cvterms => [ map { flattened_parents($_) } @insecticides ],
+	} else {
+	  warn "no value type for phenotype of $assay_stable_id\n";
+	}
 
-	     pubmed => \@assay_pubmed_ids,
+	# to do: insecticide + concentrations + duration
+	# die "to do...";
 
+	my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $sample_size, $errors) =
+	  assay_insecticides_concentrations_units_and_more($phenotype_assay);
 
-	     projects => [ map { quick_project_stable_id($_) } $assay->projects ],
-	    }
-	  };
+	die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
 
+	if (defined $insecticide) {
+	  $doc->{insecticide_s} = $insecticide->name;
+	  $doc->{insecticide_cvterms} = [ flattened_parents($insecticide) ];
 
+	  if (defined $concentration && defined $concentration_unit) {
+	    $doc->{concentration_f} = $concentration;
+	    $doc->{concentration_unit_s} = $concentration_unit->name;
+	    $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
+	  } else {
+	    warn "no/incomplete concentration data for $assay_stable_id\n";
+	  }
 
-	my $json_text = $json->encode($document);
+	} else {
+	  warn "no insecticide for $assay_stable_id !!!\n";
+	}
+
+	if (defined $duration && defined $duration_unit) {
+	  $doc->{duration_f} = $duration;
+	  $doc->{duration_unit_s} = $duration_unit->name;
+	  $doc->{duration_unit_cvterms} = [ flattened_parents($duration_unit) ];
+	} else {
+	  # warn "no/incomplete duration data for $assay_stable_id\n";
+	}
+
+	if (defined $sample_size) {
+	  $doc->{sample_size_i} = $sample_size;
+	}
+
+	# phenotype_cvterms (singular)
+	$doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
+
+	my $json_text = $json->encode({ doc => $doc });
 	chomp($json_text);
 	print qq!"add": $json_text,\n!;
+
       }
+
     }
+
   }
 
+  # same for genotypes
+  foreach my $genotype (@genotypes) {
+    # TO DO
+  }
 
   last if ($limit && ++$done >= $limit);
 }
@@ -421,6 +394,7 @@ sub iso8601_date {
   }
 }
 
+#DEPRECATED
 # returns an array of cvterms
 # definitely want has child only (not IS also) because
 # the insecticidal_substance term is used as a multiprop "key"
@@ -429,13 +403,59 @@ sub assay_insecticides {
   return grep { $insecticidal_substance->has_child($_) } map { $_->cvterms } $assay->multiprops;
 }
 
+# returns these scalars
+# 1. insecticide (cvterm)
+# 2. concentration (number)
+# 3. concentration unit (cvterm)
+# 4. duration (number)
+# 5. duration unit (cvterm)
+# 6. sample size (number - no units needed)
+# 7. error (string or empty/undef)
+sub assay_insecticides_concentrations_units_and_more {
+  my $assay = shift;
+  my $insecticide;
+  my $concentration;
+  my $unit;
+  my $duration;
+  my $duration_unit;
+  my $sample_size;
+  my @errors;
+
+  foreach my $multiprop ($assay->multiprops) {
+    my @cvterms = $multiprop->cvterms;
+    foreach my $cvterm (@cvterms) {
+      if ($insecticidal_substance->has_child($cvterm)) {
+	push @errors, "already got an insecticide" if (defined $insecticide);
+	$insecticide = $cvterm;
+      } elsif ($cvterm->id == $concentration_term->id && defined $multiprop->value) {
+	push @errors, "already got a concentration" if (defined $concentration);
+	$concentration = $multiprop->value;
+	$unit = $cvterms[-1]; # units are always last
+      }
+
+      if ($cvterm->id == $duration_term->id && defined $multiprop->value) {
+	push @errors, "already got a duration" if (defined $duration);
+	$duration = $multiprop->value;
+	$duration_unit = $cvterms[-1];
+      }
+
+      if ($cvterm->id == $sample_size_term->id && defined $multiprop->value) {
+	push @errors, "already got a sample size" if (defined $sample_size);
+	$sample_size = $multiprop->value;
+      }
+    }
+  }
+  return ($insecticide, $concentration, $unit, $duration, $duration_unit, $sample_size, join ";", @errors);
+}
+
+
 # returns an array of (name, accession, name, accession, ...)
 # now cached
 my %term_id_to_flattened_parents;
 sub flattened_parents {
   my $term = shift;
   my $id = $term->id;
-  $term_id_to_flattened_parents{$id} ||= [ map { ( $_->name, $_->cvtermsynonyms->get_column('synonym')->all, $_->dbxref->as_string ) } ($term, $term->recursive_parents) ];
+  $term_id_to_flattened_parents{$id} ||= [ map { ( $_->name, $_->cvtermsynonyms->get_column('synonym')->all, $_->dbxref->as_string ) } ($term, $term->recursive_parents_same_ontology) ];
   return @{$term_id_to_flattened_parents{$id}};
 }
 
@@ -472,4 +492,38 @@ sub geo_coords_fields {
 	  geohash_3 => substr($geohash, 0, 3),
 	  geohash_2 => substr($geohash, 0, 2),
 	  geohash_1 => substr($geohash, 0, 1));
+}
+
+
+#
+# phenotype_value_type
+#
+# pass a phenotype object, returns the term of the attribute or observable that is a child of 'quantitative qualifier'
+#
+
+sub phenotype_value_type {
+  my $phenotype = shift;
+
+  my $term;
+  if ((defined ($term = $phenotype->observable) &&
+      ($term->id == $quantitative_qualifier->id ||
+       $quantitative_qualifier->has_child($term)))
+      || (defined ($term = $phenotype->attr) &&
+      ($term->id == $quantitative_qualifier->id ||
+       $quantitative_qualifier->has_child($term)))) {
+    return $term;
+  }
+  return;
+}
+
+#
+# ohr = ordered hash reference
+#
+# return order-maintaining hash reference
+# with optional arguments as key-value pairs
+#
+sub ohr {
+  my $ref = { };
+  tie %$ref, 'Tie::IxHash', @_;
+  return $ref;
 }
