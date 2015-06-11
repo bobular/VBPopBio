@@ -285,12 +285,12 @@ while (my $stock = $stocks->next) {
 	    $doc->{insecticide_s} = $insecticide->name;
 	    $doc->{insecticide_cvterms} = [ flattened_parents($insecticide) ];
 
-	    if (defined $concentration && defined $concentration_unit) {
+	    if (defined $concentration && looks_like_number($concentration) && defined $concentration_unit) {
 	      $doc->{concentration_f} = $concentration;
 	      $doc->{concentration_unit_s} = $concentration_unit->name;
 	      $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
 	    } else {
-	      warn "no/incomplete concentration data for $assay_stable_id\n";
+	      warn "no/incomplete/corrupted concentration data for $assay_stable_id\n";
 	    }
 
 	  } else {
