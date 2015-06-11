@@ -183,7 +183,7 @@ while (my $stock = $stocks->next) {
 		    (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
 
 		    geolocations => [ map { $_->geolocation->summary } @field_collections ],
-		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation) } @field_collections ],
+		    geolocations_cvterms => [ remove_gaz_crap( map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation, qr/^GAZ:\d+$/) } @field_collections ) ],
 
 		    genotypes =>  [ map { ($_->description, $_->name) } @genotypes ],
 		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @genotypes ],
@@ -335,9 +335,11 @@ print qq!\"commit\" : { } }\n!;
 
 # returns just the 'proper' cvterms for all multiprops
 # of the argument
+# optional filter arg: regexp to match the ontology accession, e.g. ^GAZ:\d+$
 sub multiprops_cvterms {
-  my $object = shift;
-  return grep { $_->dbxref->as_string =~ /^\w+:\d+$/ } map { $_->cvterms } $object->multiprops;
+  my ($object, $filter) = @_;
+  $filter //= qr/^\w+:\d+$/;
+  return grep { $_->dbxref->as_string =~ $filter } map { $_->cvterms } $object->multiprops;
 }
 
 # returns a list of pubmed ids (or empty list)
@@ -529,4 +531,18 @@ sub ohr {
   my $ref = { };
   tie %$ref, 'Tie::IxHash', @_;
   return $ref;
+}
+
+sub remove_gaz_crap {
+  my @result;
+  my $state = 1;
+  foreach my $element (@_) {
+    $state = 0 if ($element eq 'continent' ||
+		   $element eq 'geographical location' ||
+		   $element eq 'Oceans and Seas'
+		  );
+    push @result, $element if ($state);
+    $state = 1 if ($element eq 'GAZ:00000448');
+  }
+  return @result;
 }
