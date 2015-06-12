@@ -28,6 +28,7 @@ use DateTime;
 use Geohash;
 use Clone qw(clone);
 use Tie::IxHash;
+use Scalar::Util qw(looks_like_number);
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -182,7 +183,7 @@ while (my $stock = $stocks->next) {
 		    (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
 
 		    geolocations => [ map { $_->geolocation->summary } @field_collections ],
-		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation) } @field_collections ],
+		    geolocations_cvterms => [ remove_gaz_crap( map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation, qr/^GAZ:\d+$/) } @field_collections ) ],
 
 		    genotypes =>  [ map { ($_->description, $_->name) } @genotypes ],
 		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @genotypes ],
@@ -252,69 +253,71 @@ while (my $stock = $stocks->next) {
 	# NEW fields
 
 	# figure out what kind of value
-	$doc->{phenotype_value_f} = $phenotype->value;
-	# should we check it's a value (or at least not undefined/empty??) <<<<<
+	my $value = $phenotype->value;
 
-	my $value_unit = $phenotype->unit;
-	if (defined $value_unit) {
-	  $doc->{phenotype_value_unit_s} = $value_unit->name;
-	  $doc->{phenotype_value_unit_cvterms} = [ flattened_parents($value_unit) ];
-	}
+	if (defined $value && looks_like_number($value)) {
+	  $doc->{phenotype_value_f} = $value;
 
-	my $value_type = phenotype_value_type($phenotype); # e.g. mortality rate, LT50 etc
-	if (defined $value_type) {
-	  $doc->{phenotype_value_type_s} = $value_type->name;
-	  $doc->{phenotype_value_type_cvterms} = [ flattened_parents($value_type) ];
-
-	} else {
-	  warn "no value type for phenotype of $assay_stable_id\n";
-	}
-
-	# to do: insecticide + concentrations + duration
-	# die "to do...";
-
-	my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $sample_size, $errors) =
-	  assay_insecticides_concentrations_units_and_more($phenotype_assay);
-
-	die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
-
-	if (defined $insecticide) {
-	  $doc->{insecticide_s} = $insecticide->name;
-	  $doc->{insecticide_cvterms} = [ flattened_parents($insecticide) ];
-
-	  if (defined $concentration && defined $concentration_unit) {
-	    $doc->{concentration_f} = $concentration;
-	    $doc->{concentration_unit_s} = $concentration_unit->name;
-	    $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
-	  } else {
-	    warn "no/incomplete concentration data for $assay_stable_id\n";
+	  my $value_unit = $phenotype->unit;
+	  if (defined $value_unit) {
+	    $doc->{phenotype_value_unit_s} = $value_unit->name;
+	    $doc->{phenotype_value_unit_cvterms} = [ flattened_parents($value_unit) ];
 	  }
 
-	} else {
-	  warn "no insecticide for $assay_stable_id !!!\n";
+	  my $value_type = phenotype_value_type($phenotype); # e.g. mortality rate, LT50 etc
+	  if (defined $value_type) {
+	    $doc->{phenotype_value_type_s} = $value_type->name;
+	    $doc->{phenotype_value_type_cvterms} = [ flattened_parents($value_type) ];
+
+	  } else {
+	    warn "no value type for phenotype of $assay_stable_id\n";
+	  }
+
+	  # to do: insecticide + concentrations + duration
+	  # die "to do...";
+
+	  my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $sample_size, $errors) =
+	    assay_insecticides_concentrations_units_and_more($phenotype_assay);
+
+	  die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
+
+	  if (defined $insecticide) {
+	    $doc->{insecticide_s} = $insecticide->name;
+	    $doc->{insecticide_cvterms} = [ flattened_parents($insecticide) ];
+
+	    if (defined $concentration && looks_like_number($concentration) && defined $concentration_unit) {
+	      $doc->{concentration_f} = $concentration;
+	      $doc->{concentration_unit_s} = $concentration_unit->name;
+	      $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
+	    } else {
+	      warn "no/incomplete/corrupted concentration data for $assay_stable_id\n";
+	    }
+
+	  } else {
+	    warn "no insecticide for $assay_stable_id !!!\n";
+	  }
+
+	  if (defined $duration && defined $duration_unit) {
+	    $doc->{duration_f} = $duration;
+	    $doc->{duration_unit_s} = $duration_unit->name;
+	    $doc->{duration_unit_cvterms} = [ flattened_parents($duration_unit) ];
+	  } else {
+	    # warn "no/incomplete duration data for $assay_stable_id\n";
+	  }
+
+	  if (defined $sample_size) {
+	    $doc->{sample_size_i} = $sample_size;
+	  }
+
+	  # phenotype_cvterms (singular)
+	  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
+
+	  my $json_text = $json->encode({ doc => $doc });
+	  chomp($json_text);
+	  print qq!"add": $json_text,\n!;
+
 	}
-
-	if (defined $duration && defined $duration_unit) {
-	  $doc->{duration_f} = $duration;
-	  $doc->{duration_unit_s} = $duration_unit->name;
-	  $doc->{duration_unit_cvterms} = [ flattened_parents($duration_unit) ];
-	} else {
-	  # warn "no/incomplete duration data for $assay_stable_id\n";
-	}
-
-	if (defined $sample_size) {
-	  $doc->{sample_size_i} = $sample_size;
-	}
-
-	# phenotype_cvterms (singular)
-	$doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
-
-	my $json_text = $json->encode({ doc => $doc });
-	chomp($json_text);
-	print qq!"add": $json_text,\n!;
-
       }
-
     }
 
   }
@@ -332,9 +335,11 @@ print qq!\"commit\" : { } }\n!;
 
 # returns just the 'proper' cvterms for all multiprops
 # of the argument
+# optional filter arg: regexp to match the ontology accession, e.g. ^GAZ:\d+$
 sub multiprops_cvterms {
-  my $object = shift;
-  return grep { $_->dbxref->as_string =~ /^\w+:\d+$/ } map { $_->cvterms } $object->multiprops;
+  my ($object, $filter) = @_;
+  $filter //= qr/^\w+:\d+$/;
+  return grep { $_->dbxref->as_string =~ $filter } map { $_->cvterms } $object->multiprops;
 }
 
 # returns a list of pubmed ids (or empty list)
@@ -526,4 +531,18 @@ sub ohr {
   my $ref = { };
   tie %$ref, 'Tie::IxHash', @_;
   return $ref;
+}
+
+sub remove_gaz_crap {
+  my @result;
+  my $state = 1;
+  foreach my $element (@_) {
+    $state = 0 if ($element eq 'continent' ||
+		   $element eq 'geographical location' ||
+		   $element eq 'Oceans and Seas'
+		  );
+    push @result, $element if ($state);
+    $state = 1 if ($element eq 'GAZ:00000448');
+  }
+  return @result;
 }
