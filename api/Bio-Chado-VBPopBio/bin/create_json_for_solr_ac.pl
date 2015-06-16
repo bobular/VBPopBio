@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
 #                 -*- mode: cperl -*-
 #
+# How to run
+# psql --list to get the latest version of vb-popbio
+# export CHADO_DB_NAME=popbio-v4.1.1-VB-2015-08-prod-01
 # usage: bin/create_json_for_solr.pl -dbname vb_popgen_testing_20110607 > test-samples.json
 #
 #
@@ -115,52 +118,10 @@ my $sample_size_term = $schema->cvterms->find_by_accession(
 
 my $iso8601 = DateTime::Format::ISO8601->new;
 
+my $start_date_type = $schema->types->start_date;
+my $date_type       = $schema->types->date;
+
 print "{\n";
-
-### PROJECTS ###
-$done = 0;
-my $study_design_type = $schema->types->study_design;
-my $start_date_type   = $schema->types->start_date;
-my $date_type         = $schema->types->date;
-
-# I'm leaving this here for now just in case I need bits of code later
-# For the popbio autocomplete SOLR code we only need data for samples and IR assays.
-
-# while (my $project = $projects->next) {
-# my $stable_id = $project->stable_id;
-# my @design_terms = map { $_->cvterms->[1] } $project->multiprops($study_design_type);
-# my $document = { doc =>
-# ohr(
-# label => $project->name,
-# id => $stable_id,
-# accession => $stable_id,
-# # type => 'project', # doesn't seem to be in schema
-# bundle => 'pop_project',
-# bundle_name => 'Project',
-# site=> 'Population Biology',
-# url => '/popbio/project/?id='.$stable_id,
-# entity_type => 'popbio',
-# entity_id => $project->id,
-# description => $project->description ? $project->description : '',
-# date => iso8601_date($project->public_release_date),
-# authors => [
-# map { $_->description } $project->contacts
-# ],
-# study_designs => [
-# map { $_->name } @design_terms
-# ],
-# study_designs_cvterms => [
-# map { flattened_parents($_) } @design_terms
-# ],
-# pubmed => [ map { "PMID:$_" } grep { $_ } map { $_->miniref } $project->publications ],
-# )
-# };
-# my $json_text = $json->encode($document);
-# chomp($json_text);
-# print qq!"add": $json_text,\n!;
-
-# last if ($limit && ++$done >= $limit);
-# }
 
 ### SAMPLES ###
 $done = 0;
@@ -170,33 +131,34 @@ while ( my $stock = $stocks->next ) {
       unless ($stable_id);
 
     my $latlong = stock_latlong($stock);    # only returns coords if one site
+    my $stock_best_species = $stock->best_species();
 
-    next if ( !defined $latlong );          # Only process samples with geodata
-	my $date = stock_date($stock);
+    # Only process samples with geodata or valid species
+    next unless ( $latlong && $stock_best_species );
 
+    my $date = stock_date($stock);
     my @collection_protocol_types =
       map { $_->type } map { $_->protocols->all } $stock->field_collections;
-    my $stock_best_species = $stock->best_species();
-    my $fc                 = $stock->field_collections->first;
-
+    my $fc                = $stock->field_collections->first;
     my @field_collections = $stock->field_collections;
+    my @phenotype_assays  = $stock->phenotype_assays;
+    my @phenotypes        = map { $_->phenotypes->all } @phenotype_assays;
 
-    my @phenotype_assays = $stock->phenotype_assays;
-    my @phenotypes = map { $_->phenotypes->all } @phenotype_assays;
-
-    my @genotype_assays = $stock->genotype_assays;
-    my @genotypes = map { $_->genotypes->all } @genotype_assays;
-
-    my @tmp;
+    # my @genotype_assays   = $stock->genotype_assays;
+    # my @genotypes         = map { $_->genotypes->all } @genotype_assays;
 
 # We need several documents for each sample, one for every autocomplete entity (e.g. Taxon, Projects, pubmedid, paper titles)
 
     # first for taxons
     my @taxons;
     my $json_text;
-    ($stock_best_species)
-      ? ( @taxons = flattened_parents($stock_best_species) )
-      : ( push @taxons, "Unknown" );
+
+    # ($stock_best_species)
+    # ? ( @taxons = flattened_parents($stock_best_species) )
+    # : ( push @taxons, "Unknown" );
+
+    @taxons = flattened_parents($stock_best_species);
+
     my $i = 0;
     foreach my $taxon (@taxons) {
 
@@ -215,7 +177,7 @@ while ( my $stock = $stocks->next ) {
                     field     => 'species'
                   )
                 : (
-                    textboost => 0,
+                    textboost => 20,
                     field     => 'species_cvterms'
                 ),
                 textsuggest => $taxon,
@@ -249,6 +211,7 @@ while ( my $stock = $stocks->next ) {
     chomp($json_text);
     print qq!"add": $json_text,\n!;
 
+    # Title
     my $documentTitle = {
         doc => {
             id          => $stable_id . "_title",
@@ -267,11 +230,12 @@ while ( my $stock = $stocks->next ) {
     chomp($json_text);
     print qq!"add": $json_text,\n!;
 
+    # Stable ID
     my $documentID = {
         doc => {
             id          => $stable_id . "_stable_id",
             stable_id   => $stable_id,
-            type        => 'stable_id',
+            type        => 'Stable ID',
             field       => 'id',
             bundle      => 'pop_sample',
             geo_coords  => $latlong,
@@ -281,13 +245,14 @@ while ( my $stock = $stocks->next ) {
         }
     };
 
-    $json_text = $json->encode($documentTitle);
+    $json_text = $json->encode($documentID);
     chomp($json_text);
     print qq!"add": $json_text,\n!;
 
     # Pubmed ID(s)
+    my @pubs = multiprops_pubmed_ids($stock);
     $i = 0;
-    foreach my $pub ( multiprops_pubmed_ids($stock) ) {
+    foreach my $pub (@pubs) {
         my $documentPubmedIDs = {
             doc => {
                 id          => $stable_id . "_pmid_" . $i,
@@ -297,7 +262,7 @@ while ( my $stock = $stocks->next ) {
                 field       => 'pubmed',
                 geo_coords  => $latlong,
                 date        => $date,
-                textsuggest => "PMID:" . multiprops_pubmed_ids($stock),
+                textsuggest => "PMID:" . $pub,
             }
         };
         $json_text = $json->encode($documentPubmedIDs);
@@ -307,8 +272,9 @@ while ( my $stock = $stocks->next ) {
     }
 
     # Project(s)
+    my @projects = $stock->projects;
     $i = 0;
-    foreach my $project ( $stock->projects ) {
+    foreach my $project (@projects) {
         my $documentProjects = {
             doc => {
                 id          => $stable_id . "_proj_" . $i,
@@ -331,12 +297,12 @@ while ( my $stock = $stocks->next ) {
     # Sample type
     my $documentSampleType = {
         doc => {
-            id        => $stable_id . "_sample_type",
-            stable_id => $stable_id,
-            type      => 'Sample type',
-            field     => 'sample_type',
-            bundle    => 'pop_sample',
-			geo_coords  => $latlong,
+            id          => $stable_id . "_sample_type",
+            stable_id   => $stable_id,
+            type        => 'Sample type',
+            field       => 'sample_type',
+            bundle      => 'pop_sample',
+            geo_coords  => $latlong,
             date        => $date,
             textsuggest => $stock->type->name,
 
@@ -347,167 +313,448 @@ while ( my $stock = $stocks->next ) {
     chomp($json_text);
     print qq!"add": $json_text,\n!;
 
+    # Geolocations
+    my @geolocations = remove_gaz_crap(
+        map { flattened_parents($_) }
+          map { multiprops_cvterms( $_->geolocation, qr/^GAZ:\d+$/ ) }
+          @field_collections
+    );
+
+    $i = 0;
+    foreach my $geolocation (@geolocations) {
+
+        my $documentGeolocations = {
+            doc => {
+                id         => $stable_id . "_geolocation_" . $i,
+                stable_id  => $stable_id,
+                type       => 'Geography',
+                bundle     => 'pop_sample',
+                date       => $date,
+                geo_coords => $latlong,
+                ( $i == 0 )
+                ? (
+                    textboost => 100,
+                    field     => 'geolocations_cvterms'
+                  )
+                : (
+                    textboost => 30,
+                    field     => 'geolocations_cvterms'
+                ),
+                textsuggest => $geolocation,
+            }
+        };
+
+        $json_text = $json->encode($documentGeolocations);
+        chomp($json_text);
+        print qq!"add": $json_text,\n!;
+        $i++;
+    }
+
+    # Collection protocols
+
+    my @collectionProtocols =
+      map { flattened_parents($_) } @collection_protocol_types;
+    $i = 0;
+    foreach my $protocol (@collectionProtocols) {
+
+        my $documentColProtocol = {
+            doc => {
+                id         => $stable_id . "_colProtocol_" . $i,
+                stable_id  => $stable_id,
+                bundle     => 'pop_sample',
+                type       => 'Collection protocols',
+                geo_coords => $latlong,
+                date       => $date,
+                ( $i == 0 )
+                ? (
+                    textboost => 100,
+                    field     => 'collection_protocols_cvterms'
+                  )
+                : (
+                    textboost => 20,
+                    field     => 'collection_protocols_cvterms'
+                ),
+                textsuggest => $protocol,
+            }
+        };
+
+        $json_text = $json->encode($documentColProtocol);
+        chomp($json_text);
+        print qq!"add": $json_text,\n!;
+        $i++;
+    }
+
+#########################################################
+
+    # now handle phenotypes
+
+    foreach my $phenotype_assay (@phenotype_assays) {
+
+        # is it a phenotype that we can use?
+        my @protocol_types = map { $_->type } $phenotype_assay->protocols->all;
+
+        if (
+            grep {
+                     $_->id == $ir_assay_base_term->id
+                  || $ir_assay_base_term->has_child($_)
+            } @protocol_types
+          )
+        {
+
+            # yes we have an INSECTICIDE RESISTANCE BIOASSAY
+
+  # We need several documents for each sample, one for every autocomplete entity
+  # (e.g. Taxon, Projects, pubmedid, paper titles)
+
+            foreach my $phenotype ( $phenotype_assay->phenotypes ) {
+
+                my $assay_stable_id = $stable_id . "." . $phenotype->id;
+                my $json_text;
+
+                my @taxons = flattened_parents($stock_best_species);
+
+                my $i = 0;
+                foreach my $taxon (@taxons) {
+
+                    # Taxonomy
+                    my $documentTaxons = {
+                        doc => {
+                            id        => $assay_stable_id . "_taxon_" . $i,
+                            stable_id => $assay_stable_id,
+                            type      => 'Taxonomy',
+                            bundle    => 'pop_sample_phenotype',
+                            phenotype_type_s => 'insecticide resistance',
+                            date             => $date,
+                            geo_coords       => $latlong,
+                            ( $i == 0 )
+                            ? (
+                                textboost => 100,
+                                field     => 'species'
+                              )
+                            : (
+                                textboost => 20,
+                                field     => 'species_cvterms'
+                            ),
+                            textsuggest => $taxon,
+                        }
+                    };
+
+                    $json_text = $json->encode($documentTaxons);
+                    chomp($json_text);
+                    print qq!"add": $json_text,\n!;
+                    $i++;
+                }
+
+                # Description
+                my $documentDescription = {
+                    doc => {
+                        id               => $assay_stable_id . "_desc",
+                        stable_id        => $assay_stable_id,
+                        type             => 'Description',
+                        field            => 'description',
+                        bundle           => 'pop_sample_phenotype',
+                        phenotype_type_s => 'insecticide resistance',
+                        geo_coords       => $latlong,
+                        date             => $date,
+                        textsuggest      => $stock->description || join(
+                            ' ',
+                            (
+                                  $stock_best_species
+                                ? $stock_best_species->name
+                                : ()
+                            ),
+                            $stock->type->name,
+                            ( $fc ? $fc->geolocation->summary : () )
+                        ),
+                    }
+                };
+
+                $json_text = $json->encode($documentDescription);
+                chomp($json_text);
+                print qq!"add": $json_text,\n!;
+
+                # Title
+                my $documentTitle = {
+                    doc => {
+                        id               => $assay_stable_id . "_title",
+                        stable_id        => $assay_stable_id,
+                        type             => 'Title',
+                        field            => 'label',
+                        bundle           => 'pop_sample_phenotype',
+                        phenotype_type_s => 'insecticide resistance',
+                        geo_coords       => $latlong,
+                        date             => $date,
+                        textsuggest      => $phenotype->name,
+
+                    }
+                };
+
+                $json_text = $json->encode($documentTitle);
+                chomp($json_text);
+                print qq!"add": $json_text,\n!;
+
+                # Stable ID
+                my $documentID = {
+                    doc => {
+                        id               => $assay_stable_id . "_stable_id",
+                        stable_id        => $assay_stable_id,
+                        type             => 'Stable ID',
+                        field            => 'id',
+                        bundle           => 'pop_sample_phenotype',
+                        phenotype_type_s => 'insecticide resistance',
+                        geo_coords       => $latlong,
+                        date             => $date,
+                        textsuggest      => $assay_stable_id,
+
+                    }
+                };
+
+                $json_text = $json->encode($documentID);
+                chomp($json_text);
+                print qq!"add": $json_text,\n!;
+
+                # Pubmed ID(s)
+                my @pubs = multiprops_pubmed_ids($stock);
+                $i = 0;
+                foreach my $pub (@pubs) {
+                    my $documentPubmedIDs = {
+                        doc => {
+                            id        => $assay_stable_id . "_pmid_" . $i,
+                            stable_id => $assay_stable_id,
+                            bundle    => 'pop_sample_phenotype',
+                            phenotype_type_s => 'insecticide resistance',
+                            type             => 'Pubmed references',
+                            field            => 'pubmed',
+                            geo_coords       => $latlong,
+                            date             => $date,
+                            textsuggest      => "PMID:" . $pub,
+                        }
+                    };
+                    $json_text = $json->encode($documentPubmedIDs);
+                    chomp($json_text);
+                    print qq!"add": $json_text,\n!;
+                    $i++;
+                }
+
+                # Project(s)
+                my @projects = $stock->projects;
+                $i = 0;
+                foreach my $project (@projects) {
+                    my $documentProjects = {
+                        doc => {
+                            id        => $assay_stable_id . "_proj_" . $i,
+                            stable_id => $assay_stable_id,
+                            bundle    => 'pop_sample_phenotype',
+                            phenotype_type_s => 'insecticide resistance',
+                            type             => 'Projects',
+                            geo_coords       => $latlong,
+                            date             => $date,
+                            textsuggest => quick_project_stable_id($project),
+                            field       => 'projects',
+                        }
+                    };
+
+                    $json_text = $json->encode($documentProjects);
+                    chomp($json_text);
+                    print qq!"add": $json_text,\n!;
+                    $i++;
+                }
+
+                # Sample type
+                my $documentSampleType = {
+                    doc => {
+                        id               => $assay_stable_id . "_sample_type",
+                        stable_id        => $assay_stable_id,
+                        type             => 'Sample type',
+                        field            => 'sample_type',
+                        bundle           => 'pop_sample_phenotype',
+                        phenotype_type_s => 'insecticide resistance',
+                        geo_coords       => $latlong,
+                        date             => $date,
+                        textsuggest      => $stock->type->name,
+
+                    }
+                };
+
+                $json_text = $json->encode($documentSampleType);
+                chomp($json_text);
+                print qq!"add": $json_text,\n!;
+
+                # Geolocations
+                my @geolocations = remove_gaz_crap(
+                    map { flattened_parents($_) }
+                      map {
+                        multiprops_cvterms( $_->geolocation, qr/^GAZ:\d+$/ )
+                      } @field_collections
+                );
+
+                $i = 0;
+                foreach my $geolocation (@geolocations) {
+
+                    my $documentGeolocations = {
+                        doc => {
+                            id => $assay_stable_id . "_geolocation_" . $i,
+                            stable_id        => $assay_stable_id,
+                            type             => 'Geography',
+                            bundle           => 'pop_sample_phenotype',
+                            phenotype_type_s => 'insecticide resistance',
+                            date             => $date,
+                            geo_coords       => $latlong,
+                            ( $i == 0 )
+                            ? (
+                                textboost => 100,
+                                field     => 'geolocations_cvterms'
+                              )
+                            : (
+                                textboost => 30,
+                                field     => 'geolocations_cvterms'
+                            ),
+                            textsuggest => $geolocation,
+                        }
+                    };
+
+                    $json_text = $json->encode($documentGeolocations);
+                    chomp($json_text);
+                    print qq!"add": $json_text,\n!;
+                    $i++;
+                }
+
+                # Collection protocols
+
+                my @collectionProtocols =
+                  map { flattened_parents($_) } @collection_protocol_types;
+                $i = 0;
+                foreach my $protocol (@collectionProtocols) {
+
+                    my $documentColProtocol = {
+                        doc => {
+                            id => $assay_stable_id . "_colProtocol_" . $i,
+                            stable_id        => $assay_stable_id,
+                            bundle           => 'pop_sample_phenotype',
+                            phenotype_type_s => 'insecticide resistance',
+                            type             => 'Collection protocols',
+                            geo_coords       => $latlong,
+                            date             => $date,
+                            ( $i == 0 )
+                            ? (
+                                textboost => 100,
+                                field     => 'collection_protocols_cvterms'
+                              )
+                            : (
+                                textboost => 30,
+                                field     => 'collection_protocols_cvterms'
+                            ),
+                            textsuggest => $protocol,
+                        }
+                    };
+
+                    $json_text = $json->encode($documentColProtocol);
+                    chomp($json_text);
+                    print qq!"add": $json_text,\n!;
+                    $i++;
+                }
+
+                # Protocols
+
+                my @protocols = map { flattened_parents($_) } @protocol_types;
+                $i = 0;
+                foreach my $protocol (@protocols) {
+
+                    my $documentProtocols = {
+                        doc => {
+                            id        => $assay_stable_id . "_protocol_" . $i,
+                            stable_id => $assay_stable_id,
+                            bundle    => 'pop_sample_phenotype',
+                            phenotype_type_s => 'insecticide resistance',
+                            type             => 'Protocols',
+                            geo_coords       => $latlong,
+                            date             => $date,
+                            ( $i == 0 )
+                            ? (
+                                textboost => 100,
+                                field     => 'protocols_cvterms'
+                              )
+                            : (
+                                textboost => 30,
+                                field     => 'protocols_cvterms'
+                            ),
+                            textsuggest => $protocol,
+                        }
+                    };
+
+                    $json_text = $json->encode($documentProtocols);
+                    chomp($json_text);
+                    print qq!"add": $json_text,\n!;
+                    $i++;
+                }
+
+                # Insecticides
+
+                my ( $insecticide, $concentration, $concentration_unit,
+                    $duration, $duration_unit, $sample_size, $errors )
+                  = assay_insecticides_concentrations_units_and_more(
+                    $phenotype_assay);
+
+                die "assay $assay_stable_id had fatal issues: $errors\n"
+                  if ($errors);
+
+                if ( defined $insecticide ) {
+
+                    my @insecticides = flattened_parents($insecticide);
+                    $i = 0;
+                    foreach my $insecticide (@insecticides) {
+
+                        my $documentInsecticides = {
+                            doc => {
+                                id => $assay_stable_id . "_insecticide_" . $i,
+                                stable_id        => $assay_stable_id,
+                                bundle           => 'pop_sample_phenotype',
+                                phenotype_type_s => 'insecticide resistance',
+                                type             => 'Insecticides',
+                                geo_coords       => $latlong,
+                                date             => $date, 
+                                ( $i == 0 )
+                                ? (
+                                    textboost => 100,
+
+                                    # field     => 'insecticide_s'
+                                    field => 'insecticide_cvterms'
+                                  )
+                                : (
+                                    textboost => 30,
+                                    field     => 'insecticide_cvterms'
+                                ),
+                                textsuggest => $insecticide,
+                            }
+                        };
+
+                        $json_text = $json->encode($documentInsecticides);
+                        chomp($json_text);
+                        print qq!"add": $json_text,\n!;
+                        $i++;
+                    }
+                }
+
+            }
+        }
+
+    }
+
+##########################################
+
     last if ( $limit && ++$done >= $limit );
 }
-
-# ### ASSAYS ###
-# $done = 0;
-# while (my $assay = $assays->next) {
-# my $stable_id = $assay->stable_id;
-# die "assay with db id ".$assay->id." does not have a stable id" unless ($stable_id);
-
-# my @protocol_types = map { $_->type } $assay->protocols->all;
-# my $assay_type_name = $assay->type->name;
-# my ($latlong, $geoloc, $assay_best_species, @tmp);
-# if ($assay_type_name eq 'field collection') {
-# $geoloc = $assay->geolocation;
-# my $lat = $geoloc->latitude;
-# my $long = $geoloc->longitude;
-# $latlong = "$lat,$long" if (defined $lat && defined $long);
-# } elsif ($assay_type_name eq 'species identification method') {
-# $assay_type_name = 'species identification assay';
-# $assay_best_species = $assay->best_species;
-# }
-
-# my @assay_pubmed_ids = map { "PMID:$_" } multiprops_pubmed_ids($assay);
-
-# my $document = { doc =>
-# {
-# label => $assay->external_id,
-# id => $stable_id,
-# # type => 'sample', # doesn't seem to be in schema
-# accession => $stable_id,
-# bundle => 'pop_assay',
-# bundle_name => 'Assay',
-# site => 'Population Biology',
-# url => '/popbio/assay/?id='.$stable_id,
-# entity_type => 'popbio',
-# entity_id => $assay->id,
-# description => $assay->description || $assay->result_summary,
-
-# assay_type => $assay_type_name,
-# # not expanding this because it's a flat
-
-# projects => [ map { quick_project_stable_id($_) } $assay->projects ],
-
-# protocols => [ map { $_->name } @protocol_types ],
-# protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
-
-# date => assay_date($assay),
-
-# has_geodata => (defined $latlong ? 'true' : 'false'),
-# (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
-
-# ( $geoloc ? (
-# geolocations => [ $geoloc->summary ],
-# geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($geoloc) ],
-# ) : () ),
-
-# genotypes =>  [ map { ($_->description, $_->name) } (@tmp = $assay->genotypes) ],
-# genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @tmp ],
-
-# phenotypes =>  [ map { $_->name } (@tmp = $assay->phenotypes) ],
-# phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @tmp ],
-
-# annotations => [ map { $_->as_string } $assay->multiprops ],
-# annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($assay) ],
-
-# ($assay_best_species ? (
-# species => [ $assay_best_species->name ],
-# species_cvterms => [ flattened_parents($assay_best_species) ],
-# ) : ()),
-
-# pubmed => \@assay_pubmed_ids,
-
-# }
-# };
-
-# my $json_text = $json->encode($document);
-# chomp($json_text);
-# print qq!"add": $json_text,\n!;
-
-# ### IR assay special case ###
-# if (grep { $_->id == $ir_assay_base_term->id ||
-# $ir_assay_base_term->has_child($_) } @protocol_types) {
-
-# # warn "I found an IR assay for $stable_id ".join("\n", map { $_->name } @protocol_types)."\n\n";
-
-# my $sample = $assay->stocks->count == 1 ? $assay->stocks->first : undef;
-# if (defined $sample) {
-# my $fc = $sample->field_collections->first;
-# if (defined $fc) {
-# my $latlong;
-# my ($lat, $long) = ($fc->geolocation->latitude, $fc->geolocation->longitude);
-# $latlong = "$lat,$long" if (defined $lat && defined $long);
-
-# my @collection_protocol_types = map { $_->type } $fc->protocols->all;
-# my $sample_best_species = $sample->best_species;
-# my @insecticides = assay_insecticides($assay);
-
-# my $document =
-# { doc =>
-# {
-# label => $assay->external_id,
-# accession => $stable_id,
-# site => 'Population Biology',
-# bundle => 'pop_ir_assay',
-# bundle_name => 'Insecticide resistance assay',
-# id => $stable_id.".IR", # must be unique across whole of Solr
-
-# url => '/popbio/assay/?id='.$stable_id,
-# entity_type => 'popbio',
-# entity_id => $assay->id,
-# description => $assay->description || $assay->result_summary,
-
-# date => assay_date($assay),
-
-# collection_date => $fc ? assay_date($fc) : undef,
-
-# has_geodata => (defined $latlong ? 'true' : 'false'),
-# (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
-
-# geolocations => [ $fc->geolocation->summary ],
-# geolocations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($fc->geolocation) ],
-
-# collection_protocols => [ map { $_->name } @collection_protocol_types ],
-# collection_protocols_cvterms => [ map { flattened_parents($_) } @collection_protocol_types ],
-
-# ($sample_best_species ? (
-# species => [ $sample_best_species->name ],
-# species_cvterms => [ flattened_parents($sample_best_species) ],
-# ) : () ),
-
-# protocols => [ map { $_->name } @protocol_types ],
-# protocols_cvterms => [ map { flattened_parents($_) } @protocol_types ],
-
-# phenotypes =>  [ map { $_->name } (@tmp = $assay->phenotypes) ],
-# phenotypes_cvterms => [ map { flattened_parents($_)  } grep { defined $_ } map { ( $_->observable, $_->attr, $_->cvalue, multiprops_cvterms($_) ) } @tmp ],
-
-# insecticides => [ map { $_->name } @insecticides ],
-# insecticides_cvterms => [ map { flattened_parents($_) } @insecticides ],
-
-# pubmed => \@assay_pubmed_ids,
-# }
-# };
-
-# my $json_text = $json->encode($document);
-# chomp($json_text);
-# print qq!"add": $json_text,\n!;
-# }
-# }
-# }
-
-# last if ($limit && ++$done >= $limit);
-# }
 
 # the commit is needed to resolve the trailing comma
 print qq!\"commit\" : { } }\n!;
 
 # returns just the 'proper' cvterms for all multiprops
 # of the argument
+# optional filter arg: regexp to match the ontology accession, e.g. ^GAZ:\d+$
 sub multiprops_cvterms {
-    my $object = shift;
-    return grep { $_->dbxref->as_string =~ /^\w+:\d+$/ }
+    my ( $object, $filter ) = @_;
+    $filter //= qr/^\w+:\d+$/;
+    return grep { $_->dbxref->as_string =~ $filter }
       map       { $_->cvterms } $object->multiprops;
 }
 
@@ -568,6 +815,7 @@ sub iso8601_date {
     }
 }
 
+#DEPRECATED
 # returns an array of cvterms
 # definitely want has child only (not IS also) because
 # the insecticidal_substance term is used as a multiprop "key"
@@ -575,6 +823,62 @@ sub assay_insecticides {
     my $assay = shift;
     return grep { $insecticidal_substance->has_child($_) }
       map       { $_->cvterms } $assay->multiprops;
+}
+
+# returns these scalars
+# 1. insecticide (cvterm)
+# 2. concentration (number)
+# 3. concentration unit (cvterm)
+# 4. duration (number)
+# 5. duration unit (cvterm)
+# 6. sample size (number - no units needed)
+# 7. error (string or empty/undef)
+sub assay_insecticides_concentrations_units_and_more {
+    my $assay = shift;
+    my $insecticide;
+    my $concentration;
+    my $unit;
+    my $duration;
+    my $duration_unit;
+    my $sample_size;
+    my @errors;
+
+    foreach my $multiprop ( $assay->multiprops ) {
+        my @cvterms = $multiprop->cvterms;
+        foreach my $cvterm (@cvterms) {
+            if ( $insecticidal_substance->has_child($cvterm) ) {
+                push @errors, "already got an insecticide"
+                  if ( defined $insecticide );
+                $insecticide = $cvterm;
+            }
+            elsif ( $cvterm->id == $concentration_term->id
+                && defined $multiprop->value )
+            {
+                push @errors, "already got a concentration"
+                  if ( defined $concentration );
+                $concentration = $multiprop->value;
+                $unit          = $cvterms[-1];        # units are always last
+            }
+
+            if ( $cvterm->id == $duration_term->id
+                && defined $multiprop->value )
+            {
+                push @errors, "already got a duration" if ( defined $duration );
+                $duration      = $multiprop->value;
+                $duration_unit = $cvterms[-1];
+            }
+
+            if ( $cvterm->id == $sample_size_term->id
+                && defined $multiprop->value )
+            {
+                push @errors, "already got a sample size"
+                  if ( defined $sample_size );
+                $sample_size = $multiprop->value;
+            }
+        }
+    }
+    return ( $insecticide, $concentration, $unit, $duration, $duration_unit,
+        $sample_size, join ";", @errors );
 }
 
 # returns an array of (name, accession, name, accession, ...)
@@ -632,21 +936,56 @@ sub geo_coords_fields {
     );
 }
 
-sub geo_coords_fields {
-    my $latlong = shift;
-    my ( $lat, $long ) = split /,/, $latlong;
-    die "some unexpected problem with latlog arg to geo_coords_fields\n"
-      unless ( defined $lat && defined $long );
+#
+# phenotype_value_type
+#
+# pass a phenotype object, returns the term of the attribute or observable that is a child of 'quantitative qualifier'
+#
 
-    my $geohash = $gh->encode( $lat, $long, 6 );
+sub phenotype_value_type {
+    my $phenotype = shift;
 
-    return (
-        geo_coords => $latlong,
-        geohash_6  => $geohash,
-        geohash_5  => substr( $geohash, 0, 5 ),
-        geohash_4  => substr( $geohash, 0, 4 ),
-        geohash_3  => substr( $geohash, 0, 3 ),
-        geohash_2  => substr( $geohash, 0, 2 ),
-        geohash_1  => substr( $geohash, 0, 1 )
-    );
+    my $term;
+    if (
+        (
+            defined( $term = $phenotype->observable )
+            && (   $term->id == $quantitative_qualifier->id
+                || $quantitative_qualifier->has_child($term) )
+        )
+        || (
+            defined( $term = $phenotype->attr )
+            && (   $term->id == $quantitative_qualifier->id
+                || $quantitative_qualifier->has_child($term) )
+        )
+      )
+    {
+        return $term;
+    }
+    return;
+}
+
+#
+# ohr = ordered hash reference
+#
+# return order-maintaining hash reference
+# with optional arguments as key-value pairs
+#
+sub ohr {
+    my $ref = {};
+    tie %$ref, 'Tie::IxHash', @_;
+    return $ref;
+}
+
+sub remove_gaz_crap {
+    my @result;
+    my $state = 1;
+    foreach my $element (@_) {
+        $state = 0
+          if ( $element eq 'continent'
+            || $element eq 'geographical location'
+            || $element eq 'Oceans and Seas' );
+        push @result, $element if ($state);
+        $state = 1 if ( $element eq 'GAZ:00000448' );
+    }
+    return @result;
 }
