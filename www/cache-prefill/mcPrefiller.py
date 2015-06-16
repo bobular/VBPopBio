@@ -92,7 +92,7 @@ def ajax_complete(driver):
 # navigates to given URL and waits until Ajax commands have finished
 def navigator(url):
 	user_agent = 'VectorBase-prefiller'		
-	driver = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '5000000', 'phantomjs.page.setting.userAgent': 'user_agent'})
+	driver = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.resourceTimeout': '5000000', 'phantomjs.page.settings.userAgent': user_agent})
 	driver.get(url)
 	WebDriverWait(driver, timeout_max).until(ajax_complete,  "Timeout")
 	if verbose:
@@ -104,7 +104,7 @@ def navigator(url):
 while (len(urls) == 0):
 	# load instance of webdriver
 	user_agent = 'VectorBase-prefiller'	
-	w_driver = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.setting.userAgent': 'user_agent'}) 
+	w_driver = webdriver.PhantomJS(desired_capabilities={'phantomjs.page.settings.userAgent': user_agent}) 
 
 	# opens the pop bio main page with list of projects and URLS
 	w_driver.get(projectpage)
