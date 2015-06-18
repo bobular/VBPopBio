@@ -29,6 +29,7 @@ use Geohash;
 use Clone qw(clone);
 use Tie::IxHash;
 use Scalar::Util qw(looks_like_number);
+use PDL;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -139,6 +140,14 @@ while (my $project = $projects->next) {
   last if ($limit && ++$done >= $limit);
 }
 
+#
+# store phenotype values for later normalisation
+#
+
+my %phenotype_signature2values; # measurement_type/assay/insecticide/concentration/c_units/duration/d_units/species => [ vals, ... ]
+my %phenotype_id2value; # phenotype_stable_ish_id => un-normalised value
+my %phenotype_id2signature; # phenotype_stable_ish_id => signature
+
 
 ### SAMPLES ###
 $done = 0;
@@ -245,8 +254,9 @@ while (my $stock = $stocks->next) {
 
       foreach my $phenotype ($phenotype_assay->phenotypes) {
 
+	my $phenotype_stable_ish_id = $stable_id.".".$phenotype->id;
 	# alter fields
-	$doc->{id} = $stable_id.".".$phenotype->id;
+	$doc->{id} = $phenotype_stable_ish_id;
 	$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 	$doc->{label} = $phenotype->name;
 
@@ -316,6 +326,23 @@ while (my $stock = $stocks->next) {
 	  chomp($json_text);
 	  print qq!"add": $json_text,\n!;
 
+	  # collate the values for each unique combination of protocol, insecticide, ...
+
+	  my $phenotype_signature =
+	    join "/",
+	      map { $_ // '-' } # convert undefined to '-'
+		$doc->{phenotype_value_type_s},
+		  join(":", @{$doc->{protocols}}),
+		    $doc->{insecticide_s},
+		      $doc->{concentration_f}, $doc->{concentration_unit_s},
+			$doc->{duration_f}, $doc->{duration_unit_s},
+			  $doc->{species}->[0];
+
+
+	  push @{$phenotype_signature2values{$phenotype_signature}}, $value;
+	  $phenotype_id2value{$phenotype_stable_ish_id} = $value;
+	  $phenotype_id2signature{$phenotype_stable_ish_id} = $phenotype_signature;
+
 	}
       }
     }
@@ -329,6 +356,58 @@ while (my $stock = $stocks->next) {
 
   last if ($limit && ++$done >= $limit);
 }
+
+#
+# create a set of normaliser functions for each signature
+#
+my %phenotype_signature2normaliser;
+foreach my $phenotype_signature (keys %phenotype_signature2values) {
+  my $values = pdl(@{$phenotype_signature2values{$phenotype_signature}});
+
+  # when inverted == 1, low values mean the insecticide is working
+  my $inverted = ($phenotype_signature =~ /^(LT|LC)/) ? 1 : 0;
+
+  my ($min, $max) = $values->minmax;
+  my $range = $max - $min;
+
+  if ($range) {
+    $phenotype_signature2normaliser{$phenotype_signature} =
+      sub {
+	my $val = shift;
+	$val -= $min;
+	$val /= $range;
+	$val = 1-$val if ($inverted);
+	return $val;
+      };
+  }
+}
+
+
+#
+# add the normalised/rescaled phenotype values to existing docs
+#
+
+foreach my $phenotype_stable_ish_id (keys %phenotype_id2signature) {
+  my $phenotype_signature = $phenotype_id2signature{$phenotype_stable_ish_id};
+  my $normaliser = $phenotype_signature2normaliser{$phenotype_signature};
+  if ($normaliser) {
+    my $rescaled = $normaliser->($phenotype_id2value{$phenotype_stable_ish_id});
+    my $n = scalar @{$phenotype_signature2values{$phenotype_signature}};
+
+    my $json_text = $json->encode({ doc =>
+				    ohr(
+				     id => $phenotype_stable_ish_id,
+				     phenotype_rescaled_value_f => { add => $rescaled },
+				     phenotype_rescaling_signature_s => { add => $phenotype_signature },
+				     phenotype_rescaling_count_i => { add => $n }
+				    )
+				  });
+    chomp($json_text);
+    print qq!"add": $json_text,\n!;
+
+  }
+}
+
 
 # the commit is needed to resolve the trailing comma
 print qq!\"commit\" : { } }\n!;
