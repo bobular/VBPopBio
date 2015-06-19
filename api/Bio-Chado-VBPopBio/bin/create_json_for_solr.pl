@@ -55,6 +55,7 @@ my $assays = $schema->assays;
 my $json = JSON->new->pretty; # useful for debugging
 my $gh = Geohash->new();
 my $done;
+my $needcomma = 0;
 
 # stops "wide character in print" warnings
 binmode(STDOUT, ":utf8");
@@ -95,7 +96,7 @@ my $sample_size_term = $schema->cvterms->find_by_accession({ term_source_ref => 
 
 my $iso8601 = DateTime::Format::ISO8601->new;
 
-print "{\n";
+print "[\n";
 
 ### PROJECTS ###
 $done = 0;
@@ -107,8 +108,7 @@ my $date_type = $schema->types->date;
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
   my @design_terms = map { $_->cvterms->[1] } $project->multiprops($study_design_type);
-  my $document = { doc =>
-		   ohr(
+  my $document = ohr(
 		    label => $project->name,
 		    id => $stable_id,
 		    accession => $stable_id,
@@ -131,11 +131,11 @@ while (my $project = $projects->next) {
 					      map { flattened_parents($_) } @design_terms
 					     ],
 		    pubmed => [ map { "PMID:$_" } grep { $_ } map { $_->miniref } $project->publications ],
-		   )
-		 };
+		   );
   my $json_text = $json->encode($document);
   chomp($json_text);
-  print qq!"add": $json_text,\n!;
+  print ",\n" if ($needcomma++);
+  print qq!$json_text\n!;
 
   last if ($limit && ++$done >= $limit);
 }
@@ -168,8 +168,7 @@ while (my $stock = $stocks->next) {
   my @genotype_assays = $stock->genotype_assays;
   my @genotypes = map { $_->genotypes->all } @genotype_assays;
 
-  my $document = { doc =>
-		   ohr(
+  my $document = ohr(
 		    label => $stock->name,
 		    id => $stable_id,
 		    # type => 'sample', # doesn't seem to be in schema
@@ -215,12 +214,12 @@ while (my $stock = $stocks->next) {
 		    (defined $latlong ? ( collection_date => assay_date($fc) ) : ()),
 
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
-		   )
-		 };
+		   );
 
   my $json_text = $json->encode($document);
   chomp($json_text);
-  print qq!"add": $json_text,\n!;
+  print ",\n" if ($needcomma++);
+  print qq!$json_text\n!;
 
   # now handle phenotypes
 
@@ -236,7 +235,7 @@ while (my $stock = $stocks->next) {
       # yes we have an INSECTICIDE RESISTANCE BIOASSAY
 
       # cloning is safer and simpler (but more expensive) than re-using $document
-      my $doc = clone($document->{doc});
+      my $doc = clone($document);
 
       my $assay_stable_id = $phenotype_assay->stable_id;
 
@@ -322,9 +321,10 @@ while (my $stock = $stocks->next) {
 	  # phenotype_cvterms (singular)
 	  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
 
-	  my $json_text = $json->encode({ doc => $doc });
+	  my $json_text = $json->encode($doc);
 	  chomp($json_text);
-	  print qq!"add": $json_text,\n!;
+	  print ",\n" if ($needcomma++);
+	  print qq!"$json_text\n!;
 
 	  # collate the values for each unique combination of protocol, insecticide, ...
 
@@ -394,23 +394,23 @@ foreach my $phenotype_stable_ish_id (keys %phenotype_id2signature) {
     my $rescaled = $normaliser->($phenotype_id2value{$phenotype_stable_ish_id});
     my $n = scalar @{$phenotype_signature2values{$phenotype_signature}};
 
-    my $json_text = $json->encode({ doc =>
-				    ohr(
+    my $json_text = $json->encode(ohr(
 				     id => $phenotype_stable_ish_id,
-				     phenotype_rescaled_value_f => { add => $rescaled },
-				     phenotype_rescaling_signature_s => { add => $phenotype_signature },
-				     phenotype_rescaling_count_i => { add => $n }
+				     phenotype_rescaled_value_f => { set => $rescaled },
+				     phenotype_rescaling_signature_s => { set => $phenotype_signature },
+				     phenotype_rescaling_count_i => { set => $n }
 				    )
-				  });
+				  );
     chomp($json_text);
-    print qq!"add": $json_text,\n!;
+    print ",\n" if ($needcomma++);
+    print qq!$json_text\n!;
 
   }
 }
 
 
 # the commit is needed to resolve the trailing comma
-print qq!\"commit\" : { } }\n!;
+print qq!]\n!;
 
 # returns just the 'proper' cvterms for all multiprops
 # of the argument
