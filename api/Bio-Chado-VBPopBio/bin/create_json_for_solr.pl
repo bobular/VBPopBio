@@ -331,7 +331,7 @@ while (my $stock = $stocks->next) {
 	  my $phenotype_signature =
 	    join "/",
 	      map { $_ // '-' } # convert undefined to '-'
-		$doc->{phenotype_value_type_s},
+		$doc->{phenotype_value_type_s}, $doc->{phenotype_value_unit_s},
 		  join(":", @{$doc->{protocols}}),
 		    $doc->{insecticide_s},
 		      $doc->{concentration_f}, $doc->{concentration_unit_s},
