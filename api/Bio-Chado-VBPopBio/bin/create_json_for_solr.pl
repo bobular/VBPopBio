@@ -331,13 +331,13 @@ while (my $stock = $stocks->next) {
 	  my $phenotype_signature =
 	    join "/",
 	      map { $_ // '-' } # convert undefined to '-'
-		$doc->{phenotype_value_type_s}, $doc->{phenotype_value_unit_s},
-		  join(":", @{$doc->{protocols}}),
-		    $doc->{insecticide_s},
-		      $doc->{concentration_f}, $doc->{concentration_unit_s},
-			$doc->{duration_f}, $doc->{duration_unit_s},
-			  $doc->{species}->[0];
+		$doc->{phenotype_value_type_s}, $doc->{phenotype_value_unit_s};
 
+#		  join(":", @{$doc->{protocols}}),
+#		    $doc->{insecticide_s},
+#		      1*$doc->{concentration_f}, $doc->{concentration_unit_s},
+#			1*$doc->{duration_f}, $doc->{duration_unit_s},
+#			  $doc->{species}->[0];
 
 	  push @{$phenotype_signature2values{$phenotype_signature}}, $value;
 	  $phenotype_id2value{$phenotype_stable_ish_id} = $value;
