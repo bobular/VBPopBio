@@ -324,7 +324,7 @@ while (my $stock = $stocks->next) {
 	  my $json_text = $json->encode($doc);
 	  chomp($json_text);
 	  print ",\n" if ($needcomma++);
-	  print qq!"$json_text\n!;
+	  print qq!$json_text\n!;
 
 	  # collate the values for each unique combination of protocol, insecticide, ...
 
