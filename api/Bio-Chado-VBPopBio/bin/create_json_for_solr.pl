@@ -368,13 +368,17 @@ foreach my $phenotype_signature (keys %phenotype_signature2values) {
   # when inverted == 1, low values mean the insecticide is working
   my $inverted = ($phenotype_signature =~ /^(LT|LC)/) ? 1 : 0;
 
-  my ($min, $max) = $values->minmax;
+  my ($min, $max) = ($values->pct(0.02), $values->pct(0.98));
   my $range = $max - $min;
 
   if ($range) {
     $phenotype_signature2normaliser{$phenotype_signature} =
       sub {
 	my $val = shift;
+	# squash outliers
+	$val = $min if ($val<$min);
+	$val = $max if ($val>$max);
+	# now rescale
 	$val -= $min;
 	$val /= $range;
 	$val = 1-$val if ($inverted);
