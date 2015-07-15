@@ -202,7 +202,8 @@ while (my $stock = $stocks->next) {
 		    ($stock_best_species ? (
 					    species => [ $stock_best_species->name ],
 					    species_cvterms => [ flattened_parents($stock_best_species) ]
-					   ) : () ),
+					   ) :
+		                           ( species => [ 'Unknown' ] ) ),
 
 		    annotations => [ map { $_->as_string } $stock->multiprops ],
 		    annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($stock) ],
