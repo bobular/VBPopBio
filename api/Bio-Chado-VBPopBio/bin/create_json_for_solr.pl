@@ -345,7 +345,7 @@ while (my $stock = $stocks->next) {
 		  # print ",\n" if ($needcomma++);
 		  # print qq!$json_text\n!;
 
-		  if (++$done_ir_phenotypes<$limit) { 			# @andy  @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
+		  if ($done_ir_phenotypes<$limit) { 			# @andy  @todo: don't increment the $done_ir_phenotypes counter at the end of the loop, since this will just double-count all the "done" data // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
 		  	print ",\n" if ($needcomma++); 				# @andy: @done: Q: find out the difference between ++$done_ir_phenotypes and $done_ir_phenotypes++? A: returns the $done_ir_phenotypes THEN increments, when ++ is placed after (e.g. if you ask if ++$done_ir_phenotypes it will increment then test for condition) // @done: "my" does not have to be declared > determine whether or not "my" always has to be declared to ++ a value // determine how we can iterate the counter  @1748
 		 	print qq!$json_text\n!;
 		  }
@@ -382,8 +382,8 @@ while (my $stock = $stocks->next) {
   # 	 print "MOO"; #@1702 # @andy: understood how the $limit works // now to work out how limit works: in particular how the logic of "if" works, lets see what happens if the "$limit" in "last if ($limit && ++$done >= $limit);" is missed out // because i missed out a ; > // caused a "compliation error" > // testing if done prints as I expect it to, it should be a number that prints to the: <temp-limit10-popbio-new-solr.json> file 	@1644
   # } 
 
-  #last if ($limit && ++$done >= $limit);	# @andy: <-- this line is what works as it did before Bob met me @2015-08-19: prior to days off 	@1844
-  last if ($limit && ++$done_samples >= $limit && ++$done_ir_phenotypes >= $limit);	# @todo: test the next @done -> // @done: this needs to be stopped only when all documents have reached 10, in pseudo: STOP IF (done_samples >= limit) AND (done_ir_phenotypes >= limit) )) // @2015-08-19
+  #last if ($limit && ++$done >= $limit);	# @andy: <-- this line is what works as it did before Bob met me @2015-08-19: prior to getting ready for his days off 	@1844
+  last if ($limit && $done_samples >= $limit && $done_ir_phenotypes >= $limit);	# // @done: we keep it as ">=" > Q: unsure as to whether to make the condition testing occur using ">=" or just ">", test in the "toy script: andy_familiarising_with_logic.pl", A: Last exits the loop based on it's nearest neighboring if () statement being satisfied // @done: test the next // @done -> // @done: this needs to be stopped only when all documents have reached 10, in pseudo: STOP IF (done_samples >= limit) AND (done_ir_phenotypes >= limit) )) // @2015-08-19
 											# @andy: @done: try to understand how: "last if ($limit && ++$done >= $limit);" works by printing various things
 }
 
