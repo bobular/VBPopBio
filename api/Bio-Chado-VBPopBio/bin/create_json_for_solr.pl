@@ -148,11 +148,17 @@ my %phenotype_signature2values; # measurement_type/assay/insecticide/concentrati
 my %phenotype_id2value; # phenotype_stable_ish_id => un-normalised value
 my %phenotype_id2signature; # phenotype_stable_ish_id => signature
 
+# (@todo: make the limit stop the whole script once all: done_samples, done_ir_phenotypes, done_genotypes (in future) are finished) // @bob:showed me @andy:shown by bob // @2015-08-15 
 
 ### SAMPLES ###
-$done = 0;
+my $done_samples = 0; 					# counter for samples 		// @todo: needs some conditional statement to help me check which "documents" contain IR_phenotypes: @1735: so far it seems that I need to probe some @objects for a marker for @insecticide resistance phenotypes (@ir_phenotypes) // @bob:showed me @andy:shown by bob // @2015-08-15 
+my $done_ir_phenotypes = 0;				# counter for ir_phenotypes // @bob:showed me @andy:shown by bob // @2015-08-15 
+
 while (my $stock = $stocks->next) {
   my $stable_id = $stock->stable_id;
+
+  # @exploring a stock
+
   die "stock with db id ".$stock->id." does not have a stable id" unless ($stable_id);
 
   my @collection_protocol_types = map { $_->type } map { $_->protocols->all } $stock->field_collections;
@@ -217,10 +223,18 @@ while (my $stock = $stocks->next) {
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
 		   );
 
+  # print the sample    						@bob:showed me @andy:shown by bob // @2015-08-15 
   my $json_text = $json->encode($document);
   chomp($json_text);
-  print ",\n" if ($needcomma++);
-  print qq!$json_text\n!;
+
+  # @andy: uncommented the below \/ two lines in place of the new version, within the following if {} block
+  # print ",\n" if ($needcomma++);
+  # print qq!$json_text\n!;
+
+  if ++$done_samples<$limit { 			# @andy  @todo: Q: what does chomp do? A: removes last char of string	// samples printed // @todo:  // @done: count the number of these printed 
+  	print ",\n" if ($needcomma++);
+ 	print qq!$json_text\n!;
+  }
 
   # now handle phenotypes
 
@@ -236,6 +250,7 @@ while (my $stock = $stocks->next) {
       # yes we have an INSECTICIDE RESISTANCE BIOASSAY
 
       # cloning is safer and simpler (but more expensive) than re-using $document
+      # $document is the sample document
       my $doc = clone($document);
 
       my $assay_stable_id = $phenotype_assay->stable_id;
@@ -254,97 +269,105 @@ while (my $stock = $stocks->next) {
 
       foreach my $phenotype ($phenotype_assay->phenotypes) {
 
-	my $phenotype_stable_ish_id = $stable_id.".".$phenotype->id;
-	# alter fields
-	$doc->{id} = $phenotype_stable_ish_id;
-	$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
-	$doc->{label} = $phenotype->name;
+		my $phenotype_stable_ish_id = $stable_id.".".$phenotype->id;
+		# alter fields
+		$doc->{id} = $phenotype_stable_ish_id;
+		$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
+		$doc->{label} = $phenotype->name;
 
-	# NEW fields
+		# NEW fields
 
-	# figure out what kind of value
-	my $value = $phenotype->value;
+		# figure out what kind of value
+		my $value = $phenotype->value;
 
-	if (defined $value && looks_like_number($value)) {
-	  $doc->{phenotype_value_f} = $value;
+		if (defined $value && looks_like_number($value)) {
+		  $doc->{phenotype_value_f} = $value;
 
-	  my $value_unit = $phenotype->unit;
-	  if (defined $value_unit) {
-	    $doc->{phenotype_value_unit_s} = $value_unit->name;
-	    $doc->{phenotype_value_unit_cvterms} = [ flattened_parents($value_unit) ];
-	  }
+		  my $value_unit = $phenotype->unit;
+		  if (defined $value_unit) {
+		    $doc->{phenotype_value_unit_s} = $value_unit->name;
+		    $doc->{phenotype_value_unit_cvterms} = [ flattened_parents($value_unit) ];
+		  }
 
-	  my $value_type = phenotype_value_type($phenotype); # e.g. mortality rate, LT50 etc
-	  if (defined $value_type) {
-	    $doc->{phenotype_value_type_s} = $value_type->name;
-	    $doc->{phenotype_value_type_cvterms} = [ flattened_parents($value_type) ];
+		  my $value_type = phenotype_value_type($phenotype); # e.g. mortality rate, LT50 etc
+		  if (defined $value_type) {
+		    $doc->{phenotype_value_type_s} = $value_type->name;
+		    $doc->{phenotype_value_type_cvterms} = [ flattened_parents($value_type) ];
 
-	  } else {
-	    warn "no value type for phenotype of $assay_stable_id\n";
-	  }
+		  } else {
+		    warn "no value type for phenotype of $assay_stable_id\n";
+		  }
 
-	  # to do: insecticide + concentrations + duration
-	  # die "to do...";
+		  # to do: insecticide + concentrations + duration
+		  # die "to do...";
 
-	  my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $sample_size, $errors) =
-	    assay_insecticides_concentrations_units_and_more($phenotype_assay);
+		  my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $sample_size, $errors) =
+		    assay_insecticides_concentrations_units_and_more($phenotype_assay);
 
-	  die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
+		  die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
 
-	  if (defined $insecticide) {
-	    $doc->{insecticide_s} = $insecticide->name;
-	    $doc->{insecticide_cvterms} = [ flattened_parents($insecticide) ];
+		  if (defined $insecticide) {
+		    $doc->{insecticide_s} = $insecticide->name;
+		    $doc->{insecticide_cvterms} = [ flattened_parents($insecticide) ];
 
-	    if (defined $concentration && looks_like_number($concentration) && defined $concentration_unit) {
-	      $doc->{concentration_f} = $concentration;
-	      $doc->{concentration_unit_s} = $concentration_unit->name;
-	      $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
-	    } else {
-	      warn "no/incomplete/corrupted concentration data for $assay_stable_id\n";
-	    }
+		    if (defined $concentration && looks_like_number($concentration) && defined $concentration_unit) {
+		      $doc->{concentration_f} = $concentration;
+		      $doc->{concentration_unit_s} = $concentration_unit->name;
+		      $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
+		    } else {
+		      warn "no/incomplete/corrupted concentration data for $assay_stable_id\n";
+		    }
 
-	  } else {
-	    warn "no insecticide for $assay_stable_id !!!\n";
-	  }
+		  } else {
+		    warn "no insecticide for $assay_stable_id !!!\n";
+		  }
 
-	  if (defined $duration && defined $duration_unit) {
-	    $doc->{duration_f} = $duration;
-	    $doc->{duration_unit_s} = $duration_unit->name;
-	    $doc->{duration_unit_cvterms} = [ flattened_parents($duration_unit) ];
-	  } else {
-	    # warn "no/incomplete duration data for $assay_stable_id\n";
-	  }
+		  if (defined $duration && defined $duration_unit) {
+		    $doc->{duration_f} = $duration;
+		    $doc->{duration_unit_s} = $duration_unit->name;
+		    $doc->{duration_unit_cvterms} = [ flattened_parents($duration_unit) ];
+		  } else {
+		    # warn "no/incomplete duration data for $assay_stable_id\n";
+		  }
 
-	  if (defined $sample_size) {
-	    $doc->{sample_size_i} = $sample_size;
-	  }
+		  if (defined $sample_size) {
+		    $doc->{sample_size_i} = $sample_size;
+		  }
 
-	  # phenotype_cvterms (singular)
-	  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
+		  # phenotype_cvterms (singular)
+		  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
 
-	  my $json_text = $json->encode($doc);
-	  chomp($json_text);
-	  print ",\n" if ($needcomma++);
-	  print qq!$json_text\n!;
+		  # print out the IR phenotype doc (cloned from $document)
+	      my $json_text = $json->encode($doc);
+		  chomp($json_text);
 
-	  # collate the values for each unique combination of protocol, insecticide, ...
+		  # @andy  the next two lines \/ were commented out in place of the following if {} block
+		  # print ",\n" if ($needcomma++);
+		  # print qq!$json_text\n!;
 
-	  my $phenotype_signature =
-	    join "/",
-	      map { $_ // '-' } # convert undefined to '-'
-		$doc->{phenotype_value_type_s}, $doc->{phenotype_value_unit_s};
+		  if (++$done_ir_phenotypes<$limit) { 			# @andy  @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
+		  	print ",\n" if ($needcomma++); 				# @andy: @done: Q: find out the difference between ++$done_ir_phenotypes and $done_ir_phenotypes++? A: returns the $done_ir_phenotypes THEN increments, when ++ is placed after (e.g. if you ask if ++$done_ir_phenotypes it will increment then test for condition) // @done: "my" does not have to be declared > determine whether or not "my" always has to be declared to ++ a value // determine how we can iterate the counter  @1748
+		 	print qq!$json_text\n!;
+		  }
 
-#		  join(":", @{$doc->{protocols}}),
-#		    $doc->{insecticide_s},
-#		      1*$doc->{concentration_f}, $doc->{concentration_unit_s},
-#			1*$doc->{duration_f}, $doc->{duration_unit_s},
-#			  $doc->{species}->[0];
+		  # collate the values for each unique combination of protocol, insecticide, ...
 
-	  push @{$phenotype_signature2values{$phenotype_signature}}, $value;
-	  $phenotype_id2value{$phenotype_stable_ish_id} = $value;
-	  $phenotype_id2signature{$phenotype_stable_ish_id} = $phenotype_signature;
+		  my $phenotype_signature =
+		    join "/",
+		      map { $_ // '-' } # convert undefined to '-'
+			$doc->{phenotype_value_type_s}, $doc->{phenotype_value_unit_s};
 
-	}
+	#		  join(":", @{$doc->{protocols}}),
+	#		    $doc->{insecticide_s},
+	#		      1*$doc->{concentration_f}, $doc->{concentration_unit_s},
+	#			1*$doc->{duration_f}, $doc->{duration_unit_s},
+	#			  $doc->{species}->[0];
+
+		  push @{$phenotype_signature2values{$phenotype_signature}}, $value;
+		  $phenotype_id2value{$phenotype_stable_ish_id} = $value;
+		  $phenotype_id2signature{$phenotype_stable_ish_id} = $phenotype_signature;
+
+		}
       }
     }
 
@@ -355,8 +378,27 @@ while (my $stock = $stocks->next) {
     # TO DO
   }
 
-  last if ($limit && ++$done >= $limit);
+  # if ($limit && ++$done_samples >= $limit && ++$done_samples >= $limit){
+  # 	 print "MOO"; #@1702 # @andy: understood how the $limit works // now to work out how limit works: in particular how the logic of "if" works, lets see what happens if the "$limit" in "last if ($limit && ++$done >= $limit);" is missed out // because i missed out a ; > // caused a "compliation error" > // testing if done prints as I expect it to, it should be a number that prints to the: <temp-limit10-popbio-new-solr.json> file 	@1644
+  # } 
+
+  #last if ($limit && ++$done >= $limit);	# @andy: <-- this line is what works as it did before Bob met me @2015-08-19: prior to days off 	@1844
+  last if ($limit && ++$done_samples >= $limit && ++$done_ir_phenotypes >= $limit);	# @todo: test the next @done -> // @done: this needs to be stopped only when all documents have reached 10, in pseudo: STOP IF (done_samples >= limit) AND (done_ir_phenotypes >= limit) )) // @2015-08-19
+											# @andy: @done: try to understand how: "last if ($limit && ++$done >= $limit);" works by printing various things
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #
 # create a set of normaliser functions for each signature
