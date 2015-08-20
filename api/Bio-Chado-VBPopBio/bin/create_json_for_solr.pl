@@ -231,7 +231,7 @@ while (my $stock = $stocks->next) {
   # print ",\n" if ($needcomma++);
   # print qq!$json_text\n!;
 
-  if ++$done_samples<$limit { 			# @andy  @todo: Q: what does chomp do? A: removes last char of string	// samples printed // @todo:  // @done: count the number of these printed 
+  if (++$done_samples<$limit){ 					# @andy  @todo: Q: what does chomp do? A: removes last char of string	// samples printed // @todo:  // @done: count the number of these printed 
   	print ",\n" if ($needcomma++);
  	print qq!$json_text\n!;
   }
@@ -351,7 +351,6 @@ while (my $stock = $stocks->next) {
 		  }
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
-
 		  my $phenotype_signature =
 		    join "/",
 		      map { $_ // '-' } # convert undefined to '-'
@@ -373,10 +372,10 @@ while (my $stock = $stocks->next) {
 
   }
 
-  # same for genotypes
-  foreach my $genotype (@genotypes) {
-    # TO DO
-  }
+  # # same for genotypes
+  # foreach my $genotype (@genotypes) {
+  #   # TO DO: @andy "for the future"
+  # }
 
   # if ($limit && ++$done_samples >= $limit && ++$done_samples >= $limit){
   # 	 print "MOO"; #@1702 # @andy: understood how the $limit works // now to work out how limit works: in particular how the logic of "if" works, lets see what happens if the "$limit" in "last if ($limit && ++$done >= $limit);" is missed out // because i missed out a ; > // caused a "compliation error" > // testing if done prints as I expect it to, it should be a number that prints to the: <temp-limit10-popbio-new-solr.json> file 	@1644
