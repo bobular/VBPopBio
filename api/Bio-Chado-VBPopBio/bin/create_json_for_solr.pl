@@ -105,6 +105,8 @@ my $start_date_type = $schema->types->start_date;
 my $date_type = $schema->types->date;
 
 
+print "iterating through projects... @andy: @todo: remove this later @remove\n";
+
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
   my @design_terms = map { $_->cvterms->[1] } $project->multiprops($study_design_type);
@@ -137,7 +139,7 @@ while (my $project = $projects->next) {
   print ",\n" if ($needcomma++);
   print qq!$json_text\n!;
 
-  last if ($limit && ++$done >= $limit);
+  last if ($limit && ++$done >= $limit); 		# @andy: @todo: @ask:bob: "do we have to change this part of the script too to change the way we want to search for IR phenotypes?"
 }
 
 #
@@ -154,10 +156,11 @@ my %phenotype_id2signature; # phenotype_stable_ish_id => signature
 my $done_samples = 0; 					# counter for samples 		// @todo: needs some conditional statement to help me check which "documents" contain IR_phenotypes: @1735: so far it seems that I need to probe some @objects for a marker for @insecticide resistance phenotypes (@ir_phenotypes) // @bob:showed me @andy:shown by bob // @2015-08-15 
 my $done_ir_phenotypes = 0;				# counter for ir_phenotypes // @bob:showed me @andy:shown by bob // @2015-08-15 
 
+
+print "iterating through samples...\n"; # @andy: @todo: remove this later @2015-08-20
+
 while (my $stock = $stocks->next) {
   my $stable_id = $stock->stable_id;
-
-  # @exploring a stock
 
   die "stock with db id ".$stock->id." does not have a stable id" unless ($stable_id);
 
@@ -231,16 +234,23 @@ while (my $stock = $stocks->next) {
   # print ",\n" if ($needcomma++);
   # print qq!$json_text\n!;
 
-  if (++$done_samples<$limit){ 					# @andy  @todo: Q: what does chomp do? A: removes last char of string	// samples printed // @todo:  // @done: count the number of these printed 
-  	print ",\n" if ($needcomma++);
- 	print qq!$json_text\n!;
+  print "\tremove this later...\n"; 	# @andy @todo: remove this line, just here for debugging for now...
+
+  if ($limit && ++$done_samples<=$limit){ 					# @andy: // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
+  # 	print ",\n" if ($needcomma++);  # @todo: uncomment after debugging @1400 @done: Q: does the "last if {}" line of code jump out of the loop WHILST finishing off what's left in the loop? A: No, it skips any remaining parts of the loop
+ 	# print qq!$json_text\n!;  # @todo: uncomment after debugging @1400
+ 	print "\t\tdone sample: $done_samples // limit: $limit\n";
+ 	#$DB::single = 1;
   }
 
   # now handle phenotypes
 
   # reuse the sample document data structure
   # to avoid having to do a lot of cvterms fields over and over again
-  foreach my $phenotype_assay (@phenotype_assays) {
+  foreach my $phenotype_assay (@phenotype_assays) { 			# @1555
+
+  	print "\t\tphenotype assay... @todo: remove this later...\n"; 
+
     # is it a phenotype that we can use?
     my @protocol_types = map { $_->type } $phenotype_assay->protocols->all;
 
@@ -268,6 +278,8 @@ while (my $stock = $stocks->next) {
       $doc->{protocols_cvterms} = [ map { flattened_parents($_) } @protocol_types ];
 
       foreach my $phenotype ($phenotype_assay->phenotypes) {
+      	
+      	print "\t\t\tphenotype... @andy @todo: remove later after  @remove\n";
 
 		my $phenotype_stable_ish_id = $stable_id.".".$phenotype->id;
 		# alter fields
@@ -345,9 +357,10 @@ while (my $stock = $stocks->next) {
 		  # print ",\n" if ($needcomma++);
 		  # print qq!$json_text\n!;
 
-		  if ($done_ir_phenotypes<$limit) { 			# @andy  @todo: don't increment the $done_ir_phenotypes counter at the end of the loop, since this will just double-count all the "done" data // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
-		  	print ",\n" if ($needcomma++); 				# @andy: @done: Q: find out the difference between ++$done_ir_phenotypes and $done_ir_phenotypes++? A: returns the $done_ir_phenotypes THEN increments, when ++ is placed after (e.g. if you ask if ++$done_ir_phenotypes it will increment then test for condition) // @done: "my" does not have to be declared > determine whether or not "my" always has to be declared to ++ a value // determine how we can iterate the counter  @1748
-		 	print qq!$json_text\n!;
+		  if ($limit && ++$done_ir_phenotypes<=$limit) { 			# @andy  @done: don't increment the $done_ir_phenotypes counter at the end of the loop, since this will just double-count all the "done" data // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
+		  	# print ",\n" if ($needcomma++); 				# @andy: @done: Q: find out the difference between ++$done_ir_phenotypes and $done_ir_phenotypes++? A: returns the $done_ir_phenotypes THEN increments, when ++ is placed after (e.g. if you ask if ++$done_ir_phenotypes it will increment then test for condition) // @done: "my" does not have to be declared > determine whether or not "my" always has to be declared to ++ a value // determine how we can iterate the counter  @1748
+		 	# print qq!$json_text\n!;  # @todo: uncomment after the 
+		 	print "\t\t\t\tdone ir_phenotypes: $ir_phenotypes // limit: $limit"; 	# @todo: @remove after debugging
 		  }
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
