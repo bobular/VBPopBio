@@ -104,8 +104,7 @@ my $study_design_type = $schema->types->study_design;
 my $start_date_type = $schema->types->start_date;
 my $date_type = $schema->types->date;
 
-
-print "iterating through projects... @andy: @todo: remove this later @remove\n";
+#print "iterating through projects... @andy: @done: remove this later @remove\n"; @needlater?
 
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
@@ -139,7 +138,7 @@ while (my $project = $projects->next) {
   print ",\n" if ($needcomma++);
   print qq!$json_text\n!;
 
-  last if ($limit && ++$done >= $limit); 		# @andy: @todo: @ask:bob: "do we have to change this part of the script too to change the way we want to search for IR phenotypes?"
+  last if ($limit && ++$done >= $limit); 		# @andy: @done: @ask:bob: Q: "do we have to change this part of the script too to change the way we want to search for IR phenotypes?" A: answering it myself: I think not... 
 }
 
 #
@@ -150,14 +149,13 @@ my %phenotype_signature2values; # measurement_type/assay/insecticide/concentrati
 my %phenotype_id2value; # phenotype_stable_ish_id => un-normalised value
 my %phenotype_id2signature; # phenotype_stable_ish_id => signature
 
-# (@todo: make the limit stop the whole script once all: done_samples, done_ir_phenotypes, done_genotypes (in future) are finished) // @bob:showed me @andy:shown by bob // @2015-08-15 
+# @done: make the limit stop the whole script once all: done_samples, done_ir_phenotypes, done_genotypes (in future) are finished) // @bob:showed me @andy:shown by bob // @2015-08-15 
 
 ### SAMPLES ###
-my $done_samples = 0; 					# counter for samples 		// @todo: needs some conditional statement to help me check which "documents" contain IR_phenotypes: @1735: so far it seems that I need to probe some @objects for a marker for @insecticide resistance phenotypes (@ir_phenotypes) // @bob:showed me @andy:shown by bob // @2015-08-15 
+my $done_samples = 0; 					# counter for samples 		// @done: needs some conditional statement to help me check which "documents" contain IR_phenotypes: @1735: so far it seems that I need to probe some @objects for a marker for @insecticide resistance phenotypes (@ir_phenotypes) // @bob:showed me @andy:shown by bob // @2015-08-15 
 my $done_ir_phenotypes = 0;				# counter for ir_phenotypes // @bob:showed me @andy:shown by bob // @2015-08-15 
 
-
-print "iterating through samples...\n"; # @andy: @todo: remove this later @2015-08-20
+# print "iterating through samples...\n"; # @andy: @done: @remove this later @2015-08-20
 
 while (my $stock = $stocks->next) {
   my $stable_id = $stock->stable_id;
@@ -232,15 +230,11 @@ while (my $stock = $stocks->next) {
 
   # @andy: uncommented the below \/ two lines in place of the new version, within the following if {} block
   # print ",\n" if ($needcomma++);
-  # print qq!$json_text\n!;
-
-  print "\tremove this later...\n"; 	# @andy @todo: remove this line, just here for debugging for now...
+  # print qq!$json_text\n!
 
   if ($limit && ++$done_samples<=$limit){ 					# @andy: // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
-  # 	print ",\n" if ($needcomma++);  # @todo: uncomment after debugging @1400 @done: Q: does the "last if {}" line of code jump out of the loop WHILST finishing off what's left in the loop? A: No, it skips any remaining parts of the loop
- 	# print qq!$json_text\n!;  # @todo: uncomment after debugging @1400
- 	print "\t\tdone sample: $done_samples // limit: $limit\n";
- 	#$DB::single = 1;
+  	print ",\n" if ($needcomma++);  # @done: uncomment after debugging @1400 @done: Q: does the "last if {}" line of code jump out of the loop WHILST finishing off what's left in the loop? A: No, it skips any remaining parts of the loop
+ 	print qq!$json_text\n!;  # @done: uncomment after debugging @1400
   }
 
   # now handle phenotypes
@@ -249,7 +243,7 @@ while (my $stock = $stocks->next) {
   # to avoid having to do a lot of cvterms fields over and over again
   foreach my $phenotype_assay (@phenotype_assays) { 			# @1555
 
-  	print "\t\tphenotype assay... @todo: remove this later...\n"; 
+  	# print "\t\tphenotype assay... @done: @remove this later...\n"; 
 
     # is it a phenotype that we can use?
     my @protocol_types = map { $_->type } $phenotype_assay->protocols->all;
@@ -279,7 +273,7 @@ while (my $stock = $stocks->next) {
 
       foreach my $phenotype ($phenotype_assay->phenotypes) {
       	
-      	print "\t\t\tphenotype... @andy @todo: remove later after  @remove\n";
+      	#print "\t\t\tphenotype... @andy @done: remove later after  @remove\n";
 
 		my $phenotype_stable_ish_id = $stable_id.".".$phenotype->id;
 		# alter fields
@@ -353,14 +347,13 @@ while (my $stock = $stocks->next) {
 	      my $json_text = $json->encode($doc);
 		  chomp($json_text);
 
-		  # @andy  the next two lines \/ were commented out in place of the following if {} block
+		  # @andy  the next two lines \/ were commented out in place of the following if {} block, which ensures that only $limit (or fewer) ir_phenotypes are printed to the json file
 		  # print ",\n" if ($needcomma++);
 		  # print qq!$json_text\n!;
 
-		  if ($limit && ++$done_ir_phenotypes<=$limit) { 			# @andy  @done: don't increment the $done_ir_phenotypes counter at the end of the loop, since this will just double-count all the "done" data // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
-		  	# print ",\n" if ($needcomma++); 				# @andy: @done: Q: find out the difference between ++$done_ir_phenotypes and $done_ir_phenotypes++? A: returns the $done_ir_phenotypes THEN increments, when ++ is placed after (e.g. if you ask if ++$done_ir_phenotypes it will increment then test for condition) // @done: "my" does not have to be declared > determine whether or not "my" always has to be declared to ++ a value // determine how we can iterate the counter  @1748
-		 	# print qq!$json_text\n!;  # @todo: uncomment after the 
-		 	print "\t\t\t\tdone ir_phenotypes: $ir_phenotypes // limit: $limit"; 	# @todo: @remove after debugging
+		  if ($limit && ++$done_ir_phenotypes<=$limit) {  # @andy  @done: don't increment the $done_ir_phenotypes counter at the end of the loop, since this will just double-count all the "done" data // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
+		  	print ",\n" if ($needcomma++); 				# @andy: @done: Q: find out the difference between ++$done_ir_phenotypes and $done_ir_phenotypes++? A: returns the $done_ir_phenotypes THEN increments, when ++ is placed after (e.g. if you ask if ++$done_ir_phenotypes it will increment then test for condition) // @done: "my" does not have to be declared > determine whether or not "my" always has to be declared to ++ a value // determine how we can iterate the counter  @1748
+		 	print qq!$json_text\n!;  # @done: uncomment after the debugging..
 		  }
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
