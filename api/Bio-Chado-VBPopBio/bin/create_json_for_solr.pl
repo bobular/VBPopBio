@@ -453,6 +453,7 @@ while (my $stock = $stocks->next) {
           # do all the Solr document processing and printing inside this block
           
           # @todo: need to get the genotype names and counts in place of the ???s 
+          
           #$doc->{genotype_name_s} = ????;
           #$doc->{genotype_alleles_ss} = [ 'non-inverted', 'inverted'];
           #$doc->{genotype_alleles_ss} = [ ???, ??? ];
