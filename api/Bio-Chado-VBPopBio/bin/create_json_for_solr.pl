@@ -15,6 +15,17 @@
 #
 #
 
+# @1603
+# [16:00:48] Bob MacCallum: $inversion_term
+# [16:00:49] Bob MacCallum: Ontology term: inversion
+# Accession: SO:1000036
+# $genotype_term
+# [16:01:11] Bob MacCallum: Ontology term: genotype
+# Accession: SO:0001027
+# [16:01:14] Bob MacCallum: and actually one more!
+# [16:01:38] Bob MacCallum: and $count_unit_term
+# [16:01:46] Bob MacCallum: UO:0000189
+
 
 use strict;
 use warnings;
@@ -43,6 +54,9 @@ GetOptions("dbname=s"=>\$dbname,
 	   "limit=i"=>\$limit, # for debugging/development
 	   "project=s"=>\$project_stable_id, # just one project for debugging
 	  );
+
+
+warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if ($limit && $project_stable_id);
 
 my $dsn = "dbi:Pg:dbname=$dbname";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $dbuser, undef, { AutoCommit => 1 });
@@ -93,6 +107,18 @@ my $duration_term = $schema->cvterms->find_by_accession({ term_source_ref => 'EF
 
 my $sample_size_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
 							       term_accession_number => '0000983' });
+
+my $chromosomal_inversion_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO', 
+                      term_accession_number => '1000030' });
+
+my $inversion_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
+                     term_accession_number => '1000036' });
+
+my $genotype_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
+                     term_accession_number => '0001027' });
+
+my $count_unit_term = $schema->cvterms->find_by_accession({ term_source_ref => 'UO',
+                     term_accession_number => '0000189' });
 
 my $iso8601 = DateTime::Format::ISO8601->new;
 
@@ -154,6 +180,7 @@ my %phenotype_id2signature; # phenotype_stable_ish_id => signature
 ### SAMPLES ###
 my $done_samples = 0; 					# counter for samples 		// @done: needs some conditional statement to help me check which "documents" contain IR_phenotypes: @1735: so far it seems that I need to probe some @objects for a marker for @insecticide resistance phenotypes (@ir_phenotypes) // @bob:showed me @andy:shown by bob // @2015-08-15 
 my $done_ir_phenotypes = 0;				# counter for ir_phenotypes // @bob:showed me @andy:shown by bob // @2015-08-15 
+my $done_genotypes = 0;
 
 # print "iterating through samples...\n"; # @andy: @done: @remove this later @2015-08-20
 
@@ -224,15 +251,14 @@ while (my $stock = $stocks->next) {
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
 		   );
 
-  # print the sample    						@bob:showed me @andy:shown by bob // @2015-08-15 
-  my $json_text = $json->encode($document);
-  chomp($json_text);
-
   # @andy: uncommented the below \/ two lines in place of the new version, within the following if {} block
   # print ",\n" if ($needcomma++);
   # print qq!$json_text\n!
 
   if ($limit && ++$done_samples<=$limit){ 					# @andy: // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
+  	# print the sample    						@bob:showed me @andy:shown by bob // @2015-08-15 
+  	my $json_text = $json->encode($document);
+  	chomp($json_text);
   	print ",\n" if ($needcomma++);  # @done: uncomment after debugging @1400 @done: Q: does the "last if {}" line of code jump out of the loop WHILST finishing off what's left in the loop? A: No, it skips any remaining parts of the loop
  	print qq!$json_text\n!;  # @done: uncomment after debugging @1400
   }
@@ -343,17 +369,16 @@ while (my $stock = $stocks->next) {
 		  # phenotype_cvterms (singular)
 		  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
 
-		  # print out the IR phenotype doc (cloned from $document)
-	      my $json_text = $json->encode($doc);
-		  chomp($json_text);
-
 		  # @andy  the next two lines \/ were commented out in place of the following if {} block, which ensures that only $limit (or fewer) ir_phenotypes are printed to the json file
 		  # print ",\n" if ($needcomma++);
 		  # print qq!$json_text\n!;
 
 		  if ($limit && ++$done_ir_phenotypes<=$limit) {  # @andy  @done: don't increment the $done_ir_phenotypes counter at the end of the loop, since this will just double-count all the "done" data // @done: Q: what does chomp do? A: removes last char of string	// samples printed // @done: count the number of these printed 
+		  	# print out the IR phenotype doc (cloned from $document)
+	        my $json_text = $json->encode($doc);
+		    chomp($json_text);
 		  	print ",\n" if ($needcomma++); 				# @andy: @done: Q: find out the difference between ++$done_ir_phenotypes and $done_ir_phenotypes++? A: returns the $done_ir_phenotypes THEN increments, when ++ is placed after (e.g. if you ask if ++$done_ir_phenotypes it will increment then test for condition) // @done: "my" does not have to be declared > determine whether or not "my" always has to be declared to ++ a value // determine how we can iterate the counter  @1748
-		 	print qq!$json_text\n!;  # @done: uncomment after the debugging..
+		 	  print qq!$json_text\n!;  # @done: uncomment after the debugging..
 		  }
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
@@ -378,17 +403,82 @@ while (my $stock = $stocks->next) {
 
   }
 
-  # # same for genotypes
-  # foreach my $genotype (@genotypes) {
-  #   # TO DO: @andy "for the future"
-  # }
+  # same for genotypes
+  foreach my $genotype_assay (@genotype_assays) {
+    my $assay_stable_id = $genotype_assay->stable_id;
+    my @protocol_types = map { $_->type } $genotype_assay->protocols->all;
+    foreach my $genotype ($genotype_assay->genotypes) {   # @1425
+      # TO DO: @andy "for the future"
+      my $genotype_type = $genotype->type; # cvterm/ontology term object
+      # check if this genotype's type is the same as 'chromosomal inversion' or a child of it.
+      if ($genotype_type->id == $chromosomal_inversion_term->id ||
+        $chromosomal_inversion_term->has_child($genotype_type)) {
+
+        # cloning is safer and simpler (but more expensive) than re-using $document
+        # $document is the sample document
+        my $doc = clone($document);
+
+        # always change these fields
+        $doc->{bundle}      = 'pop_sample_genotype';    # @andy: <-- is changed from:  $doc->{bundle} = 'pop_sample_phenotype'; 
+        $doc->{bundle_name} = 'Sample genotype';        # @andy: <-- is changed from:  $doc->{bundle_name} = 'Sample phenotype';  // @ask:bob @askbob @bob:ask // @1357 @2015-08-26  // @ask:bob @askbob @bob:ask // @1357 @2015-08-26
+
+        delete $doc->{genotypes};                       # @andy: <-- is changed from:  delete $doc->{phenotypes};
+        delete $doc->{genotypes_cvterms};
+
+        # NEW fields
+        $doc->{genotype_type_s}   = "chromosomal inversion";    # @andy: <-- is changed from: $doc->{phenotype_type_s} = "insecticide resistance";
+        $doc->{protocols}         = [ map { $_->name } @protocol_types ];
+        $doc->{protocols_cvterms} = [ map { flattened_parents($_) } @protocol_types ];
+
+        my $genotype_stable_ish_id = $stable_id.".".$genotype->id;
+        # alter fields
+        $doc->{id} = $genotype_stable_ish_id;
+        $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
+        $doc->{label} = $genotype->name;
+
+        # tricky bit here
+        my ($genotype_name, $genotype_count); # these two vars are "undefined" to start with
+        # now loop through each "multiprop" property object (this is the data displayed in the right-hand sub-table in the genotypes list in the web application)
+        # and see if we can get out the exact data we need - name and count
+
+        foreach my $prop ($genotype->multiprops) {                                                
+          my @prop_terms = $prop->cvterms;                                                         
+          $genotype_name = $prop->value if ($prop_terms[0]->id == $inversion_term->id);           
+          $genotype_count = $prop->value if ($prop_terms[0]->id == $genotype_term->id && $prop_terms[1]->id == $count_unit_term->id);
+        }
+
+        if (defined $genotype_name && defined $genotype_count) {
+
+          # we REALLY have a chromosomal inversion genotype here
+          # do all the Solr document processing and printing inside this block
+          
+          # @todo: need to get the genotype names and counts in place of the ???s 
+          #$doc->{genotype_name_s} = ????;
+          #$doc->{genotype_alleles_ss} = [ 'non-inverted', 'inverted'];
+          #$doc->{genotype_alleles_ss} = [ ???, ??? ];
+
+        }
+        # warn "we just did $genotype_stable_ish_id\n";
+
+        # Printing out a doc // @done: change $done_ir_phenotypes to make it an $done_ir_genotypes counter
+        if ($limit && ++$done_genotypes<=$limit) {  # @andy  @done: don't increment the $done_ir_phenotypes counter at the end of the loop, since this will just double-count all the "done" data // @done: Q: what does chomp do? A: removes last char of string // samples printed // @done: count the number of these printed 
+          # print out the IR phenotype doc (cloned from $document)
+          my $json_text = $json->encode($doc);
+          chomp($json_text);
+          print ",\n" if ($needcomma++);        # @andy: @done: Q: find out the difference between ++$done_ir_phenotypes and $done_ir_phenotypes++? A: returns the $done_ir_phenotypes THEN increments, when ++ is placed after (e.g. if you ask if ++$done_ir_phenotypes it will increment then test for condition) // @done: "my" does not have to be declared > determine whether or not "my" always has to be declared to ++ a value // determine how we can iterate the counter  @1748
+          print qq!$json_text\n!;  # @done: uncomment after the debugging..
+        }
+
+      }
+    }
+  }
 
   # if ($limit && ++$done_samples >= $limit && ++$done_samples >= $limit){
   # 	 print "MOO"; #@1702 # @andy: understood how the $limit works // now to work out how limit works: in particular how the logic of "if" works, lets see what happens if the "$limit" in "last if ($limit && ++$done >= $limit);" is missed out // because i missed out a ; > // caused a "compliation error" > // testing if done prints as I expect it to, it should be a number that prints to the: <temp-limit10-popbio-new-solr.json> file 	@1644
   # } 
 
   #last if ($limit && ++$done >= $limit);	# @andy: <-- this line is what works as it did before Bob met me @2015-08-19: prior to getting ready for his days off 	@1844
-  last if ($limit && $done_samples >= $limit && $done_ir_phenotypes >= $limit);	# // @done: we keep it as ">=" > Q: unsure as to whether to make the condition testing occur using ">=" or just ">", test in the "toy script: andy_familiarising_with_logic.pl", A: Last exits the loop based on it's nearest neighboring if () statement being satisfied // @done: test the next // @done -> // @done: this needs to be stopped only when all documents have reached 10, in pseudo: STOP IF (done_samples >= limit) AND (done_ir_phenotypes >= limit) )) // @2015-08-19
+  last if ($limit && $done_samples >= $limit && $done_ir_phenotypes >= $limit && $done_genotypes >= $limit);	# // @done: we keep it as ">=" > Q: unsure as to whether to make the condition testing occur using ">=" or just ">", test in the "toy script: andy_familiarising_with_logic.pl", A: Last exits the loop based on it's nearest neighboring if () statement being satisfied // @done: test the next // @done -> // @done: this needs to be stopped only when all documents have reached 10, in pseudo: STOP IF (done_samples >= limit) AND (done_ir_phenotypes >= limit) )) // @2015-08-19
 											# @andy: @done: try to understand how: "last if ($limit && ++$done >= $limit);" works by printing various things
 }
 
