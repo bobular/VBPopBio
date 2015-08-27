@@ -96,14 +96,15 @@ my $sample_size_term = $schema->cvterms->find_by_accession({ term_source_ref => 
 
 my $iso8601 = DateTime::Format::ISO8601->new;
 
+my $study_design_type = $schema->types->study_design;
+my $start_date_term_id = $schema->types->start_date->id;
+my $end_date_term_id = $schema->types->end_date->id;
+my $date_term_id = $schema->types->date->id;
+
 print "[\n";
 
 ### PROJECTS ###
 $done = 0;
-my $study_design_type = $schema->types->study_design;
-my $start_date_type = $schema->types->start_date;
-my $date_type = $schema->types->date;
-
 
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
@@ -449,7 +450,8 @@ sub stock_latlong {
   return undef;
 }
 
-# returns date of first assay with a date
+# returns date of first assay with a date 
+# DEPRECATED
 sub stock_date {
   my $stock = shift;
   foreach my $assay ($stock->nd_experiments) {
@@ -460,16 +462,43 @@ sub stock_date {
 }
 
 
+# assay_date($assay)
+#
 # returns single date string
+# takes the FIRST start_date and end_date, or FIRST date (if multiple)
+# currently doesn't complain if there are multiple dates of the same type (e.g. two start_dates)
+# but I don't think there is anything like that in the database.
+#
+# start_date and end_date must both be present to return a range
+# will return undef if can't return a range or single date
+#
 sub assay_date {
   my $assay = shift;
-  my @start_dates = $assay->multiprops($start_date_type);
-  if (@start_dates == 1) {
-    return iso8601_date($start_dates[0]->value);
+  my ($start_date, $end_date, $date);
+
+  # loop through props finding values for start_date, end_date and date "keys" (first cvterm)
+  foreach my $prop ($assay->multiprops) {
+    my $key_term_id = ($prop->cvterms)[0]->id;
+    given ($key_term_id) {
+      when ($start_date_term_id) {
+	$start_date //= $prop->value;
+      }
+      when ($end_date_term_id) {
+	$end_date //= $prop->value;
+      }
+      when ($date_term_id) {
+	$date //= $prop->value;
+      }
+    }
   }
-  my @dates = $assay->multiprops($date_type);
-  if (@dates == 1) {
-    return iso8601_date($dates[0]->value);
+  if (defined $start_date && defined $end_date) {
+    if ($start_date eq $end_date) {
+      return $start_date;
+    } else {
+      return "[$start_date TO $end_date]";
+    }
+  } elsif (defined $date) {
+    return $date;
   }
   return undef;
 }
