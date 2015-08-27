@@ -13,19 +13,8 @@
 ## add data like this:
 # curl 'http://localhost:8983/solr/update/json?commit=true' --data-binary @test-samples.json -H 'Content-type:application/json'
 #
+# GitHub repo URL: https://github.com/bobular/VBPopBio/commit/c83b2d155174c247a63eca5bf8ffe5f37f27482f
 #
-
-# @1603
-# [16:00:48] Bob MacCallum: $inversion_term
-# [16:00:49] Bob MacCallum: Ontology term: inversion
-# Accession: SO:1000036
-# $genotype_term
-# [16:01:11] Bob MacCallum: Ontology term: genotype
-# Accession: SO:0001027
-# [16:01:14] Bob MacCallum: and actually one more!
-# [16:01:38] Bob MacCallum: and $count_unit_term
-# [16:01:46] Bob MacCallum: UO:0000189
-
 
 use strict;
 use warnings;
@@ -410,37 +399,17 @@ while (my $stock = $stocks->next) {
     foreach my $genotype ($genotype_assay->genotypes) {   # @1425
       # TO DO: @andy "for the future"
       my $genotype_type = $genotype->type; # cvterm/ontology term object
-      # check if this genotype's type is the same as 'chromosomal inversion' or a child of it.
+      # check if this genotype's type is the same as 'chromosomal inversion' or a child of it.    (<-- @@genotype type)
       if ($genotype_type->id == $chromosomal_inversion_term->id ||
         $chromosomal_inversion_term->has_child($genotype_type)) {
 
-        # cloning is safer and simpler (but more expensive) than re-using $document
-        # $document is the sample document
-        my $doc = clone($document);
+        ## Code block needs to be written HERE (similar to that tagged: "@chromosomal inversion block") if any other "genotype JSON documents" need to be generated for "@genotype types" other than: "chromosomal inversion" (other types include: "microsattelite", "SNP", etc.)
 
-        # always change these fields
-        $doc->{bundle}      = 'pop_sample_genotype';    # @andy: <-- is changed from:  $doc->{bundle} = 'pop_sample_phenotype'; 
-        $doc->{bundle_name} = 'Sample genotype';        # @andy: <-- is changed from:  $doc->{bundle_name} = 'Sample phenotype';  // @ask:bob @askbob @bob:ask // @1357 @2015-08-26  // @ask:bob @askbob @bob:ask // @1357 @2015-08-26
-
-        delete $doc->{genotypes};                       # @andy: <-- is changed from:  delete $doc->{phenotypes};
-        delete $doc->{genotypes_cvterms};
-
-        # NEW fields
-        $doc->{genotype_type_s}   = "chromosomal inversion";    # @andy: <-- is changed from: $doc->{phenotype_type_s} = "insecticide resistance";
-        $doc->{protocols}         = [ map { $_->name } @protocol_types ];
-        $doc->{protocols_cvterms} = [ map { flattened_parents($_) } @protocol_types ];
-
-        my $genotype_stable_ish_id = $stable_id.".".$genotype->id;
-        # alter fields
-        $doc->{id} = $genotype_stable_ish_id;
-        $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
-        $doc->{label} = $genotype->name;
-
-        # tricky bit here
         my ($genotype_name, $genotype_count); # these two vars are "undefined" to start with
         # now loop through each "multiprop" property object (this is the data displayed in the right-hand sub-table in the genotypes list in the web application)
         # and see if we can get out the exact data we need - name and count
 
+        # loop through various properties of the genotype object, looking for: "genotype_name" and "genotype_count" properties as unique markers that we actually have a "chromosomal inversion" "@genotype type"
         foreach my $prop ($genotype->multiprops) {                                                
           my @prop_terms = $prop->cvterms;                                                         
           $genotype_name = $prop->value if ($prop_terms[0]->id == $inversion_term->id);           
@@ -449,17 +418,49 @@ while (my $stock = $stocks->next) {
 
         if (defined $genotype_name && defined $genotype_count) {
 
-          # we REALLY have a chromosomal inversion genotype here
+          # we REALLY have a chromosomal inversion genotype here                (@@chromosomal inversion block {{ )
           # do all the Solr document processing and printing inside this block
+
+          # @todo: need to get the genotype names and counts in place of the ???s // @todo: use the debugger to explore what values genotype_name variable may contain: " perl bin/create_json_for_solr.pl -project VBP0000006 "  // @genotype_counts @2015-08-26
+
+          # cloning is safer and simpler (but more expensive) than re-using $document
+          # $document is the sample document
+          my $doc = clone($document);
+
+          # always change these fields
+          $doc->{bundle}      = 'pop_sample_genotype'; 
+          $doc->{bundle_name} = 'Sample genotype'; 
+
+          delete $doc->{genotypes};   
+          delete $doc->{genotypes_cvterms};
+
+          # NEW fields
+          $doc->{genotype_type_s}   = "chromosomal inversion";    # other examples: "chromosomal inversion", "microsatellite", "SNP", …
+          $doc->{protocols}         = [ map { $_->name } @protocol_types ];  
+          $doc->{protocols_cvterms} = [ map { flattened_parents($_) } @protocol_types ];    
+
+          my $genotype_stable_ish_id = $stable_id.".".$genotype->id;
           
-          # @todo: need to get the genotype names and counts in place of the ???s 
-          
-          #$doc->{genotype_name_s} = ????;
-          #$doc->{genotype_alleles_ss} = [ 'non-inverted', 'inverted'];
+          # alter fields
+          $doc->{id} = $genotype_stable_ish_id;
+          $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
+          $doc->{label} = $genotype->name;
+
+          $doc->{genotypes_cvterms};    # @andy: @todo: Q: presumably this cannot be just "empty", it needs to "=" something, but what should it be? A: ... // (@ask:bob: https://docs.google.com/document/d/1MD4e5zYieHs-67_H5qIFClwtmaAh9DpHMrlako0r7Y0/edit#heading=h.ni35tjm71dv0) @@genotypes_cvterms
+
+          # $doc->{phenotype_cvterms} = [ map { flattened_parents($)  } grep { defined $ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
+
+          $doc->{genotype_name_s} = $genotype_name; 
+          $doc->{genotype_inverted_allele_count_i} = $genotype_count;
+
           #$doc->{genotype_alleles_ss} = [ ???, ??? ];
+          warn "we just did $genotype_stable_ish_id: CHROMOSOMAL INVERSION (Genotypes done: $done_genotypes)\n";
+          warn "\t$genotype_name\t$genotype_count\n";     # @andy: @done: test if all genotype_names are three strings long, are a mixture of strings and numbers and that all genotype_counts are numbers: after looking at 400+, they seem fine
+
+          #$DB::single = 1   # @andy: debug breakpoint, which is summoned by: "perl -d <script name>  >> then press "c", once in the debugger"   @1430  //  ( }} @@chromosomal inversion block)
 
         }
-        # warn "we just did $genotype_stable_ish_id\n";
+        warn "we just did $genotype_stable_ish_id: NOT CHROMOSOMAL INVERSION\n";
 
         # Printing out a doc // @done: change $done_ir_phenotypes to make it an $done_ir_genotypes counter
         if ($limit && ++$done_genotypes<=$limit) {  # @andy  @done: don't increment the $done_ir_phenotypes counter at the end of the loop, since this will just double-count all the "done" data // @done: Q: what does chomp do? A: removes last char of string // samples printed // @done: count the number of these printed 
