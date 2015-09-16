@@ -300,11 +300,17 @@ while (my $stock = $stocks->next) {
 
 		# figure out what kind of value
 		my $value = $phenotype->value;
+		my $value_unit = $phenotype->unit;
+
+		# clean up some trailing non-digits if the value contains digits
+		# this is to deal with VBA0170859 having a value of 0.012ppm AND proper units
+		$value =~ s/\D+$// if (defined $value && defined $value_unit);
+		# let's clean leading and trailing whitespace while we are at it
+		$value =~ s/^\s+//; $value =~ s/\s+$//;
 
 		if (defined $value && looks_like_number($value)) {
 		  $doc->{phenotype_value_f} = $value;
 
-		  my $value_unit = $phenotype->unit;
 		  if (defined $value_unit) {
 		    $doc->{phenotype_value_unit_s} = $value_unit->name;
 		    $doc->{phenotype_value_unit_cvterms} = [ flattened_parents($value_unit) ];
