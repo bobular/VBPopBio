@@ -514,6 +514,21 @@ sub best_species {
       }
     }
   }
+  # handle project fallback only if necessary
+  unless (defined $result) {
+    if (defined $project) {
+      my $accession = $project->fallback_species_accession;
+      if (defined $accession && $accession =~ /^(\w+):(\d+)$/) {
+	my $fallback_term = $schema->cvterms->find_by_accession({ term_source_ref => $1,
+								  term_accession_number => $2 });
+	if ($fallback_term) {
+	  $result = $fallback_term;
+	  @qualifications = ($schema->types->project_default);
+	}
+      }
+    }
+  }
+
   @qualifications = ($schema->types->unknown) unless $result;
   return wantarray ? ($result, @qualifications) : $result;
 }

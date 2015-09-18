@@ -118,6 +118,16 @@ sub create_from_isatab {
   }
 
   #
+  # set the fallback species
+  #
+  if ($study->{comments}{'fallback species accession'}) {
+    # do some basic format checks
+    if ($study->{comments}{'fallback species accession'} =~ /^\w+:\d+$/) {
+      $project->fallback_species_accession($study->{comments}{'fallback species accession'});
+    }
+  }
+
+  #
   # add study design multiprops
   #
   my $sd = $types->study_design;

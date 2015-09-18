@@ -557,6 +557,23 @@ sub unknown {
 }
 memoize('unknown');
 
+=head2 project_default
+
+=cut
+
+sub project_default {
+  my $self = shift;
+  my $term = $self->schema->cvterms->create_with({ name => 'project default',
+						   cv => 'VBcv',
+						   db => 'VBcv',
+						 });
+  $term->definition('No species determination assays were successfully performed, however submitters and curators have agreed on a project-wide fallback species or taxonomy term which is valid in these cases.');
+  $term->update;
+  return $term;
+}
+memoize('project_default');
+
+
 =head2 metaproject
 
 =cut
@@ -618,6 +635,24 @@ sub deprecated {
   return $term;
 }
 memoize('deprecated');
+
+
+=head2 fallback_species_accession
+
+Internal project prop type
+
+=cut
+
+sub fallback_species_accession {
+  my $self = shift;
+  return $self->schema->cvterms->create_with({ name => 'fallback species accession',
+					       cv => 'VBcv',
+					       db => 'VBcv',
+					       description => 'A cvterm used internally within Chado to store the VBsp:nnnnnnn accession for the species term that should be assigned to samples lacking an assay-based assertion.',
+					     });
+}
+memoize('fallback_species_accession');
+
 
 
 

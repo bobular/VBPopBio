@@ -494,6 +494,26 @@ sub update_modification_date {
 
 }
 
+=head2 fallback_species_accession
+
+Get/setter for species that stock->best_species should fall back to instead of the string 'Unknown'
+
+It's stored as a simple string, e.g. "VBsp:0003480" to keep the code here simple...
+(but maybe more complex elsewhere... we will see...)
+
+=cut
+
+sub fallback_species_accession {
+  my ($self, $species_term_accession) = @_;
+  return Extra->attribute
+    ( value => $species_term_accession,
+      prop_type => $self->result_source->schema->types->fallback_species_accession,
+      prop_relation_name => 'projectprops',
+      row => $self,
+    );
+}
+
+
 =head2 delete
 
 Deletes the project in a cascade which deletes all would-be orphan related objects.

@@ -1,0 +1,2 @@
+"Sample Name"	"Assay Name"	Description	"Protocol REF"	Performer	Date	"Characteristics [species assay result (VBcv:0000961)]"	"Term Source Ref"	"Term Accession Number"
+"Corrales-El Playón"	"Corrales-El Playón.spid1.taxonomical identification"	"taxonomical identification"	SPECIES			"Anopheles nuneztovari"	MIRO	40000165
