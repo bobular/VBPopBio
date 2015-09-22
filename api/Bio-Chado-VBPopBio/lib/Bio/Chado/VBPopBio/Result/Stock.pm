@@ -270,7 +270,8 @@ sub stable_id {
      { join => [ 'dbxrefprops', 'dbxrefprops' ] }
     );
 
-  if ($search->count == 0) {
+  my $count = $search->count;
+  if ($count == 0) {
     # need to make a new ID
 
     # first, find the "highest" accession in dbxref for VBP
@@ -308,7 +309,7 @@ sub stable_id {
     $self->dbxref($new_dbxref);
     $self->update; # make it permanent
     return $new_dbxref->accession; # $self->stable_id would be nice but slower
-  } elsif ($search->count == 1) {
+  } elsif ($count == 1) {
     # set the stock.dbxref to the stored stable id dbxref
     my $old_dbxref = $search->first;
     $self->dbxref($old_dbxref);
