@@ -517,6 +517,16 @@ sub best_species {
   }
   # handle project fallback only if necessary
   unless (defined $result) {
+
+    # if the project wasn't passed as an argument
+    # we'll use the project belonging to this sample
+    # ONLY if it is the only project belonging to it
+    unless (defined $project) {
+      my $projects = $self->projects;
+      $project = $projects->next;
+      $project = undef if ($projects->next); # this avoids two SELECTs on the db.
+    }
+
     if (defined $project) {
       my $accession = $project->fallback_species_accession;
       if (defined $accession && $accession =~ /^(\w+):(\d+)$/) {
