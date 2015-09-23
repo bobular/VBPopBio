@@ -343,7 +343,6 @@ hardcoded schema->storage->... in the webservice code.
 
 So instead we use Mouse to wrap around the connect method.
 
-=cut
 
 around 'connect' => sub {
       my $orig = shift;
@@ -355,6 +354,7 @@ around 'connect' => sub {
       $self->$orig($dsn, $user, $password, $options);
   };
 
+=cut
 
 
 __PACKAGE__->meta->make_immutable;
