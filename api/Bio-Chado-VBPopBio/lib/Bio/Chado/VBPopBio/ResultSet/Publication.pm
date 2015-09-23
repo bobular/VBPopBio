@@ -111,6 +111,10 @@ sub find_or_create_from_isatab {
     }
   }
 
+  if (my $url = $publication_data->{comments}{URL}) {
+    $publication->url($url);
+  }
+
   return $publication;
 }
 
