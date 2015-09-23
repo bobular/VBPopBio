@@ -90,6 +90,19 @@ sub url {
 }
 
 
+=head status
+
+read-only alias for pub.type
+
+returns a Cvterm
+
+=cut
+
+sub status {
+  my ($self) = @_;
+  return $self->type;
+}
+
 =head2 as_data_structure
 
 returns a json-like hashref of arrayrefs and hashrefs
@@ -104,7 +117,7 @@ sub as_data_structure {
 	  pubmed_id => $self->pubmed_id,
 	  doi => $self->doi,
 	  authors => [ $self->authors ],
-	  status => $self->type->as_data_structure,
+	  status => $self->status->as_data_structure,
 	  url => $self->url,
 	 };
 }
