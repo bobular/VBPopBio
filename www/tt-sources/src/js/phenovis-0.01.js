@@ -1038,7 +1038,14 @@ function geoplot(posHash, div, args) {
     var widthString= 'width:'+estLegendWidth(zvals)+'px;';
     lDiv.setAttribute('style', 'position:absolute;z-index:99;right:10px;bottom:30px;'+heightString+widthString);
 
-    var map = new google.maps.Map(div, { mapTypeId: google.maps.MapTypeId.TERRAIN}  );
+    var map = new google.maps.Map(div, {
+	    mapTypeId: google.maps.MapTypeId.TERRAIN,
+	    zoomControl: true,
+	    zoomControlOptions: {
+		position: google.maps.ControlPosition.LEFT_TOP
+	    },
+	    streetViewControl: false
+	});
     //add the overlay canvas
     var geoverlay = new Canvas(posHash, map);
     div.appendChild(lDiv);
