@@ -331,6 +331,32 @@ sub defer_exception_once {
 }
 
 
+=head2 disabling postgres statement preparation
+
+This can be done in a manual connect.
+
+  my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef,
+                                             { AutoCommit => 1, pg_server_prepare => 0 });
+
+But in Dancer it's not possible to use the config.yaml file or even
+hardcoded schema->storage->... in the webservice code.
+
+So instead we use Mouse to wrap around the connect method.
+
+
+around 'connect' => sub {
+      my $orig = shift;
+      my $self = shift;
+
+      my ($dsn, $user, $password, $options) = @_;
+      $options->{pg_server_prepare} = 0;
+
+      $self->$orig($dsn, $user, $password, $options);
+  };
+
+=cut
+
+
 __PACKAGE__->meta->make_immutable;
 
 =head1 AUTHOR

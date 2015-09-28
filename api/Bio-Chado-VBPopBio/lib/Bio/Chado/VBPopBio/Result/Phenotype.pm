@@ -82,6 +82,17 @@ sub multiprops {
     );
 }
 
+=head2 unit
+
+returns the unit cvterm (or undefined!)
+
+=cut
+
+sub unit {
+  my ($self) = @_;
+  return $self->assay;
+}
+
 =head2 as_data_structure
 
 returns a json-like hashref of arrayrefs and hashrefs

@@ -270,7 +270,8 @@ sub stable_id {
      { join => [ 'dbxrefprops', 'dbxrefprops' ] }
     );
 
-  if ($search->count == 0) {
+  my $count = $search->count;
+  if ($count == 0) {
     # need to make a new ID
 
     # first, find the "highest" accession in dbxref for VBP
@@ -308,7 +309,7 @@ sub stable_id {
     $self->dbxref($new_dbxref);
     $self->update; # make it permanent
     return $new_dbxref->accession; # $self->stable_id would be nice but slower
-  } elsif ($search->count == 1) {
+  } elsif ($count == 1) {
     # set the stock.dbxref to the stored stable id dbxref
     my $old_dbxref = $search->first;
     $self->dbxref($old_dbxref);
@@ -514,6 +515,31 @@ sub best_species {
       }
     }
   }
+  # handle project fallback only if necessary
+  unless (defined $result) {
+
+    # if the project wasn't passed as an argument
+    # we'll use the project belonging to this sample
+    # ONLY if it is the only project belonging to it
+    unless (defined $project) {
+      my $projects = $self->projects;
+      $project = $projects->next;
+      $project = undef if ($projects->next); # this avoids two SELECTs on the db.
+    }
+
+    if (defined $project) {
+      my $accession = $project->fallback_species_accession;
+      if (defined $accession && $accession =~ /^(\w+):(\d+)$/) {
+	my $fallback_term = $schema->cvterms->find_by_accession({ term_source_ref => $1,
+								  term_accession_number => $2 });
+	if ($fallback_term) {
+	  $result = $fallback_term;
+	  @qualifications = ($schema->types->project_default);
+	}
+      }
+    }
+  }
+
   @qualifications = ($schema->types->unknown) unless $result;
   return wantarray ? ($result, @qualifications) : $result;
 }

@@ -7,6 +7,8 @@ __PACKAGE__->subclass({
 		       type => 'Bio::Chado::VBPopBio::Result::Cvterm',
 		      });
 
+use aliased 'Bio::Chado::VBPopBio::Util::Extra';
+
 =head1 NAME
 
 Bio::Chado::VBPopBio::Result::Publication
@@ -70,6 +72,37 @@ sub authors {
   return map { $_->surname } sort { $a->rank <=> $b->rank } $self->pubauthors;
 }
 
+=head2 url
+
+Get/setter for the URL extra parameter.
+Set this via the "Comment [URL]" row in the publications section of the i_investigation sheet
+
+=cut
+
+sub url {
+  my ($self, $url) = @_;
+  return Extra->attribute
+    ( value => $url,
+      prop_type => $self->result_source->schema->types->uri, # yes it's uri, not url but it doesn't matter!
+      prop_relation_name => 'pubprops',
+      row => $self,
+    );
+}
+
+
+=head status
+
+read-only alias for pub.type
+
+returns a Cvterm
+
+=cut
+
+sub status {
+  my ($self) = @_;
+  return $self->type;
+}
+
 =head2 as_data_structure
 
 returns a json-like hashref of arrayrefs and hashrefs
@@ -84,7 +117,8 @@ sub as_data_structure {
 	  pubmed_id => $self->pubmed_id,
 	  doi => $self->doi,
 	  authors => [ $self->authors ],
-	  status => $self->type->as_data_structure,
+	  status => $self->status->as_data_structure,
+	  url => $self->url,
 	 };
 }
 

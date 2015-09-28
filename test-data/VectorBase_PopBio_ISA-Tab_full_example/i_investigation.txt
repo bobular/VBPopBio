@@ -18,14 +18,14 @@ STUDY
 "Study Design Type Term Source REF"	EFO	EFO
 
 "STUDY PUBLICATIONS"
-"Study PubMed ID"	22135296
-"Study Publication DOI"	10.1093/nar/gkr1089
-"Study Publication Author list"	"Megy K, Emrich SJ, Lawson D, Campbell D, Dialynas E, Hughes DS, Koscielny G, Louis C, Maccallum RM, Redmond SN, Sheehan A, Topalis P, Wilson D; VectorBase Consortium."
-"Study Publication Title"	"VectorBase: improvements to a bioinformatics resource for invertebrate vector genomics"
-"Study Publication Status"	published
-"Study Publication Status Term Accession Number"	0001796
-"Study Publication Status Term Source REF"	EFO
-
+"Study PubMed ID"	22135296	
+"Study Publication DOI"	10.1093/nar/gkr1089	
+"Study Publication Author list"	"Megy K, Emrich SJ, Lawson D, Campbell D, Dialynas E, Hughes DS, Koscielny G, Louis C, Maccallum RM, Redmond SN, Sheehan A, Topalis P, Wilson D; VectorBase Consortium."	"Jones and Smith"
+"Study Publication Title"	"VectorBase: improvements to a bioinformatics resource for invertebrate vector genomics"	"A website with lots of information"
+"Study Publication Status"	published	website
+"Study Publication Status Term Accession Number"	0001796	0000667
+"Study Publication Status Term Source REF"	EFO	VBcv
+"Comment [URL]"		https://www.vectorbase.org
 
 "# VectorBase is currently not planning to use factors and factor values in popbio ISA-Tab submissions."
 "# Instead we ask you to provide our curators with a description of the pertinent Characteristics, Parameter Values, Genotypes and/or Phenotypes to be used in the display of the results."

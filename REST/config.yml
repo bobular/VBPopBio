@@ -12,6 +12,8 @@ plugins:
         default:
           dsn: dbi:Pg:dbname=chado_webtest_01
           schema_class: Bio::Chado::VBPopBio
+          options:
+            pg_server_prepare: 0
 
       MemcachedFast:
         servers:

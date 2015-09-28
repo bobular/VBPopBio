@@ -197,9 +197,10 @@ sub external_id {
   my $props = $self->search_related('projectprops',
 				    { type_id => $proj_extID_type->id } );
 
-  if ($props->count > 1) {
+  my $count = $props->count;
+  if ($count > 1) {
     croak "project has too many external ids\n";
-  } elsif ($props->count == 1) {
+  } elsif ($count == 1) {
     my $retval = $props->first->value;
     croak "attempted to set a new external id ($external_id) for project with existing id ($retval)\n" if (defined $external_id && $external_id ne $retval);
 
@@ -264,7 +265,8 @@ sub _stable_id_dbxref {
      { join => 'dbxrefprops' }
     );
 
-  if ($search->count == 0) {
+  my $count = $search->count;
+  if ($count == 0) {
     # need to make a new ID
 
     # first, find the "highest" accession in dbxref for VBP
@@ -294,7 +296,7 @@ sub _stable_id_dbxref {
        });
 
     return $new_dbxref;
-  } elsif ($search->count == 1) {
+  } elsif ($count == 1) {
     return $search->first;
   } else {
     croak "Too many dbxrefs for project ".$self->external_id." with dbxrefprop project external ID";
@@ -493,6 +495,26 @@ sub update_modification_date {
   }
 
 }
+
+=head2 fallback_species_accession
+
+Get/setter for species that stock->best_species should fall back to instead of the string 'Unknown'
+
+It's stored as a simple string, e.g. "VBsp:0003480" to keep the code here simple...
+(but maybe more complex elsewhere... we will see...)
+
+=cut
+
+sub fallback_species_accession {
+  my ($self, $species_term_accession) = @_;
+  return Extra->attribute
+    ( value => $species_term_accession,
+      prop_type => $self->result_source->schema->types->fallback_species_accession,
+      prop_relation_name => 'projectprops',
+      row => $self,
+    );
+}
+
 
 =head2 delete
 
