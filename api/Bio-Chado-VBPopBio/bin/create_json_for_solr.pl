@@ -477,7 +477,7 @@ while (my $stock = $stocks->next) {
 	$doc->{accession} = $assay_stable_id;
 	$doc->{description} = "$genotype_subtype genotype '".$genotype->description."' for $stable_id";
 
-	$doc->{genotypes_cvterms} = [ map { flattened_parents($_) } grep { defined $_ } ( $genotype->type, multiprops_cvterms($genotype) ) ];
+	$doc->{genotype_cvterms} = [ map { flattened_parents($_) } grep { defined $_ } ( $genotype->type, multiprops_cvterms($genotype) ) ];
 
 	$doc->{genotype_name_s} = $genotype_name;
 
