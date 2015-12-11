@@ -131,6 +131,12 @@ my $microsatellite_term = $schema->cvterms->find_by_accession({ term_source_ref 
 my $length_term = $schema->cvterms->find_by_accession({ term_source_ref => 'PATO',
 							term_accession_number => '0000122' });
 
+my $mutated_protein_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDOMAL',
+								 term_accession_number => '50000004' });
+
+my $variant_frequency_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
+								   term_accession_number => '0001763' });
+
 my $iso8601 = DateTime::Format::ISO8601->new;
 
 print "[\n";
@@ -421,7 +427,7 @@ while (my $stock = $stocks->next) {
     my $assay_stable_id = $genotype_assay->stable_id;
     my @protocol_types = map { $_->type } $genotype_assay->protocols->all;
     foreach my $genotype ($genotype_assay->genotypes) {
-      my ($genotype_name, $genotype_value, $genotype_subtype); # these vars are "undefined" to start with
+      my ($genotype_name, $genotype_value, $genotype_subtype, $genotype_unit); # these vars are "undefined" to start with
       my $genotype_type = $genotype->type; # cvterm/ontology term object
 
       # check if this genotype's type is the same as 'chromosomal inversion' or a child of it.
@@ -447,6 +453,18 @@ while (my $stock = $stocks->next) {
           $genotype_value = $prop->value if ($prop_terms[0]->id == $length_term->id);
 	}
 	$genotype_subtype = 'microsatellite';
+      } elsif ($mutated_protein_term->has_child($genotype_type)) {
+	# these are ontology-defined mutant allele counts/frequencies
+	# they are probably not to be confused with SNP genotype data from Ensembl when it comes to Solr...
+	$genotype_name = $genotype_type->name;
+	foreach my $prop ($genotype->multiprops) {
+          my @prop_terms = $prop->cvterms;
+          $genotype_value = $prop->value if ($prop_terms[0]->id == $count_unit_term->id ||
+					     $prop_terms[0]->id == $variant_frequency_term->id);
+	  $genotype_unit = $prop_terms[-1];
+	}
+	die "mutated protein genotype has no units" unless defined $genotype_unit;
+	$genotype_subtype = 'mutated protein';
       }
       if (defined $genotype_name && defined $genotype_value && defined $genotype_subtype) {
 
@@ -487,6 +505,11 @@ while (my $stock = $stocks->next) {
 	  }
 	  when('microsatellite') {
 	    $doc->{genotype_microsatellite_length_i} = $genotype_value;
+	  }
+	  when('mutated protein') {
+	    $doc->{genotype_mutated_protein_value_f} = $genotype_value;
+	    $doc->{genotype_mutated_protein_unit_s} = $genotype_unit->name;
+	    $doc->{genotype_mutated_protein_unit_cvterms} = [ flattened_parents($genotype_unit) ];
 	  }
 	}
 
