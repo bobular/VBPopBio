@@ -145,6 +145,7 @@ print "[\n";
 $done = 0;
 my $study_design_type = $schema->types->study_design;
 my $start_date_type = $schema->types->start_date;
+my $end_date_type = $schema->types->end_date;
 my $date_type = $schema->types->date;
 
 #print "iterating through projects... @andy: @done: remove this later @remove\n"; @needlater?
@@ -265,7 +266,7 @@ while (my $stock = $stocks->next) {
 
 		    # used to be plain 'date' from any assay
 		    # now it's collection_date if there's an unambiguous collection
-		    (defined $latlong ? ( collection_date => assay_date($fc) ) : ()),
+		    (defined $fc ? ( assay_date_fields($fc) ) : () ),
 
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
 		   );
@@ -623,6 +624,7 @@ sub stock_latlong {
   return undef;
 }
 
+#NOT USED#
 # returns date of first assay with a date
 sub stock_date {
   my $stock = shift;
@@ -647,6 +649,76 @@ sub assay_date {
   }
   return undef;
 }
+
+# returns key=>value data for collection_date
+# 1. collection_date => always an iso8601 date for the date or start_date
+# 2. collection_date_range => a DateRangeField with the Chado-resolution date or [start_date TO end_date]
+# 3. collection_date_days => (date_day date_day) or (start_date_day end_date_day)
+#
+# by Chado-resolution we mean "2010-10" will refer automatically to a range including the entire month of October 2010
+#
+sub assay_date_fields {
+  my $assay = shift;
+
+  my @dates = $assay->multiprops($date_type);
+  if (@dates == 1) {
+    my $date = $dates[0]->value;
+    return (
+	    collection_date => iso8601_date($date),
+	    collection_date_range => $date,
+	    collection_date_days => days($date, $date),
+	   );
+  } else {
+    my @start_dates = $assay->multiprops($start_date_type);
+    my @end_dates = $assay->multiprops($end_date_type);
+    if (@start_dates == 1 && @end_dates == 1) {
+      my $start_date = $start_dates[0]->value;
+      my $end_date = $end_dates[0]->value;
+      return (
+	      collection_date => iso8601_date($start_date),
+	      collection_date_range => "[$start_date TO $end_date]",
+	      collection_date_days => days($start_date, $end_date),
+	     );
+
+    }
+  }
+  return ();
+}
+
+#
+sub days {
+  my ($start_date, $end_date) = @_;
+  return join " ", day_of_year($start_date, 0), day_of_year($end_date, 1);
+}
+
+# returns a number from 0 to 365 where 0 is 1 Jan, 365 is 31 Dec
+# if $last_day_of_period is true and
+# if year-resolution date - return last day of year
+# if month-resolution then return last day of month
+sub day_of_year {
+  my ($date, $last_day_of_period) = @_;
+  my $datetime = $iso8601->parse_datetime($date);
+
+  # adjust $datetime to the last day of the year or month
+  if ($last_day_of_period) {
+    if ($date =~ /^\d{4}$/) {
+      # year only
+      $datetime = DateTime->last_day_of_month(year => $datetime->year, month=>12);
+    } elsif ($date =~ /^\d{4}-\d{2}$/) {
+      # year and month only
+      $datetime = DateTime->last_day_of_month(year => $datetime->year, month=>$datetime->month);
+    }
+  }
+
+  my $day = $datetime->day_of_year;
+  if ($datetime->is_leap_year) {
+    $day--;
+  } else {
+    $day-- if ($day <= 59); # up to Feb 28
+  }
+  return $day;
+}
+
 
 # converts poss truncated string date into ISO8601 Zulu time (hacked with an extra Z for now)
 sub iso8601_date {
