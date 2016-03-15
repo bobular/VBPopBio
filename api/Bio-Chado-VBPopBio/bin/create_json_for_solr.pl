@@ -636,6 +636,7 @@ sub stock_date {
 }
 
 
+#NOT USED#
 # returns single date string
 sub assay_date {
   my $assay = shift;
@@ -674,6 +675,14 @@ sub assay_date_fields {
     if (@start_dates == 1 && @end_dates == 1) {
       my $start_date = $start_dates[0]->value;
       my $end_date = $end_dates[0]->value;
+
+      # convert to datetime to check correct order
+      # swap them if start > end
+      my ($start_dt, $end_dt) = ($iso8601->parse_datetime($start_date), $iso8601->parse_datetime($end_date));
+      if (DateTime->compare($start_dt, $end_dt) > 0) {
+	($start_date, $end_date) = ($end_date, $start_date);
+      }
+
       return (
 	      collection_date => iso8601_date($start_date),
 	      collection_date_range => "[$start_date TO $end_date]",
