@@ -654,7 +654,7 @@ sub assay_date {
 # returns key=>value data for collection_date
 # 1. collection_date => always an iso8601 date for the date or start_date
 # 2. collection_date_range => a DateRangeField with the Chado-resolution date or [start_date TO end_date]
-# 3. collection_date_days => (date_day date_day) or (start_date_day end_date_day)
+# 3. collection_season => One or more DateRangeField values in the year 1600 (an arbitrary leap year) used for seasonal search
 #
 # by Chado-resolution we mean "2010-10" will refer automatically to a range including the entire month of October 2010
 #
@@ -667,7 +667,7 @@ sub assay_date_fields {
     return (
 	    collection_date => iso8601_date($date),
 	    collection_date_range => $date,
-	    collection_date_days => days($date, $date),
+	    collection_season => season($date),
 	   );
   } else {
     my @start_dates = $assay->multiprops($start_date_type);
@@ -683,11 +683,17 @@ sub assay_date_fields {
 	($start_date, $end_date) = ($end_date, $start_date);
       }
 
-      return (
-	      collection_date => iso8601_date($start_date),
-	      collection_date_range => "[$start_date TO $end_date]",
-	      collection_date_days => days($start_date, $end_date),
-	     );
+
+      return  ($start_date eq $end_date) ? (
+					    collection_date => iso8601_date($start_date),
+					    collection_date_range => $start_date,
+					    collection_season => season($start_date),
+					   ) :
+					   (
+					    collection_date => iso8601_date($start_date),
+					    collection_date_range => "[$start_date TO $end_date]",
+					    collection_season => season($start_date, $end_date),
+					   );
 
     }
   }
@@ -695,39 +701,37 @@ sub assay_date_fields {
 }
 
 #
-sub days {
+sub season {
   my ($start_date, $end_date) = @_;
-  return join " ", day_of_year($start_date, 0), day_of_year($end_date, 1);
-}
+  if (!defined $end_date) {
+    # a single date or low-resolution date (e.g. 2014) will be returned as-is
+    # and converted by Solr into a date range as appropriate
+    $start_date =~ s/^\d{4}/1600/;
+    return [ $start_date ];
+  } else {
+    # we already parsed them in the calling function, but never mind...
+    my ($start_dt, $end_dt) = ($iso8601->parse_datetime($start_date), $iso8601->parse_datetime($end_date));
 
-# returns a number from 0 to 365 where 0 is 1 Jan, 365 is 31 Dec
-# if $last_day_of_period is true and
-# if year-resolution date - return last day of year
-# if month-resolution then return last day of month
-sub day_of_year {
-  my ($date, $last_day_of_period) = @_;
-  my $datetime = $iso8601->parse_datetime($date);
+    # is start to end range >= 1 year?
+    if ($start_dt->add( years => 1 )->compare($end_dt) <= 0) {
+      return "1600";
+    }
 
-  # adjust $datetime to the last day of the year or month
-  if ($last_day_of_period) {
-    if ($date =~ /^\d{4}$/) {
-      # year only
-      $datetime = DateTime->last_day_of_month(year => $datetime->year, month=>12);
-    } elsif ($date =~ /^\d{4}-\d{2}$/) {
-      # year and month only
-      $datetime = DateTime->last_day_of_month(year => $datetime->year, month=>$datetime->month);
+    my ($start_month, $end_month) = ($start_dt->month, $end_dt->month);
+
+    # change the Chado-sourced date strings to year 1600
+    $start_date =~ s/^\d{4}/1600/;
+    $end_date =~ s/^\d{4}/1600/;
+
+    if ($start_month <= $end_month) {
+      return [ "[$start_date TO $end_date]" ];
+    } else {
+      # range spans new year, so return two ranges
+      return [ "[$start_date TO 1600-12-31]",
+	       "[1600-01-01 TO $end_date]" ];
     }
   }
-
-  my $day = $datetime->day_of_year;
-  if ($datetime->is_leap_year) {
-    $day--;
-  } else {
-    $day-- if ($day <= 59); # up to Feb 28
-  }
-  return $day;
 }
-
 
 # converts poss truncated string date into ISO8601 Zulu time (hacked with an extra Z for now)
 sub iso8601_date {
