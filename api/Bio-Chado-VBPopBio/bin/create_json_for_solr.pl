@@ -831,10 +831,11 @@ sub geo_coords_fields {
   die "some unexpected problem with latlog arg to geo_coords_fields\n"
     unless (defined $lat && defined $long);
 
-  my $geohash = $gh->encode($lat, $long, 6);
+  my $geohash = $gh->encode($lat, $long, 7);
 
   return (geo_coords => $latlong,
-	  geohash_6 => $geohash,
+	  geohash_7 => $geohash,
+	  geohash_6 => substr($geohash, 0, 6),
 	  geohash_5 => substr($geohash, 0, 5),
 	  geohash_4 => substr($geohash, 0, 4),
 	  geohash_3 => substr($geohash, 0, 3),
