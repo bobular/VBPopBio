@@ -119,6 +119,9 @@ my $inversion_term = $schema->cvterms->find_by_accession({ term_source_ref => 'S
 my $genotype_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
                      term_accession_number => '0001027' });
 
+my $karyotype_term = $schema->cvterms->find_by_accession({ term_source_ref => 'EFO',
+                     term_accession_number => '0004426' });
+
 my $count_unit_term = $schema->cvterms->find_by_accession({ term_source_ref => 'UO',
                      term_accession_number => '0000189' });
 
@@ -222,6 +225,8 @@ while (my $stock = $stocks->next) {
   my @genotype_assays = $stock->genotype_assays;
   my @genotypes = map { $_->genotypes->all } @genotype_assays;
 
+  my $karyotype = make_karyotype(@genotypes);
+
   my $document = ohr(
 		    label => $stock->name,
 		    id => $stable_id,
@@ -269,6 +274,8 @@ while (my $stock = $stocks->next) {
 		    (defined $fc ? ( assay_date_fields($fc) ) : () ),
 
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
+
+		    (length($karyotype) ? ( karyotype_s => $karyotype ) : () ),
 		   );
 
   if (!defined $limit || ++$done_samples <= $limit_samples){
@@ -864,6 +871,31 @@ sub phenotype_value_type {
   }
   return;
 }
+
+# make_karyotype
+#
+# given a list of all genotypes, returns a space delimited string concatenating the sorted karyotypes
+#
+
+sub make_karyotype {
+  my @genotypes = @_;
+  my @karyotypes;
+  foreach my $genotype (@genotypes) {
+    my $genotype_type = $genotype->type; # cvterm/ontology term object
+    # check if this genotype's type is the same as 'karyotype' or a child of it.
+      if ($genotype_type->id == $karyotype_term->id ||
+        $karyotype_term->has_child($genotype_type)) {
+	# now get the "genotype" prop value
+	# see https://www.vectorbase.org/popbio/assay/?id=VBA0000189 as an example
+	foreach my $prop ($genotype->multiprops) {
+          my @prop_terms = $prop->cvterms;
+          push @karyotypes, $prop->value if ($prop_terms[0]->id == $genotype_term->id);
+        }
+      }
+  }
+  return join ' ', sort @karyotypes;
+}
+
 
 #
 # ohr = ordered hash reference
