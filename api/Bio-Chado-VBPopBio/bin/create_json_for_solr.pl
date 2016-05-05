@@ -225,8 +225,6 @@ while (my $stock = $stocks->next) {
   my @genotype_assays = $stock->genotype_assays;
   my @genotypes = map { $_->genotypes->all } @genotype_assays;
 
-  my $karyotype = make_karyotype(@genotypes);
-
   my $document = ohr(
 		    label => $stock->name,
 		    id => $stable_id,
@@ -275,7 +273,8 @@ while (my $stock = $stocks->next) {
 
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
 
-		    (length($karyotype) ? ( karyotype_s => $karyotype ) : () ),
+		    sample_karyotype_fields(@genotypes),
+
 		   );
 
   if (!defined $limit || ++$done_samples <= $limit_samples){
@@ -872,14 +871,17 @@ sub phenotype_value_type {
   return;
 }
 
-# make_karyotype
+# sample_karyotype_fields
 #
-# given a list of all genotypes, returns a space delimited string concatenating the sorted karyotypes
+# given a list of all genotypes, if applicable, returns the following fields
+#
+# karyotype_s => a space delimited string concatenating the sorted karyotypes
 #
 
-sub make_karyotype {
+sub sample_karyotype_fields {
   my @genotypes = @_;
   my @karyotypes;
+  my %inversion_counts;
   foreach my $genotype (@genotypes) {
     my $genotype_type = $genotype->type; # cvterm/ontology term object
     # check if this genotype's type is the same as 'karyotype' or a child of it.
@@ -891,9 +893,31 @@ sub make_karyotype {
           my @prop_terms = $prop->cvterms;
           push @karyotypes, $prop->value if ($prop_terms[0]->id == $genotype_term->id);
         }
+      } elsif ($genotype_type->id == $chromosomal_inversion_term->id ||
+        $chromosomal_inversion_term->has_child($genotype_type)) {
+	my ($genotype_name, $genotype_value);
+        foreach my $prop ($genotype->multiprops) {
+          my @prop_terms = $prop->cvterms;
+          $genotype_name = $prop->value if ($prop_terms[0]->id == $inversion_term->id);
+          $genotype_value = $prop->value if ($prop_terms[0]->id == $genotype_term->id && $prop_terms[1]->id == $count_unit_term->id);
+	}
+	if (defined $genotype_name && defined $genotype_value) {
+	  $inversion_counts{$genotype_name} = $genotype_value;
+	}
       }
   }
-  return join ' ', sort @karyotypes;
+  if (@karyotypes && keys %inversion_counts) {
+
+    my @inversions = sort keys %inversion_counts;
+    return (
+	    karyotype_s => join(' ', sort @karyotypes),
+	    inversions_assayed_ss => [ @inversions ],
+	    map { ( "inversion_".$_."_count_i" => $inversion_counts{$_} ) } @inversions
+	   );
+
+  }
+
+  return ();
 }
 
 
