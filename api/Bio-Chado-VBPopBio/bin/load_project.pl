@@ -41,6 +41,8 @@ $dry_run = 1 if ($limit);
 
 my ($isatab_dir) = @ARGV;
 
+$samples_file = "$isatab_dir/sample-info.txt" unless ($samples_file);
+
 # should speed things up
 $schema->storage->_use_join_optimizer(0);
 
