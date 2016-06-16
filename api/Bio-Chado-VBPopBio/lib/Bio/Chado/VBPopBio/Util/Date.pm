@@ -53,7 +53,7 @@ sub simple_validate_date {
       $valid_date = $date;
     } catch {
       if (defined $row) {
-	$row->result_source->schema->defer_exception("Cannot parse date '$date' for project->submission_date");
+	$row->result_source->schema->defer_exception("Cannot parse date '$date'");
       }
     }
   }
