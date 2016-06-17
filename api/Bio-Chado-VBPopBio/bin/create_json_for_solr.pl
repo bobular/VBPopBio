@@ -230,6 +230,7 @@ while (my $stock = $stocks->next) {
 		    id => $stable_id,
 		    # type => 'sample', # doesn't seem to be in schema
 		    accession => $stable_id,
+		    sample_id_s => $stable_id,
 		    bundle => 'pop_sample',
 		    bundle_name => 'Sample',
 	  	    site => 'Population Biology',
@@ -269,7 +270,7 @@ while (my $stock = $stocks->next) {
 
 		    # used to be plain 'date' from any assay
 		    # now it's collection_date if there's an unambiguous collection
-		    (defined $fc ? ( assay_date_fields($fc) ) : () ),
+		    (defined $fc ? ( assay_date_fields($fc), collection_assay_id_s => $fc->stable_id ) : () ),
 
 		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
 
@@ -328,6 +329,7 @@ while (my $stock = $stocks->next) {
 		$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 		$doc->{label} = $phenotype->name;
 		$doc->{accession} = $assay_stable_id;
+		$doc->{assay_id_s} = $assay_stable_id;
 		$doc->{description} = "IR phenotype '".$phenotype->name."' for $stable_id";
 		# NEW fields
 
@@ -500,6 +502,7 @@ while (my $stock = $stocks->next) {
 	$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 	$doc->{label} = $genotype->name;
 	$doc->{accession} = $assay_stable_id;
+	$doc->{assay_id_s} = $assay_stable_id;
 	$doc->{description} = "$genotype_subtype genotype '".$genotype->description."' for $stable_id";
 
 	$doc->{genotype_cvterms} = [ map { flattened_parents($_) } grep { defined $_ } ( $genotype->type, multiprops_cvterms($genotype) ) ];
