@@ -155,6 +155,11 @@ my $date_type = $schema->types->date;
 
 #print "iterating through projects... @andy: @done: remove this later @remove\n"; @needlater?
 
+# remember some project info for sample docs
+my %project2title;
+my %project2authors;
+my %project2pubmed;
+
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
   my @design_terms = map { $_->cvterms->[1] } $project->multiprops($study_design_type);
@@ -173,7 +178,8 @@ while (my $project = $projects->next) {
 		    description => $project->description ? $project->description : '',
 		    date => iso8601_date($project->public_release_date),
 		    authors => [
-				map { $_->description } $project->contacts
+				(map { $_->description } $project->contacts),
+				(map { $_->authors } @publications)
 			       ],
 		    study_designs => [
 				      map { $_->name } @design_terms
@@ -190,6 +196,10 @@ while (my $project = $projects->next) {
   chomp($json_text);
   print ",\n" if ($needcomma++);
   print qq!$json_text\n!;
+
+  $project2title{$stable_id} = $document->{label};
+  $project2authors{$stable_id} = $document->{authors};
+  $project2pubmed{$stable_id} = $document->{pubmed};
 
   last if (defined $limit && ++$done >= $limit_projects);
 }
@@ -226,6 +236,8 @@ while (my $stock = $stocks->next) {
 
   my @genotype_assays = $stock->genotype_assays;
   my @genotypes = map { $_->genotypes->all } @genotype_assays;
+
+  my @projects = map { quick_project_stable_id($_) } $stock->projects;
 
   my $document = ohr(
 		    label => $stock->name,
@@ -268,15 +280,20 @@ while (my $stock = $stocks->next) {
 		    annotations => [ map { $_->as_string } $stock->multiprops ],
 		    annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($stock) ],
 
-		    projects => [ map { quick_project_stable_id($_) } $stock->projects ],
+		    projects => @projects,
 
 		    # used to be plain 'date' from any assay
 		    # now it's collection_date if there's an unambiguous collection
 		    (defined $fc ? ( assay_date_fields($fc), collection_assay_id_s => $fc->stable_id ) : () ),
 
-		    pubmed => [ map { "PMID:$_" } multiprops_pubmed_ids($stock) ],
+		    pubmed => [ (map { "PMID:$_" } multiprops_pubmed_ids($stock)),
+				(map { @{$project2pubmed{$_}} } @projects)
+			      ],
 
 		    sample_karyotype_fields(@genotypes),
+
+		    project_titles_txt => [ map { $project2title{$_} } @projects ],
+		    project_authors_txt => [ map { @{$project2authors{$_}} } @projects ],
 
 		   );
 
