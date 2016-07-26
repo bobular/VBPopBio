@@ -124,6 +124,8 @@ my $iso8601 = DateTime::Format::ISO8601->new;
 my $start_date_type = $schema->types->start_date;
 my $date_type       = $schema->types->date;
 
+my %project2authors;
+
 print "{\n";
 
 ### SAMPLES ###
@@ -261,6 +263,11 @@ while ( my $stock = $stocks->next ) {
     print qq!"add": $json_text,\n!;
 
     # Pubmed ID(s)
+
+##########################################################
+# TO DO: also use pubmed IDs from project->publications. #
+##########################################################
+
     my @pubs = multiprops_pubmed_ids($stock);
     $i = 0;
     foreach my $pub (@pubs) {
@@ -288,6 +295,7 @@ while ( my $stock = $stocks->next ) {
     my @projects = $stock->projects;
     $i = 0;
     foreach my $project (@projects) {
+        my $project_id = quick_project_stable_id($project);
         my $documentProjects = {
             doc => {
                 id          => $stable_id . "_proj_" . $i,
@@ -296,7 +304,7 @@ while ( my $stock = $stocks->next ) {
                 type        => 'Projects',
                 geo_coords  => $latlong,
                 date        => $date,
-                textsuggest => quick_project_stable_id($project),
+                textsuggest => $project_id,
                 field       => 'projects',
                 is_synonym  => 'false',
 
@@ -306,6 +314,38 @@ while ( my $stock = $stocks->next ) {
         $json_text = $json->encode($documentProjects);
         chomp($json_text);
         print qq!"add": $json_text,\n!;
+
+
+	# project_authors_txt
+	my $j=0;
+
+	# do this once per project only, for speed.
+	$project2authors{$project_id} //= [ (map { sanitise_contact($_->description) } $project->contacts),
+					    (map { $_->authors } $project->publications) ];
+
+	foreach my $author ( @{$project2authors{$project_id}} ) {
+	  my $documentProjectAuthors = {
+            doc => {
+                id          => $stable_id . "_proj_" . $i . "_auth_" . $j,
+                stable_id   => $stable_id,
+                bundle      => 'pop_sample',
+                type        => 'Authors',
+                geo_coords  => $latlong,
+                date        => $date,
+                textsuggest => $author,
+                field       => 'project_authors_txt',
+                is_synonym  => 'false',
+
+            }
+          };
+
+	  $json_text = $json->encode($documentProjectAuthors);
+	  chomp($json_text);
+	  print qq!"add": $json_text,\n!;
+
+	  $j++;
+	}
+
         $i++;
     }
 
@@ -406,6 +446,8 @@ while ( my $stock = $stocks->next ) {
         print qq!"add": $json_text,\n!;
         $i++;
     }
+
+
 
 #########################################################
 
@@ -1064,3 +1106,10 @@ sub synonym_check {
     return ( $term, $is_synonym );
 
 }
+
+sub sanitise_contact {
+  my $contact = shift;
+  $contact =~ s/\s+\(.+\)//;
+  return $contact;
+}
+

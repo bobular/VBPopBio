@@ -178,7 +178,7 @@ while (my $project = $projects->next) {
 		    description => $project->description ? $project->description : '',
 		    date => iso8601_date($project->public_release_date),
 		    authors => [
-				(map { $_->description } $project->contacts),
+				(map { sanitise_contact($_->description) } $project->contacts),
 				(map { $_->authors } @publications)
 			       ],
 		    study_designs => [
@@ -973,4 +973,10 @@ sub remove_gaz_crap {
     $state = 1 if ($element eq 'GAZ:00000448');
   }
   return @result;
+}
+
+sub sanitise_contact {
+  my $contact = shift;
+  $contact =~ s/\s+\(.+\)//;
+  return $contact;
 }
