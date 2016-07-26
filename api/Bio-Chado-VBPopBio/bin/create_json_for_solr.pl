@@ -39,6 +39,8 @@ my $dbuser = $ENV{USER};
 my $dry_run;
 my $limit;
 my $project_stable_id;
+my $inverted_IR_regexp = qr/^(LT|LC)/;
+my $loggable_IR_regexp = qr/^(LT|LC)/;
 
 GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
@@ -550,7 +552,11 @@ foreach my $phenotype_signature (keys %phenotype_signature2values) {
   my $values = pdl(@{$phenotype_signature2values{$phenotype_signature}});
 
   # when inverted == 1, low values mean the insecticide is working
-  my $inverted = ($phenotype_signature =~ /^(LT|LC)/) ? 1 : 0;
+  my $inverted = ($phenotype_signature =~ $inverted_IR_regexp) ? 1 : 0;
+  my $loggable = ($phenotype_signature =~ $loggable_IR_regexp) ? 1 : 0;
+
+  # log transform all values if required.
+  $values = $values->log if ($loggable);
 
   my ($min, $max) = ($values->pct(0.02), $values->pct(0.98));
   my $range = $max - $min;
@@ -559,6 +565,8 @@ foreach my $phenotype_signature (keys %phenotype_signature2values) {
     $phenotype_signature2normaliser{$phenotype_signature} =
       sub {
 	my $val = shift;
+	# log transform
+	$val = log($val) if ($loggable);
 	# squash outliers
 	$val = $min if ($val<$min);
 	$val = $max if ($val>$max);
