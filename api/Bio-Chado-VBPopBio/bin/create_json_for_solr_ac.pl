@@ -616,9 +616,9 @@ while ( my $stock = $stocks->next ) {
                     }
 
                     # Project(s)
-                    my @projects = $stock->projects;
                     $i = 0;
                     foreach my $project (@projects) {
+		        my $project_id = quick_project_stable_id($project);
                         my $documentProjects = {
                             doc => {
                                 id        => $assay_stable_id . "_proj_" . $i,
@@ -628,8 +628,7 @@ while ( my $stock = $stocks->next ) {
                                 type             => 'Projects',
                                 geo_coords       => $latlong,
                                 date             => $date,
-                                textsuggest =>
-                                  quick_project_stable_id($project),
+                                textsuggest => $project_id,
                                 field      => 'projects',
                                 is_synonym => 'false',
 
@@ -639,8 +638,35 @@ while ( my $stock = $stocks->next ) {
                         $json_text = $json->encode($documentProjects);
                         chomp($json_text);
                         print qq!"add": $json_text,\n!;
+
+
+			# project_authors_txt
+			my $j=0;
+			foreach my $author ( @{$project2authors{$project_id}} ) {
+			  my $documentProjectAuthors = {
+							doc => {
+								id          => $assay_stable_id . "_proj_" . $i . "_auth_" . $j,
+								stable_id   => $assay_stable_id,
+								bundle      => 'pop_sample_phenotype',
+								type        => 'Authors',
+								geo_coords  => $latlong,
+								date        => $date,
+								textsuggest => $author,
+								field       => 'project_authors_txt',
+								is_synonym  => 'false',
+
+							       }
+						       };
+
+			  $json_text = $json->encode($documentProjectAuthors);
+			  chomp($json_text);
+			  print qq!"add": $json_text,\n!;
+			  $j++;
+			}
+
                         $i++;
                     }
+
 
                     # Sample type
                     my $documentSampleType = {
