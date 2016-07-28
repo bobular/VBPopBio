@@ -33,6 +33,7 @@ use Clone qw(clone);
 use Tie::IxHash;
 use Scalar::Util qw(looks_like_number);
 use PDL;
+use Math::Spline;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -41,6 +42,7 @@ my $limit;
 my $project_stable_id;
 my $inverted_IR_regexp = qr/^(LT|LC)/;
 my $loggable_IR_regexp = qr/^(LT|LC)/;
+# (spline transformation decision is hardcoded) #
 
 GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
@@ -572,6 +574,11 @@ foreach my $phenotype_signature (keys %phenotype_signature2values) {
   my $inverted = ($phenotype_signature =~ $inverted_IR_regexp) ? 1 : 0;
   my $loggable = ($phenotype_signature =~ $loggable_IR_regexp) ? 1 : 0;
 
+  my $who_spline;
+  if ($phenotype_signature eq 'mortality rate/percent') {
+    $who_spline = Math::Spline->new([0, 90, 98, 100],[0, 0.2, 0.8, 1]);
+  }
+
   # log transform all values if required.
   $values = $values->log if ($loggable);
 
@@ -582,15 +589,24 @@ foreach my $phenotype_signature (keys %phenotype_signature2values) {
     $phenotype_signature2normaliser{$phenotype_signature} =
       sub {
 	my $val = shift;
-	# log transform
-	$val = log($val) if ($loggable);
-	# squash outliers
-	$val = $min if ($val<$min);
-	$val = $max if ($val>$max);
-	# now rescale
-	$val -= $min;
-	$val /= $range;
-	$val = 1-$val if ($inverted);
+	if ($who_spline) {
+	  # WHO spline transform
+	  $val = $who_spline->evaluate($val);
+	  # and hardcoded handling of out-of-range values
+	  $val = 0 if ($val<0);
+	  $val = 1 if ($val>1);
+	} else {
+	  # log transform
+	  $val = log($val) if ($loggable);
+
+	  # squash outliers
+	  $val = $min if ($val<$min);
+	  $val = $max if ($val>$max);
+	  # now rescale
+	  $val -= $min;
+	  $val /= $range;
+	  $val = 1-$val if ($inverted);
+	}
 	return $val;
       };
   }
