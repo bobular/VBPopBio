@@ -241,6 +241,10 @@ while (my $stock = $stocks->next) {
 
   my @projects = map { quick_project_stable_id($_) } $stock->projects;
 
+  my @species_assays = $stock->species_identification_assays;
+  my @other_protocols = map { $_->protocols } @phenotype_assays, @genotype_assays, @species_assays;
+  my @other_protocols_types = map { $_->type } @other_protocols;
+
   my $document = ohr(
 		    label => $stock->name,
 		    id => $stable_id,
@@ -296,6 +300,9 @@ while (my $stock = $stocks->next) {
 
 		    project_titles_txt => [ map { $project2title{$_} } @projects ],
 		    project_authors_txt => [ map { @{$project2authors{$_}} } @projects ],
+
+		    protocols => [ map { $_->name } @other_protocols_types ],
+		    protocols_cvterms => [ map { flattened_parents($_) } @other_protocols_types ],
 
 		   );
 
