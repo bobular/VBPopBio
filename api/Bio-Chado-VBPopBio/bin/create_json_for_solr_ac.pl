@@ -125,6 +125,7 @@ my $start_date_type = $schema->types->start_date;
 my $date_type       = $schema->types->date;
 
 my %project2authors;
+my %project2title;
 
 print "{\n";
 
@@ -320,6 +321,28 @@ while ( my $stock = $stocks->next ) {
 	my $j=0;
 
 	# do this once per project only, for speed.
+	$project2title{$project_id} = $project->name;
+
+
+	my $documentProjectTitles = {
+				     doc => {
+					     id          => $stable_id . "_proj_" . $i . "_title",
+					     stable_id   => $stable_id,
+					     bundle      => 'pop_sample',
+					     type        => 'Project titles',
+					     geo_coords  => $latlong,
+					     date        => $date,
+					     textsuggest => $project2title{$project_id},
+					     field       => 'project_titles_txt',
+					     is_synonym  => 'false',
+					    }
+				    };
+
+        $json_text = $json->encode($documentProjectTitles);
+        chomp($json_text);
+        print qq!"add": $json_text,\n!;
+
+	# do this once per project only, for speed.
 	$project2authors{$project_id} //= [ (map { sanitise_contact($_->description) } $project->contacts),
 					    (map { $_->authors } $project->publications) ];
 
@@ -335,7 +358,6 @@ while ( my $stock = $stocks->next ) {
                 textsuggest => $author,
                 field       => 'project_authors_txt',
                 is_synonym  => 'false',
-
             }
           };
 
@@ -638,6 +660,24 @@ while ( my $stock = $stocks->next ) {
                         $json_text = $json->encode($documentProjects);
                         chomp($json_text);
                         print qq!"add": $json_text,\n!;
+
+			my $documentProjectTitles = {
+						     doc => {
+							     id          => $assay_stable_id . "_proj_" . $i . "_title",
+							     stable_id   => $assay_stable_id,
+							     bundle      => 'pop_sample_phenotype',
+							     type        => 'Project titles',
+							     geo_coords  => $latlong,
+							     date        => $date,
+							     textsuggest => $project2title{$project_id},
+							     field       => 'project_titles_txt',
+							     is_synonym  => 'false',
+							    }
+						    };
+
+			$json_text = $json->encode($documentProjectTitles);
+			chomp($json_text);
+			print qq!"add": $json_text,\n!;
 
 
 			# project_authors_txt
