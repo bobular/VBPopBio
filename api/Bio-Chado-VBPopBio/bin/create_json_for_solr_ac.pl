@@ -317,7 +317,7 @@ while ( my $stock = $stocks->next ) {
         print qq!"add": $json_text,\n!;
 
 
-	# project_authors_txt
+	# project_authors_txt and project_titles_txt
 	my $j=0;
 
 	# do this once per project only, for speed.
@@ -672,6 +672,7 @@ while ( my $stock = $stocks->next ) {
 							     textsuggest => $project2title{$project_id},
 							     field       => 'project_titles_txt',
 							     is_synonym  => 'false',
+							     phenotype_type_s => 'insecticide resistance',
 							    }
 						    };
 
@@ -694,6 +695,7 @@ while ( my $stock = $stocks->next ) {
 								textsuggest => $author,
 								field       => 'project_authors_txt',
 								is_synonym  => 'false',
+								phenotype_type_s => 'insecticide resistance',
 
 							       }
 						       };

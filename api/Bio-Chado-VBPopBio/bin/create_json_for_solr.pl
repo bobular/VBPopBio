@@ -34,6 +34,7 @@ use Tie::IxHash;
 use Scalar::Util qw(looks_like_number);
 use PDL;
 use Math::Spline;
+use List::MoreUtils;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -301,8 +302,8 @@ while (my $stock = $stocks->next) {
 		    project_titles_txt => [ map { $project2title{$_} } @projects ],
 		    project_authors_txt => [ map { @{$project2authors{$_}} } @projects ],
 
-		    protocols => [ map { $_->name } @other_protocols_types ],
-		    protocols_cvterms => [ map { flattened_parents($_) } @other_protocols_types ],
+		    protocols => [ List::MoreUtils::uniq(map { $_->name } @other_protocols_types) ],
+		    protocols_cvterms => [ List::MoreUtils::uniq(map { flattened_parents($_) } @other_protocols_types) ],
 
 		   );
 
@@ -344,8 +345,8 @@ while (my $stock = $stocks->next) {
 
       # NEW fields
       $doc->{phenotype_type_s} = "insecticide resistance";
-      $doc->{protocols} = [ map { $_->name } @protocol_types ];
-      $doc->{protocols_cvterms} = [ map { flattened_parents($_) } @protocol_types ];
+      $doc->{protocols} = [ List::MoreUtils::uniq(map { $_->name } @protocol_types) ];
+      $doc->{protocols_cvterms} = [ List::MoreUtils::uniq(map { flattened_parents($_) } @protocol_types) ];
 
       foreach my $phenotype ($phenotype_assay->phenotypes) {
       	
@@ -521,8 +522,8 @@ while (my $stock = $stocks->next) {
 
 	# NEW fields
 	$doc->{genotype_type_s}   = $genotype_subtype;
-	$doc->{protocols}         = [ map { $_->name } @protocol_types ];
-	$doc->{protocols_cvterms} = [ map { flattened_parents($_) } @protocol_types ];
+	$doc->{protocols}         = [ List::MoreUtils::uniq(map { $_->name } @protocol_types) ];
+	$doc->{protocols_cvterms} = [ List::MoreUtils::uniq(map { flattened_parents($_) } @protocol_types) ];
 
 	my $genotype_stable_ish_id = $stable_id.".".$genotype->id;
 	# alter fields
