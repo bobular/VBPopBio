@@ -88,11 +88,14 @@ $schema->txn_do_deferred
 			    $stock->external_id,
 			    $stock->stable_id,
 			    join(",", grep defined, map { $_->vcf_file } $stock->genotype_assays),
-			    $species->name,
+			    (defined $species ? $species->name : "EMPTY -"),
 			    map { my $c = $_->value; # change "[topic] comment"
 				  $c =~ s/^\[//;     # to "topic<tab>comment"
 				  $c =~ s/\] /\t/;
 				  $c } $stock->multiprops($schema->types->comment))."\n";
+	    if (!defined $species) {
+	      $schema->defer_exception("Missing species ID assay(s) or project-wide fallback species for sample '".$stock->external_id."'");
+	    }
 	  }
 	  close($sfile);
 	} else {
