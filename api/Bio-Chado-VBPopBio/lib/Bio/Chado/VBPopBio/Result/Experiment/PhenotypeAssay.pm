@@ -84,6 +84,49 @@ sub delete {
   return $self->SUPER::delete();
 }
 
+=head2 as_cytoscape_graph
+
+returns a perl data structure corresponding to Cytoscape JSON format
+
+=cut
+
+sub as_cytoscape_graph {
+  my ($self, $nodes, $edges) = @_;
+
+  $nodes //= {};
+  $edges //= {};
+
+  my $assay_id = sprintf "assay%08d", $self->id;
+  $nodes->{$assay_id} //= { data => {
+				     id => $assay_id,
+				     name => $self->external_id,
+				     type => $self->type->name,
+				    } };
+
+  foreach my $phenotype ($self->phenotypes) {
+    my $phenotype_id = sprintf "phenotype%08d", $phenotype->id;
+    $nodes->{$phenotype_id} //= { data => {
+					id => $phenotype_id,
+					name => $phenotype->name,
+					type => 'phenotype',
+				       } };
+    $edges->{"$assay_id:$phenotype_id"} //= { data => {
+						    id => "$assay_id:$phenotype_id",
+						    source => $assay_id,
+						    target => $phenotype_id,
+						   } } ;
+  }
+
+  my $graph = {
+	       elements => {
+			    nodes => [ values(%$nodes) ],
+			    edges => [ values(%$edges) ],
+			   }
+	      };
+
+  return $graph;
+}
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

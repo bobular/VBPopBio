@@ -877,6 +877,41 @@ sub ordered_hashref {
   return $ref;
 }
 
+
+=head2 as_cytoscape_graph
+
+returns a perl data structure corresponding to Cytoscape JSON format
+
+=cut
+
+sub as_cytoscape_graph {
+  my ($self, $nodes, $edges) = @_;
+
+  $nodes //= {};
+  $edges //= {};
+
+  my $assay_id = sprintf "assay%08d", $self->id;
+  $nodes->{$assay_id} //= { data => {
+				     id => $assay_id,
+				     name => $self->external_id,
+				     type => $self->type->name,
+				    } };
+
+  # only certain subclasses will have child nodes
+  # (phenotypes and genotypes maybe for now)
+
+  my $graph = {
+	       elements => {
+			    nodes => [ values(%$nodes) ],
+			    edges => [ values(%$edges) ],
+			   }
+	      };
+
+  return $graph;
+}
+
+
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

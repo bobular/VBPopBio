@@ -151,6 +151,52 @@ sub as_data_structure {
 	 };
 }
 
+=head2 as_cytoscape_graph
+
+returns a perl data structure corresponding to Cytoscape JSON format
+
+=cut
+
+sub as_cytoscape_graph {
+  my ($self, $nodes, $edges) = @_;
+
+  $nodes //= {};
+  $edges //= {};
+
+  my $assay_id = sprintf "assay%08d", $self->id;
+  $nodes->{$assay_id} //= { data => {
+				     id => $assay_id,
+				     name => $self->external_id,
+				     type => $self->type->name,
+				    } };
+
+  my ($best_species, $qualification) = $self->best_species;
+  if (defined $best_species) {
+    my $species_id = "$assay_id.species";
+    $nodes->{$species_id} //= { data => {
+					 id => $species_id,
+					 name => $best_species->name,
+					 qualifier => $qualification->name,
+					 type => 'species',
+					} };
+    $edges->{"assay_id:$species_id"} //= { data => {
+						    id => "assay_id:$species_id",
+						    source => $assay_id,
+						    target => $species_id,
+						   } };
+  }
+
+  my $graph = {
+	       elements => {
+			    nodes => [ values(%$nodes) ],
+			    edges => [ values(%$edges) ],
+			   }
+	      };
+
+  return $graph;
+}
+
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

@@ -9,7 +9,7 @@
 #   --json filename        : prints pretty JSON for the whole project to the file
 #   --sample-info filename : prints sample external ids, stable ids, and comments to TSV
 #   --limit 50             : only process first 50 samples (--dry-run implied)
-#
+#   --graph-file filename  : will output Cytoscape JSON of the entity relationships (project, samples, assays, TBC?????)
 
 use strict;
 use warnings;
@@ -29,12 +29,14 @@ my $json = JSON->new->pretty;
 my $samples_file;
 my $limit;
 my $delete_project;
+my $graph_file;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "json=s"=>\$json_file,
 	   "sample-info|samples=s"=>\$samples_file,
 	   "limit=i"=>\$limit,
 	   "delete=s"=>\$delete_project,
+	   "graph-file=s"=>\$graph_file,
 	  );
 
 $dry_run = 1 if ($limit);
@@ -102,6 +104,16 @@ $schema->txn_do_deferred
 	  $schema->defer_exception("can't write sample info to $samples_file");
 	}
       }
+
+      if ($graph_file) {
+	if (open(my $gfile, ">$graph_file")) {
+	  print $gfile $json->encode($project->as_cytoscape_graph());
+	  close($gfile);
+	} else {
+	  $schema->defer_exception("can't write graph JSON to $graph_file");
+	}
+      }
+
       $schema->defer_exception("dry-run option - rolling back") if ($dry_run);
     } );
 

@@ -737,6 +737,56 @@ sub as_data_structure {
 	 };
 }
 
+=head2 as_cytoscape_graph
+
+returns a perl data structure corresponding to Cytoscape JSON format
+
+It would be good to have a limit option (e.g. just show first 5 samples).
+
+TBC more details here on what is actually dumped.
+
+=cut
+
+sub as_cytoscape_graph {
+  my ($self, $nodes, $edges) = @_;
+
+  $nodes //= {};
+  $edges //= {};
+
+  my $project_id = sprintf "project%08d", $self->id;
+
+  $nodes->{$project_id} //= { data => {
+				       id => $project_id,
+				       name => $self->external_id,
+				       type => 'project',
+				      } };
+
+  foreach my $sample ($self->stocks) {
+    my $sample_id = sprintf "sample%08d", $sample->id;
+    $nodes->{$sample_id} //= { data => {
+					 id => $sample_id,
+					 name => $sample->name,
+					 type => 'sample',
+					} };
+
+    $edges->{"$project_id:$sample_id"} //= { data => {
+						      id => "$project_id:$sample_id",
+						      source => $project_id,
+						      target => $sample_id,
+						     } };
+
+    my $not_used = $sample->as_cytoscape_graph($nodes, $edges);
+  }
+  my $graph = {
+	       elements => {
+			    nodes => [ values(%$nodes) ],
+			    edges => [ values(%$edges) ],
+			   }
+	      };
+
+  return $graph;
+}
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

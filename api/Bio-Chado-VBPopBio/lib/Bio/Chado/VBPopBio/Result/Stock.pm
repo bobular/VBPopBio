@@ -165,6 +165,20 @@ sub experiments_by_type {
   return $self->experiments->search({ 'nd_experiment.type_id' => $type->cvterm_id });
 }
 
+=head2 experiments_by_link_type
+
+Argument should most likely be one of
+
+  $assay_creates_stock = $types->assay_creates_sample;
+  $assay_uses_stock = $types->assay_uses_sample;
+
+=cut
+
+sub experiments_by_link_type {
+  my ($self, $type) = @_;
+  return $self->search_related('nd_experiment_stocks', { 'me.type_id' => $type->id })->search_related('nd_experiment');
+}
+
 =head2 add_to_projects
 
 there is no project_stocks relationship in Chado so we have a nasty
@@ -567,6 +581,63 @@ sub relink {
     }
   }
 }
+
+=head2 as_cytoscape_graph
+
+returns a perl data structure corresponding to Cytoscape JSON format
+
+=cut
+
+sub as_cytoscape_graph {
+  my ($self, $nodes, $edges) = @_;
+
+  $nodes //= {};
+  $edges //= {};
+
+  my $schema = $self->result_source->schema;
+  my $types = $schema->types;
+
+  my $assay_creates_stock = $types->assay_creates_sample;
+  my $assay_uses_stock = $types->assay_uses_sample;
+
+  my $sample_id = sprintf "sample%08d", $self->id;
+  $nodes->{$sample_id} //= { data => {
+				      id => $sample_id,
+				      name => $self->name,
+				      type => 'sample',
+				     } };
+
+  foreach my $link_type ($assay_creates_stock, $assay_uses_stock) {
+    foreach my $assay ($self->experiments_by_link_type($link_type)) {
+      my $assay_id = sprintf "assay%08d", $assay->id;
+      $nodes->{$assay_id} //= { data => {
+					 id => $assay_id,
+					 name => $assay->external_id,
+					 type => $assay->type->name,
+					} };
+      $edges->{"$sample_id:$assay_id"} //= { data => {
+						      id => "$sample_id:$assay_id",
+						      $link_type->id == $assay_uses_stock->id ?
+						      (source => $sample_id,
+						       target => $assay_id) :
+						      (source => $assay_id,
+						       target => $sample_id)
+						     } };
+
+      my $not_used = $assay->as_cytoscape_graph($nodes, $edges);
+    }
+  }
+
+  my $graph = {
+	       elements => {
+			    nodes => [ values(%$nodes) ],
+			    edges => [ values(%$edges) ],
+			   }
+	      };
+
+  return $graph;
+}
+
 
 =head1 AUTHOR
 

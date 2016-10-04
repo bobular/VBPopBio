@@ -68,6 +68,47 @@ sub geolocation {
 }
 
 
+=head2 as_cytoscape_graph
+
+returns a perl data structure corresponding to Cytoscape JSON format
+
+=cut
+
+sub as_cytoscape_graph {
+  my ($self, $nodes, $edges) = @_;
+
+  $nodes //= {};
+  $edges //= {};
+
+  my $assay_id = sprintf "assay%08d", $self->id;
+  $nodes->{$assay_id} //= { data => {
+				     id => $assay_id,
+				     name => $self->external_id,
+				     type => $self->type->name,
+				    } };
+
+  my $geoloc = $self->geolocation;
+  my $geoloc_id = sprintf "geoloc%08d", $geoloc->id;
+  $nodes->{$geoloc_id} //= { data => {
+				      id => $geoloc->id,
+				      name => $geoloc->description,
+				      type => 'geolocation',
+				     } };
+  $edges->{"$assay_id:$geoloc_id"} //= { data => {
+						  id => "$assay_id:$geoloc_id",
+						  source => $assay_id,
+						  target => $geoloc_id,
+						 } } ;
+
+  my $graph = {
+	       elements => {
+			    nodes => [ values(%$nodes) ],
+			    edges => [ values(%$edges) ],
+			   }
+	      };
+
+  return $graph;
+}
 
 =head1 AUTHOR
 
