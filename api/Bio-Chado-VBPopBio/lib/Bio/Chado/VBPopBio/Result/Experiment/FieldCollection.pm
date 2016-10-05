@@ -90,7 +90,7 @@ sub as_cytoscape_graph {
   my $geoloc = $self->geolocation;
   my $geoloc_id = sprintf "geoloc%08d", $geoloc->id;
   $nodes->{$geoloc_id} //= { data => {
-				      id => $geoloc->id,
+				      id => $geoloc_id,
 				      name => $geoloc->description,
 				      type => 'geolocation',
 				     } };

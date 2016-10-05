@@ -179,8 +179,8 @@ sub as_cytoscape_graph {
 					 qualifier => $qualification->name,
 					 type => 'species',
 					} };
-    $edges->{"assay_id:$species_id"} //= { data => {
-						    id => "assay_id:$species_id",
+    $edges->{"$assay_id:$species_id"} //= { data => {
+						    id => "$assay_id:$species_id",
 						    source => $assay_id,
 						    target => $species_id,
 						   } };
