@@ -75,7 +75,12 @@ sub find_or_create_from_isatab {
     return;
   }
 
-  if (not $pubmed_id and not $doi and $status->id == $schema->types->published->id) {
+  my $url = $publication_data->{comments}{URL};
+  if ($url) {
+    $publication->url($url);
+  }
+
+  if (not $pubmed_id and not $doi and not $url and $status->id == $schema->types->published->id) {
     $schema->defer_exception("publication was annotated as published but does not have a PubMed ID or DOI");
   }
 
@@ -109,10 +114,6 @@ sub find_or_create_from_isatab {
     foreach my $author_string (split /[,;]\s*/, $publication_data->{study_publication_author_list}) {
       $publication->add_to_pubauthors({ surname => $author_string, rank => $rank++ });
     }
-  }
-
-  if (my $url = $publication_data->{comments}{URL}) {
-    $publication->url($url);
   }
 
   return $publication;
