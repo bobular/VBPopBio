@@ -18,7 +18,7 @@ use lib 'lib';
 use Bio::Chado::VBPopBio;
 use JSON;
 use Getopt::Long;
-
+use utf8::all;
 
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });

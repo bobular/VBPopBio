@@ -30,7 +30,7 @@ use DateTime;
 use Geohash;
 use Tie::IxHash;
 use Scalar::Util qw(looks_like_number);
-
+use utf8::all;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -59,9 +59,6 @@ my $assays   = $schema->assays;
 my $json = JSON->new->pretty;    # useful for debugging
 my $gh   = Geohash->new();
 my $done;
-
-# stops "wide character in print" warnings
-binmode( STDOUT, ":utf8" );
 
 #
 # debug only

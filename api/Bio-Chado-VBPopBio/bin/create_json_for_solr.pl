@@ -35,6 +35,7 @@ use Scalar::Util qw(looks_like_number);
 use PDL;
 use Math::Spline;
 use List::MoreUtils;
+use utf8::all;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -77,9 +78,6 @@ my $json = JSON->new->pretty; # useful for debugging
 my $gh = Geohash->new();
 my $done;
 my $needcomma = 0;
-
-# stops "wide character in print" warnings
-binmode(STDOUT, ":utf8");
 
 #
 # debug only

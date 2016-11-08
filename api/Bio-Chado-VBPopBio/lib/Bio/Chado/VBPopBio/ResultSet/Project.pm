@@ -82,8 +82,10 @@ sub create_from_isatab {
   # check for project with project external ID already
   # (has been tested, but is not in a test suite)
   #
-  croak "A project is already loaded with external ID '$study_external_id' - aborting."
-    if ($self->find_by_external_id($study_external_id));
+  if (my $existing_project = $self->find_by_external_id($study_external_id)) {
+    my $existing_stable_id = $existing_project->stable_id;
+    croak "Project $existing_stable_id is already loaded with external ID '$study_external_id' - aborting."
+  }
 
   #
   # now create the project object
