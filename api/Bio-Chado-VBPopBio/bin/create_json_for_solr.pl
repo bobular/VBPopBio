@@ -143,6 +143,10 @@ my $mutated_protein_term = $schema->cvterms->find_by_accession({ term_source_ref
 my $variant_frequency_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
 								   term_accession_number => '0001763' });
 
+my $reference_genome_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
+								   term_accession_number => '0001505' });
+
+
 my $iso8601 = DateTime::Format::ISO8601->new;
 
 print "[\n";
@@ -244,6 +248,8 @@ while (my $stock = $stocks->next) {
   my @other_protocols = map { $_->protocols } @phenotype_assays, @genotype_assays, @species_assays;
   my @other_protocols_types = map { $_->type } @other_protocols;
 
+  my @reference_genome_props = grep { ($_->cvterms)[0]->id == $reference_genome_term->id } map { $_->multiprops } @genotype_assays;
+
   my $document = ohr(
 		    label => $stock->name,
 		    id => $stable_id,
@@ -302,6 +308,8 @@ while (my $stock = $stocks->next) {
 
 		    protocols => [ List::MoreUtils::uniq(map { $_->name } @other_protocols_types) ],
 		    protocols_cvterms => [ List::MoreUtils::uniq(map { flattened_parents($_) } @other_protocols_types) ],
+
+		     (@reference_genome_props == 1 ? ( reference_genome_s => $reference_genome_props[0]->value ) : () ),
 
 		   );
 
