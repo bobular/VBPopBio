@@ -696,12 +696,11 @@ sub stable_id {
   if (!defined $first) {
     # need to make a new ID
 
-    # first, find the "highest" accession in dbxref for VBP
+    # first, find the "highest" accession in dbxref for VBA
     my $last_dbxref_search = $schema->dbxrefs->search
-      ({ 'db.name' => 'VBA' },
-       { join => 'db',
-	 order_by => { -desc => 'accession' },
-         limit => 1 });
+      ({ db_id => $VBA_db->id },
+       { order_by => { -desc => 'accession' },
+         rows => 1 });
 
     my $next_number = 1;
     if (my $first_result = $last_dbxref_search->next) {

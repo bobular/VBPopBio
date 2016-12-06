@@ -271,10 +271,9 @@ sub _stable_id_dbxref {
 
     # first, find the "highest" accession in dbxref for VBP
     my $last_dbxref_search = $schema->dbxrefs->search
-      ({ 'db.name' => 'VBP' },
-       { join => 'db',
-	 order_by => { -desc => 'accession' },
-         limit => 1 });
+      ({ db_id => $db->id },
+       { order_by => { -desc => 'accession' },
+         rows => 1 });
 
     my $next_number = 1;
     if ($last_dbxref_search->count) {
