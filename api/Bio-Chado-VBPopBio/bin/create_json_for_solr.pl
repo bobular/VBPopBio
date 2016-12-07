@@ -414,7 +414,7 @@ while (my $stock = $stocks->next) {
 		      $doc->{concentration_unit_s} = $concentration_unit->name;
 		      $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
 		    } else {
-		      warn "no/incomplete/corrupted concentration data for $assay_stable_id\n";
+		      warn "no/incomplete/corrupted concentration data for $assay_stable_id in @projects\n";
 		    }
 
 		  } else {
