@@ -38,7 +38,7 @@ foreach my $relationship (@cvterm_relationships) {
   my $info = $cvterms_rs->relationship_info($relationship);
   my $obj_class = $info->{class};
   next if ($obj_class eq 'Bio::Chado::VBPopBio::Result::Dbxref'); # skip these because all cvterms have Dbxrefs
-  next if ($obj_class =~ /::(Mage|Phylogeny|Expression|Library|CellLine|Companalysis|Map)::/);
+  next if ($obj_class =~ /::(Mage|Phylogeny|Expression|Library|CellLine|Companalysis|Map|Cv)::/);
   my $count_objects = $schema->resultset($obj_class)->count;
 
   # warn ">>$relationship -> $obj_class\n";
