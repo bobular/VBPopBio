@@ -181,7 +181,7 @@ while (my $project = $projects->next) {
 		    entity_type => 'popbio',
 		    entity_id => $project->id,
 		    description => $project->description ? $project->description : '',
-		    date => iso8601_date($project->public_release_date),
+		    date => iso8601_date($project->public_release_date // $project->submission_date),
 		    authors => [
 				(map { sanitise_contact($_->description) } $project->contacts),
 				(map { $_->authors } @publications)
@@ -232,9 +232,9 @@ while (my $stock = $stocks->next) {
   my @collection_protocol_types = map { $_->type } map { $_->protocols->all } $stock->field_collections;
   my $latlong = stock_latlong($stock); # only returns coords if one site
   my $stock_best_species = $stock->best_species();
-  my $fc = $stock->field_collections->first;
 
   my @field_collections = $stock->field_collections;
+  my $fc = $field_collections[0];
 
   my @phenotype_assays = $stock->phenotype_assays;
   my @phenotypes = map { $_->phenotypes->all } @phenotype_assays;
@@ -249,6 +249,19 @@ while (my $stock = $stocks->next) {
   my @other_protocols_types = map { $_->type } @other_protocols;
 
   my @reference_genome_props = grep { ($_->cvterms)[0]->id == $reference_genome_term->id } map { $_->multiprops } @genotype_assays;
+
+  my %assay_date_fields;
+  %assay_date_fields = assay_date_fields($fc) if defined $fc;
+
+  my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
+
+  # if we have day-resolution dates then add a duration field
+  # (urgently requires the date cleanup for dates stored as 2003-01-01 that really mean some time in 2003)
+  if (keys %assay_date_fields) {
+    my $collection_duration_days = calculate_duration_days($assay_date_fields{collection_date_range});
+
+    $assay_date_fields{collection_duration_days_i} = $collection_duration_days if defined $collection_duration_days;
+  }
 
   my $document = ohr(
 		    label => $stock->name,
@@ -295,7 +308,9 @@ while (my $stock = $stocks->next) {
 
 		    # used to be plain 'date' from any assay
 		    # now it's collection_date if there's an unambiguous collection
-		    (defined $fc ? ( assay_date_fields($fc), collection_assay_id_s => $fc->stable_id ) : () ),
+		    (defined $fc ? ( collection_assay_id_s => $fc->stable_id ) : () ),
+
+		    %assay_date_fields,
 
 		    pubmed => [ (map { "PMID:$_" } multiprops_pubmed_ids($stock)),
 				(map { @{$project2pubmed{$_}} } @projects)
@@ -309,8 +324,12 @@ while (my $stock = $stocks->next) {
 		    protocols => [ List::MoreUtils::uniq(map { $_->name } @other_protocols_types) ],
 		    protocols_cvterms => [ List::MoreUtils::uniq(map { flattened_parents($_) } @other_protocols_types) ],
 
-		     (@reference_genome_props == 1 ? ( reference_genome_s => $reference_genome_props[0]->value ) : () ),
+		    (@reference_genome_props == 1 ? ( reference_genome_s => $reference_genome_props[0]->value ) : () ),
 
+		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
+
+		    (defined $sample_size && defined $assay_date_fields{collection_duration_days_i} ?
+		     ( has_abundance_data_b => 'true' ) : () ),
 		   );
 
   if (!defined $limit || ++$done_samples <= $limit_samples){
@@ -400,7 +419,7 @@ while (my $stock = $stocks->next) {
 		  # to do: insecticide + concentrations + duration
 		  # die "to do...";
 
-		  my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $sample_size, $errors) =
+		  my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $assay_sample_size, $errors) =
 		    assay_insecticides_concentrations_units_and_more($phenotype_assay);
 
 		  die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
@@ -429,8 +448,8 @@ while (my $stock = $stocks->next) {
 		    # warn "no/incomplete duration data for $assay_stable_id\n";
 		  }
 
-		  if (defined $sample_size) {
-		    $doc->{sample_size_i} = $sample_size;
+		  if (defined $assay_sample_size) {
+		    $doc->{sample_size_i} = $assay_sample_size;
 		  }
 
 		  # phenotype_cvterms (singular)
@@ -796,6 +815,36 @@ sub season {
     }
   }
 }
+
+#
+# calculate_duration_days
+#
+# uses the Solr-friendly date_range string to figure out the duration
+#
+# returns null if date range is not provided in day-resolution or range calculates to more than 28 days
+#
+# DOES NOT HANDLE HOUR-RESOLUTION DATA that might be in other Chado props
+#
+# The range [2010-03-10 TO 2010-03-11] has a duration of 2 days
+# a single date has a duration of 1 day
+#
+sub calculate_duration_days {
+  my ($date_range) = @_;
+  if ($date_range =~ /\[(\d{4}-\d{2}-\d{2})\s+TO\s+(\d{4}-\d{2}-\d{2})\]/) {
+    my ($start_date, $end_date) = ($1, $2);
+    my ($start_dt, $end_dt) = ($iso8601->parse_datetime($start_date), $iso8601->parse_datetime($end_date));
+    my $duration = $end_dt - $start_dt;
+    return $duration->in_units('days') + 1;
+
+  } elsif ($date_range =~ /^\d{4}-\d{2}-\d{2}$/) {
+    # single date to day resolution
+    return 1;
+  }
+
+  return undef;
+}
+
+
 
 # converts poss truncated string date into ISO8601 Zulu time (hacked with an extra Z for now)
 sub iso8601_date {
