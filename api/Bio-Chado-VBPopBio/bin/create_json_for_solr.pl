@@ -263,6 +263,8 @@ while (my $stock = $stocks->next) {
     $assay_date_fields{collection_duration_days_i} = $collection_duration_days if defined $collection_duration_days;
   }
 
+  my $sample_type = $stock->type->name;
+
   my $document = ohr(
 		    label => $stock->name,
 		    id => $stable_id,
@@ -277,7 +279,7 @@ while (my $stock = $stocks->next) {
 		    entity_id => $stock->id,
 		    description => $stock->description || join(' ', ($stock_best_species ? $stock_best_species->name : ()), $stock->type->name, ($fc ? $fc->geolocation->summary : ())),
 
-		    sample_type => $stock->type->name,
+		    sample_type => $sample_type,
 		    sample_type_cvterms => [ flattened_parents($stock->type) ],
 
 		    collection_protocols => [ map { $_->name } @collection_protocol_types ],
@@ -328,7 +330,9 @@ while (my $stock = $stocks->next) {
 
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
-		    (defined $sample_size && defined $assay_date_fields{collection_duration_days_i} ?
+		    (defined $sample_size &&
+		     defined $assay_date_fields{collection_duration_days_i} &&
+		     $sample_type eq 'pool' ?
 		     ( has_abundance_data_b => 'true' ) : () ),
 		   );
 
