@@ -821,7 +821,7 @@ sub season {
 #
 # uses the Solr-friendly date_range string to figure out the duration
 #
-# returns null if date range is not provided in day-resolution or range calculates to more than 28 days
+# returns null if date range is not provided in day-resolution
 #
 # DOES NOT HANDLE HOUR-RESOLUTION DATA that might be in other Chado props
 #
