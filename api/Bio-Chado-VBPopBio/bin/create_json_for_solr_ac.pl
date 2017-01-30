@@ -124,6 +124,8 @@ my $date_type       = $schema->types->date;
 my %project2authors;
 my %project2title;
 
+warn "has_abundance_data_b field is not robustly generated - needs general refactoring and consolidation with the main solr script\n";
+
 print "{\n";
 
 ### SAMPLES ###
@@ -146,6 +148,8 @@ while ( my $stock = $stocks->next ) {
     my @field_collections = $stock->field_collections;
     my @phenotype_assays  = $stock->phenotype_assays;
     my @phenotypes        = map { $_->phenotypes->all } @phenotype_assays;
+
+    my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
 
     # my @genotype_assays   = $stock->genotype_assays;
     # my @genotypes         = map { $_->genotypes->all } @genotype_assays;
@@ -175,6 +179,7 @@ while ( my $stock = $stocks->next ) {
                 stable_id  => $stable_id,
                 type       => 'Taxonomy',
                 bundle     => 'pop_sample',
+		(defined $sample_size ? (has_abundance_data_b => 'true') : ()),
                 date       => $date,
                 geo_coords => $latlong,
                 ( $i == 0 )
@@ -205,6 +210,7 @@ while ( my $stock = $stocks->next ) {
             type        => 'Description',
             field       => 'description',
             bundle      => 'pop_sample',
+	    (defined $sample_size ? (has_abundance_data_b => 'true') : ()),
             geo_coords  => $latlong,
             date        => $date,
             textsuggest => $stock->description || join( ' ',
@@ -228,6 +234,7 @@ while ( my $stock = $stocks->next ) {
             type        => 'Title',
             field       => 'label',
             bundle      => 'pop_sample',
+	    (defined $sample_size ? (has_abundance_data_b => 'true') : ()),
             geo_coords  => $latlong,
             date        => $date,
             textsuggest => $stock->name,
@@ -248,6 +255,7 @@ while ( my $stock = $stocks->next ) {
             type        => 'Stable ID',
             field       => 'id',
             bundle      => 'pop_sample',
+	    (defined $sample_size ? (has_abundance_data_b => 'true') : ()),
             geo_coords  => $latlong,
             date        => $date,
             textsuggest => $stable_id,
@@ -274,6 +282,7 @@ while ( my $stock = $stocks->next ) {
                 id          => $stable_id . "_pmid_" . $i,
                 stable_id   => $stable_id,
                 bundle      => 'pop_sample',
+		(defined $sample_size ? (has_abundance_data_b => 'true') : ()),
                 type        => 'Pubmed references',
                 field       => 'pubmed',
                 geo_coords  => $latlong,
@@ -299,6 +308,7 @@ while ( my $stock = $stocks->next ) {
                 id          => $stable_id . "_proj_" . $i,
                 stable_id   => $stable_id,
                 bundle      => 'pop_sample',
+		(defined $sample_size ? (has_abundance_data_b => 'true') : ()),
                 type        => 'Projects',
                 geo_coords  => $latlong,
                 date        => $date,
@@ -326,6 +336,7 @@ while ( my $stock = $stocks->next ) {
 					     id          => $stable_id . "_proj_" . $i . "_title",
 					     stable_id   => $stable_id,
 					     bundle      => 'pop_sample',
+					     (defined $sample_size ? (has_abundance_data_b => 'true') : ()),
 					     type        => 'Project titles',
 					     geo_coords  => $latlong,
 					     date        => $date,
@@ -349,6 +360,7 @@ while ( my $stock = $stocks->next ) {
                 id          => $stable_id . "_proj_" . $i . "_auth_" . $j,
                 stable_id   => $stable_id,
                 bundle      => 'pop_sample',
+		(defined $sample_size ? (has_abundance_data_b => 'true') : ()),
                 type        => 'Authors',
                 geo_coords  => $latlong,
                 date        => $date,
@@ -376,6 +388,7 @@ while ( my $stock = $stocks->next ) {
             type        => 'Sample type',
             field       => 'sample_type',
             bundle      => 'pop_sample',
+	    (defined $sample_size ? (has_abundance_data_b => 'true') : ()),
             geo_coords  => $latlong,
             date        => $date,
             textsuggest => $stock->type->name,
@@ -407,6 +420,7 @@ while ( my $stock = $stocks->next ) {
                 stable_id  => $stable_id,
                 type       => 'Geography',
                 bundle     => 'pop_sample',
+		(defined $sample_size ? (has_abundance_data_b => 'true') : ()),
                 date       => $date,
                 geo_coords => $latlong,
                 ( $i == 0 )
@@ -443,6 +457,7 @@ while ( my $stock = $stocks->next ) {
                 id         => $stable_id . "_colProtocol_" . $i,
                 stable_id  => $stable_id,
                 bundle     => 'pop_sample',
+		(defined $sample_size ? (has_abundance_data_b => 'true') : ()),
                 type       => 'Collection protocols',
                 geo_coords => $latlong,
                 date       => $date,
