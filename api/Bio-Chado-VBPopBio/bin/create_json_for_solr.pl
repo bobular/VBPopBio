@@ -336,6 +336,10 @@ while (my $stock = $stocks->next) {
 		     ( has_abundance_data_b => 'true' ) : () ),
 		   );
 
+  fallback_value($document->{collection_protocols}, 'no data');
+  fallback_value($document->{protocols}, 'no data');
+
+
   if (!defined $limit || ++$done_samples <= $limit_samples){
     # print the sample
     my $json_text = $json->encode($document);
@@ -376,6 +380,8 @@ while (my $stock = $stocks->next) {
       $doc->{phenotype_type_s} = "insecticide resistance";
       $doc->{protocols} = [ List::MoreUtils::uniq(map { $_->name } @protocol_types) ];
       $doc->{protocols_cvterms} = [ List::MoreUtils::uniq(map { flattened_parents($_) } @protocol_types) ];
+
+      fallback_value($doc->{protocols}, 'no data');
 
       foreach my $phenotype ($phenotype_assay->phenotypes) {
       	
@@ -553,6 +559,8 @@ while (my $stock = $stocks->next) {
 	$doc->{genotype_type_s}   = $genotype_subtype;
 	$doc->{protocols}         = [ List::MoreUtils::uniq(map { $_->name } @protocol_types) ];
 	$doc->{protocols_cvterms} = [ List::MoreUtils::uniq(map { flattened_parents($_) } @protocol_types) ];
+
+	fallback_value($doc->{protocols}, 'no data');
 
 	my $genotype_stable_ish_id = $stable_id.".".$genotype->id;
 	# alter fields
@@ -1063,3 +1071,14 @@ sub sanitise_contact {
   $contact =~ s/\s+\(.+\)//;
   return $contact;
 }
+
+#
+# if an empty $arrayref is passed, $value (e.g. 'no data') is pushed onto the array that is referenced
+#
+sub fallback_value {
+  my ($arrayref, $value) = @_;
+  unless (@$arrayref) {
+    push @$arrayref, $value;
+  }
+}
+
