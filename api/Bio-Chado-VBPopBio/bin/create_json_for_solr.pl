@@ -338,7 +338,8 @@ while (my $stock = $stocks->next) {
 
   fallback_value($document->{collection_protocols}, 'no data');
   fallback_value($document->{protocols}, 'no data');
-
+  fallback_value($document->{collection_protocols_cvterms}, 'no data');
+  fallback_value($document->{protocols_cvterms}, 'no data');
 
   if (!defined $limit || ++$done_samples <= $limit_samples){
     # print the sample
@@ -382,6 +383,7 @@ while (my $stock = $stocks->next) {
       $doc->{protocols_cvterms} = [ List::MoreUtils::uniq(map { flattened_parents($_) } @protocol_types) ];
 
       fallback_value($doc->{protocols}, 'no data');
+      fallback_value($doc->{protocols_cvterms}, 'no data');
 
       foreach my $phenotype ($phenotype_assay->phenotypes) {
       	
@@ -561,6 +563,7 @@ while (my $stock = $stocks->next) {
 	$doc->{protocols_cvterms} = [ List::MoreUtils::uniq(map { flattened_parents($_) } @protocol_types) ];
 
 	fallback_value($doc->{protocols}, 'no data');
+	fallback_value($doc->{protocols_cvterms}, 'no data');
 
 	my $genotype_stable_ish_id = $stable_id.".".$genotype->id;
 	# alter fields
