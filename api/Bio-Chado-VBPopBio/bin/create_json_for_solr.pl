@@ -527,7 +527,7 @@ while (my $stock = $stocks->next) {
 	my ($observable, $attribute, $cvalue) = ($phenotype->observable, $phenotype->attr, $phenotype->cvalue);
 
 	# blood meal
-	if (defined $observable && $observable->id == $blood_meal_term->id &&
+	if (defined $observable && ($observable->id == $blood_meal_term->id || $observable->id == $blood_meal_source_term->id) &&
 	    defined $attribute && $blood_meal_source_term->has_child($attribute) &&
 	    defined $cvalue && $parent_term_of_present_absent->has_child($cvalue)) {
 	  my $doc = clone($document);
