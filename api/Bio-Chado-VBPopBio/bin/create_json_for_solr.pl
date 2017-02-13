@@ -5,8 +5,8 @@
 #
 #
 # option:
-#   -limit P,Q,R,S    # for debugging - limit output to P projects, R samples, R IR phenotypes and S genotypes
-#   -limit N          # same as above, same limit for all document types
+#   -limit P,Q,R,S,T,U    # for debugging - limit output to P projects, R samples, R IR phenotypes and S genotypes, T bloodmeal pheno's, U infection pheno's
+#   -limit N              # same as above, same limit for all document types
 #
 #
 ## get example solr server running (if not already)
@@ -56,13 +56,13 @@ GetOptions("dbname=s"=>\$dbname,
 
 warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if (defined $limit && $project_stable_id);
 
-my ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes);
+my ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes, $limit_bm_phenotypes, $limit_infection_phenotypes);
 if (defined $limit) {
   my @limits = split /\D+/, $limit;
-  if (@limits == 4) {
-    ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes) = @limits;
+  if (@limits == 6) {
+    ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes, $limit_bm_phenotypes, $limit_infection_phenotypes) = @limits;
   } else {
-    ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes) = ($limits[0], $limits[0], $limits[0], $limits[0]);
+    ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes, $limit_bm_phenotypes, $limit_infection_phenotypes) = ($limits[0], $limits[0], $limits[0], $limits[0], $limits[0], $limits[0]);
   }
 }
 
@@ -128,6 +128,9 @@ my $karyotype_term = $schema->cvterms->find_by_accession({ term_source_ref => 'E
 my $count_unit_term = $schema->cvterms->find_by_accession({ term_source_ref => 'UO',
                      term_accession_number => '0000189' });
 
+my $percent_term = $schema->cvterms->find_by_accession({ term_source_ref => 'UO',
+							 term_accession_number => '0000187' });
+
 my $simple_sequence_length_polymorphism_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
 										     term_accession_number => '0000207' });
 
@@ -145,6 +148,25 @@ my $variant_frequency_term = $schema->cvterms->find_by_accession({ term_source_r
 
 my $reference_genome_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
 								   term_accession_number => '0001505' });
+
+my $blood_meal_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
+							    term_accession_number => '0001003' });
+
+my $blood_meal_source_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
+								   term_accession_number => '0001004' });
+
+my $arthropod_infection_status_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VSMO',
+									    term_accession_number => '0000009' });
+
+my $arthropod_host_blood_index_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VSMO',
+									    term_accession_number => '0000132' });
+
+my $parent_term_of_present_absent = $schema->cvterms->find_by_accession({ term_source_ref => 'PATO',
+									  term_accession_number => '0000070' });
+
+my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDO',
+								      term_accession_number => 'IDO:0000486' });
+
 
 
 my $iso8601 = DateTime::Format::ISO8601->new;
@@ -223,6 +245,7 @@ my %phenotype_id2signature; # phenotype_stable_ish_id => signature
 my $done_samples = 0;
 my $done_ir_phenotypes = 0;
 my $done_genotypes = 0;
+my ($done_bm_phenotypes, $done_infection_phenotypes) = (0, 0);
 
 while (my $stock = $stocks->next) {
   my $stable_id = $stock->stable_id;
@@ -356,6 +379,8 @@ while (my $stock = $stocks->next) {
   foreach my $phenotype_assay (@phenotype_assays) {
     last if (defined $limit && $done_ir_phenotypes >= $limit_ir_phenotypes);
 
+    my $assay_stable_id = $phenotype_assay->stable_id;
+
     # is it a phenotype that we can use?
     my @protocol_types = map { $_->type } $phenotype_assay->protocols->all;
 
@@ -367,8 +392,6 @@ while (my $stock = $stocks->next) {
       # cloning is safer and simpler (but more expensive) than re-using $document
       # $document is the sample document
       my $doc = clone($document);
-
-      my $assay_stable_id = $phenotype_assay->stable_id;
 
       # always change these fields
       $doc->{bundle} = 'pop_sample_phenotype';
@@ -389,7 +412,7 @@ while (my $stock = $stocks->next) {
       	
       	#print "\t\t\tphenotype... @andy @done: remove later after  @remove\n";
 
-		my $phenotype_stable_ish_id = $stable_id.".".$phenotype->id;
+		my $phenotype_stable_ish_id = $assay_stable_id.".".$phenotype->id;
 		# alter fields
 		$doc->{id} = $phenotype_stable_ish_id;
 		$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
@@ -492,8 +515,112 @@ while (my $stock = $stocks->next) {
 
 		}
       }
-    }
+    } else {
+      # other phenotype subtypes dealt with here
+      foreach my $phenotype ($phenotype_assay->phenotypes) {
+	my ($observable, $attribute, $cvalue) = ($phenotype->observable, $phenotype->attr, $phenotype->cvalue);
 
+	# blood meal
+	if (defined $observable && $observable->id == $blood_meal_term->id &&
+	    defined $attribute && $blood_meal_source_term->has_child($attribute) &&
+	    defined $cvalue && $parent_term_of_present_absent->has_child($cvalue)) {
+	  my $doc = clone($document);
+
+	  # always change these fields
+	  my $phenotype_stable_ish_id = $assay_stable_id.".".$phenotype->id;
+	  $doc->{id} = $phenotype_stable_ish_id;
+	  $doc->{bundle} = 'pop_sample_phenotype';
+	  $doc->{bundle_name} = 'Sample phenotype';
+
+	  delete $doc->{phenotypes};
+	  delete $doc->{phenotypes_cvterms};
+
+	  # NEW fields
+	  $doc->{phenotype_type_s} = "blood meal identification";
+	  $doc->{protocols} = [ List::MoreUtils::uniq(map { $_->name } @protocol_types) ];
+	  $doc->{protocols_cvterms} = [ List::MoreUtils::uniq(map { flattened_parents($_) } @protocol_types) ];
+	  fallback_value($doc->{protocols}, 'no data');
+	  fallback_value($doc->{protocols_cvterms}, 'no data');
+
+	  $doc->{blood_meal_source_s} = $attribute->name;
+	  $doc->{blood_meal_source_cvterms} = [ flattened_parents($attribute) ];
+	  $doc->{blood_meal_status_s} = $cvalue->name;
+
+	  # now add a fractional index if available
+	  my ($index_prop) = $phenotype->multiprops($arthropod_host_blood_index_term);
+	  if (defined $index_prop) {
+	    # check the value is a percentage
+	    my ($ahbi, $unit_term) = $index_prop->cvterms;
+	    if (defined $unit_term && $unit_term->dbxref->db->name eq 'UO') {
+	      $doc->{blood_meal_index_f} = $index_prop->value;
+	      $doc->{blood_meal_index_unit_s} = $unit_term->name;
+	      $doc->{blood_meal_index_unit_cvterms} =  [ flattened_parents($unit_term) ];
+	    } else {
+	      die "unitless blood meal index value"
+	    }
+	  }
+
+
+
+	  if (!defined $limit || ++$done_bm_phenotypes<=$limit_bm_phenotypes) {
+	    my $json_text = $json->encode($doc);
+	    chomp($json_text);
+	    print ",\n" if ($needcomma++);
+	    print qq!$json_text\n!;
+	  }
+
+	  ### infection phenotype ###
+	} elsif (defined $observable && $observable->id == $arthropod_infection_status_term->id &&
+		 defined $attribute && # no further tests here but expecting a species term
+		 defined $cvalue && $parent_term_of_present_absent->has_child($cvalue)) {
+	  my $doc = clone($document);
+
+	  # always change these fields
+	  my $phenotype_stable_ish_id = $assay_stable_id.".".$phenotype->id;
+	  $doc->{id} = $phenotype_stable_ish_id;
+	  $doc->{bundle} = 'pop_sample_phenotype';
+	  $doc->{bundle_name} = 'Sample phenotype';
+
+	  delete $doc->{phenotypes};
+	  delete $doc->{phenotypes_cvterms};
+
+	  # NEW fields
+	  $doc->{phenotype_type_s} = "infection status";
+	  $doc->{protocols} = [ List::MoreUtils::uniq(map { $_->name } @protocol_types) ];
+	  $doc->{protocols_cvterms} = [ List::MoreUtils::uniq(map { flattened_parents($_) } @protocol_types) ];
+	  fallback_value($doc->{protocols}, 'no data');
+	  fallback_value($doc->{protocols_cvterms}, 'no data');
+
+	  $doc->{infection_source_s} = $attribute->name;
+	  $doc->{infection_source_cvterms} = [ flattened_parents($attribute) ];
+	  $doc->{infection_status_s} = $cvalue->name;
+
+	  # now add a fractional index if available
+	  my ($index_prop) = $phenotype->multiprops($infection_prevalence_term);
+	  if (defined $index_prop) {
+	    # check the value is a percentage
+	    my ($ahbi, $unit_term) = $index_prop->cvterms;
+	    if (defined $unit_term && $unit_term->dbxref->db->name eq 'UO') {
+	      $doc->{infection_prevalence_f} = $index_prop->value;
+	      $doc->{infection_prevalence_unit_s} = $unit_term->name;
+	      $doc->{infection_prevalence_unit_cvterms} = [ flattened_parents($unit_term) ];
+	    } else {
+	      die "unitless infection prevalence value"
+	    }
+	  }
+
+	  if (!defined $limit || ++$done_infection_phenotypes<=$limit_infection_phenotypes) {
+	    my $json_text = $json->encode($doc);
+	    chomp($json_text);
+	    print ",\n" if ($needcomma++);
+	    print qq!$json_text\n!;
+	  }
+
+	} else {
+	  warn "Unknown or unexpected phenotype from $assay_stable_id\n";
+	}
+      }
+    }
   }
 
   # same for genotypes
