@@ -96,6 +96,10 @@ if ($project_stable_id) {
 my $ir_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '20000058' });
 
+my $diagnostic_test_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
+								 term_accession_number => '20000075' });
+
+
 # insecticidal substance
 my $insecticidal_substance = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '10000239' });
@@ -467,9 +471,11 @@ while (my $stock = $stocks->next) {
 		      $doc->{concentration_f} = $concentration;
 		      $doc->{concentration_unit_s} = $concentration_unit->name;
 		      $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
-		    } else {
-		      warn "no/incomplete/corrupted concentration data for $assay_stable_id in @projects\n";
-		    }
+		    }# elsif (grep { $_->id == $diagnostic_test_term->id ||
+	#			      $diagnostic_test_term->has_child($_) } @protocol_types) {
+		      # this warning only for DTs
+	#	      warn "no/incomplete/corrupted concentration data for $assay_stable_id in @projects\n";
+	#	    }
 
 		  } else {
 		    warn "no insecticide for $assay_stable_id !!!\n";
