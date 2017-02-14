@@ -623,7 +623,7 @@ while (my $stock = $stocks->next) {
 	  }
 
 	} else {
-	  warn "Unknown or unexpected phenotype from $assay_stable_id\n";
+	  warn "Unknown or unexpected phenotype from $assay_stable_id in @projects\n";
 	}
       }
     }
