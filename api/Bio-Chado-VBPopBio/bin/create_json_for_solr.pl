@@ -558,9 +558,10 @@ while (my $stock = $stocks->next) {
 	    # check the value is a percentage
 	    my ($ahbi, $unit_term) = $index_prop->cvterms;
 	    if (defined $unit_term && $unit_term->dbxref->db->name eq 'UO') {
-	      $doc->{blood_meal_index_f} = $index_prop->value;
-	      $doc->{blood_meal_index_unit_s} = $unit_term->name;
-	      $doc->{blood_meal_index_unit_cvterms} =  [ flattened_parents($unit_term) ];
+	      $doc->{phenotype_value_f} = $index_prop->value;
+	      $doc->{phenotype_value_type_s} = 'host blood index';
+	      $doc->{phenotype_value_unit_s} = $unit_term->name;
+	      $doc->{phenotype_value_unit_cvterms} =  [ flattened_parents($unit_term) ];
 	    } else {
 	      die "unitless blood meal index value"
 	    }
@@ -607,9 +608,10 @@ while (my $stock = $stocks->next) {
 	    # check the value is a percentage
 	    my ($ahbi, $unit_term) = $index_prop->cvterms;
 	    if (defined $unit_term && $unit_term->dbxref->db->name eq 'UO') {
-	      $doc->{infection_prevalence_f} = $index_prop->value;
-	      $doc->{infection_prevalence_unit_s} = $unit_term->name;
-	      $doc->{infection_prevalence_unit_cvterms} = [ flattened_parents($unit_term) ];
+	      $doc->{phenotype_value_f} = $index_prop->value;
+	      $doc->{phenotype_value_type_s} = 'infection prevalence';
+	      $doc->{phenotype_value_unit_s} = $unit_term->name;
+	      $doc->{phenotype_value_type_cvterms} = [ flattened_parents($unit_term) ];
 	    } else {
 	      die "unitless infection prevalence value"
 	    }
