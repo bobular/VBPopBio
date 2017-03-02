@@ -1,3 +1,7 @@
 "Source Name"	"Sample Name"	Description	"Comment [Ensembl variation ID]"	"Comment [BioSamples accession]"	"Material Type"	"Term Source REF"	"Term Accession Number"	"Characteristics [sex (EFO:0000695)]"	"Term Source REF"	"Term Accession Number"	"Characteristics [developmental stage (EFO:0000399)]"	"Term Source REF"	"Term Accession Number"	"Characteristics [age (EFO:0000246)]"	Unit	"Term Source REF"	"Term Accession Number"
 Source01	Sample01	"First sample of many"	1234	SAMEA453339	"whole organism"	EFO	0002906	female	PATO	0000383	adult	IDOMAL	0000655	4	day	UO	0000033
 Source02	Sample02	"Second sample of many"	4567	SAMEA453340	"whole organism"	EFO	0002906	"mixed sex"	PATO	0001338	adult	IDOMAL	0000655	2-3	week	UO	0000034
+Source03	Sample03	"multi-dates sample"			"whole organism"	EFO	0002906
+Source04	Sample04	"multi-date ranges sample"			"whole organism"	EFO	0002906
+Source05	Sample05	"multi-date and ranges sample"			"whole organism"	EFO	0002906
+Source06	Sample06	"multi-range with overlap sample"			"whole organism"	EFO	0002906

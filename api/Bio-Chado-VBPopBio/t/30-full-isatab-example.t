@@ -1,4 +1,4 @@
-use Test::More tests => 29;
+use Test::More tests => 41;
 
 use strict;
 use JSON;
@@ -9,6 +9,10 @@ my $projects = $schema->projects;
 
 my $json = JSON->new->pretty;
 my $verbose = 0; # print out JSON (or not)
+
+my $start_date_type = $schema->types->start_date;
+my $end_date_type = $schema->types->end_date;
+my $date_type = $schema->types->date;
 
 $schema->txn_do_deferred(
 		sub {
@@ -81,6 +85,36 @@ $schema->txn_do_deferred(
 #		  is($project->stocks->first->nd_experiments->count, 3, "3 assays for one stock");
 #
 
+		  my @samples = $project->stocks->all;
+		  my $sample3 = $samples[2]; # Date: 2010-11-12;2010-11-15
+		  my $fc3 = $sample3->field_collections->first;
+		  is(scalar $fc3->multiprops($start_date_type), 0, "shouldn't have start or end dates");
+		  is(scalar $fc3->multiprops($end_date_type), 0, "shouldn't have start or end dates");
+		  is(scalar $fc3->multiprops($date_type), 2, "should have two date multiprops");
+
+
+		  my $sample4 = $samples[3]; # Date: 2010-11/2010-12;2011-09/2011-11
+		  my $fc4 = $sample4->field_collections->first;
+		  is(scalar $fc4->multiprops($start_date_type), 2, "should have 2 start dates");
+		  is(scalar $fc4->multiprops($end_date_type), 2, "should have 2 end dates");
+		  is(scalar $fc4->multiprops($date_type), 0, "should have no date multiprops");
+
+		  is($fc4->duration_in_days(), undef, "should be undefined duration as it is in month resolution");
+
+		  my $sample5 = $samples[4]; # Date: 2010-11-12/2010-11-13;2010-11-15
+		  my $fc5 = $sample5->field_collections->first;
+		  is(scalar $fc5->multiprops($start_date_type), 1, "should have 1 start date");
+		  is(scalar $fc5->multiprops($end_date_type), 1, "should have 1 end date");
+		  is(scalar $fc5->multiprops($date_type), 1, "should have 1 date multiprop");
+
+		  is($fc5->duration_in_days(), 3, "complex range is three days");
+
+		  my $fc6 = $samples[5]->field_collections->first; # overlapping range 2010-01-15/2010-01-19;2010-01-19/2010-01-21
+		  is($fc6->duration_in_days(), 7, "overlapping ranges should be 7 days all told");
+
+		  # warn $json->encode($fc5->as_data_structure);
+
+
 
 		  my $project2 = $projects->create_from_isatab({ directory=>'../../test-data/VectorBase_PopBio_ISA-Tab_derived-from_example' });
 		  my $project2_json = $json->encode($project2->as_data_structure);
@@ -94,7 +128,7 @@ $schema->txn_do_deferred(
 		  is($project1->stocks->first->sample_manipulations->first->stocks_created->first->stable_id, $project2->stocks->first->stable_id, "project 1's stock creates project 2's stock");
 		  is($project2->stocks->first->sample_manipulations->first->stocks_used->first->stable_id, $project1->stocks->first->stable_id, "and the same the other way round");
 
-		  is($project1->stocks->count, 2, "project 1 still only has 2 stocks");
+		  is($project1->stocks->count, 5, "project 1 still only has 6 stocks");
 
 		  diag("Project1 '", $project1->name, "' was created temporarily as:\n$project1_json") if ($verbose);
 		  diag("Project2 '", $project2->name, "' was created temporarily as:\n$project2_json") if ($verbose);

@@ -27,6 +27,9 @@ use aliased 'Bio::Chado::VBPopBio::Util::Extra';
 use aliased 'Bio::Chado::VBPopBio::Util::Date';
 use Tie::Hash::Indexed;
 
+use Date::Simple;
+use Date::Range;
+
 =head1 NAME
 
 Bio::Chado::VBPopBio::Result::Experiment
@@ -395,26 +398,28 @@ sub add_to_protocols_from_isatab {
 	  $schema->defer_exception_once("Can't find assay (protocol $protocol_ref) performer by email '$performer_email' in Study Contacts section");
 	}
       }
-      if (my $date = $protocol_data->{date}) {
-	my ($start_date, $end_date) = split qr{/}, $date;
-	if ($start_date && $end_date) {
-	  my $valid_start = Date->simple_validate_date($start_date, $self);
-	  my $valid_end = Date->simple_validate_date($end_date, $self);
-	  if ($valid_start && $valid_end) {
-	    $self->add_multiprop(Multiprop->new(cvterms=>[$types->start_date], value=>$valid_start));
-	    $self->add_multiprop(Multiprop->new(cvterms=>[$types->end_date], value=>$valid_end));
+      if (my $dates = $protocol_data->{date}) {
+	foreach my $date (split /;\s*/, $dates) {
+	  my ($start_date, $end_date) = split qr{/}, $date;
+	  if ($start_date && $end_date) {
+	    my $valid_start = Date->simple_validate_date($start_date, $self);
+	    my $valid_end = Date->simple_validate_date($end_date, $self);
+	    if ($valid_start && $valid_end) {
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->start_date], value=>$valid_start));
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->end_date], value=>$valid_end));
+	    } else {
+	      $schema->defer_exception_once("Cannot parse start/end date '$date' for assay (protocol $protocol_ref).");
+	    }
+	  } elsif ($start_date) {
+	    my $valid_date = Date->simple_validate_date($start_date, $self);
+	    if ($valid_date) {
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->date], value=>$valid_date));
+	    } else {
+	      $schema->defer_exception_once("Cannot parse date '$date' for assay (protocol $protocol_ref).");
+	    }
 	  } else {
-	    $schema->defer_exception_once("Cannot parse start/end date '$date' for assay (protocol $protocol_ref).");
+	    $schema->defer_exception_once("Some problem with date string '$date' in assay (protocol $protocol_ref).")
 	  }
-	} elsif ($start_date) {
-	  my $valid_date = Date->simple_validate_date($start_date, $self);
-	  if ($valid_date) {
-	    $self->add_multiprop(Multiprop->new(cvterms=>[$types->date], value=>$valid_date));
-	  } else {
-	    $schema->defer_exception_once("Cannot parse date '$date' for assay (protocol $protocol_ref).");
-	  }
-	} else {
-	  $schema->defer_exception_once("Some problem with date string '$date' in assay (protocol $protocol_ref).")
 	}
       }
 
@@ -909,6 +914,67 @@ sub as_cytoscape_graph {
   return $graph;
 }
 
+=head2 duration_in_days
+
+Returns a value (integer but maybe floating point in future) of the number of days spanned by this
+assay's date multiprops ('date', and matched pairs of 'start_date' and 'end_date')
+
+Will only calculate durations if dates are all given to day resolution. If any dates are year or year-month only resolution, then it will return undefined.
+
+Should it be careful to not count days twice (if multiple date ranges overlap)?  I think so.
+
+
+
+=cut
+
+sub duration_in_days {
+  my ($self) = @_;
+
+  my $schema = $self->result_source->schema;
+
+  # filter the multiprops here for a bit of speed gain
+  my @multiprops = $self->multiprops;
+  my ($start_date_id, $end_date_id, $date_id) = map { $_->id } map { $schema->types->$_ } qw/start_date end_date date/;
+  my @start_dates = grep { ($_->cvterms)[0]->id == $start_date_id } @multiprops;
+  my @end_dates = grep { ($_->cvterms)[0]->id == $end_date_id } @multiprops;
+  my @dates = grep { ($_->cvterms)[0]->id == $date_id } @multiprops;
+
+  # first check for non-day-resolution format dates
+  foreach my $date_value (map { $_->value } @start_dates, @end_dates, @dates) {
+    unless ($date_value =~ /^\d{4}-\d{2}-\d{2}$/) {
+      return undef;
+    }
+  }
+
+  # now we convert everything into Date::Range objects
+  my @ranges;
+  for (my $i=0; $i<@start_dates; $i++) {
+    push @ranges, Date::Range->new(Date::Simple->new($start_dates[$i]->value), Date::Simple->new($end_dates[$i]->value));
+  }
+  for (my $i=0; $i<@dates; $i++) {
+    push @ranges, Date::Range->new(Date::Simple->new($dates[$i]->value), Date::Simple->new($dates[$i]->value));
+  }
+
+  # and check for overlaps
+  my $there_are_overlaps = 0;
+  for (my $i=0; $i<@ranges; $i++) {
+    for (my $j=$i+1; $j<@ranges; $j++) {
+      $there_are_overlaps = 1 if ($ranges[$i]->overlaps($ranges[$j]));
+    }
+  }
+
+  if ($there_are_overlaps) {
+    # if overlaps, use a hash of dates to sum the days
+    my %days;
+    map { $days{$_->as_str} = 1 } map { $_->dates } @ranges;
+    return keys %days;
+  } else {
+    # otherwise use sum of Date::Range lengths
+    my $days = 0;
+    map { $days += $_->length } @ranges;
+    return $days;
+  }
+}
 
 
 =head1 AUTHOR
