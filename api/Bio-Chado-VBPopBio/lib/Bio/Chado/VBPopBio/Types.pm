@@ -654,6 +654,20 @@ sub fallback_species_accession {
 memoize('fallback_species_accession');
 
 
+=head2 collection_duration_in_days
+
+Internal project prop type
+
+=cut
+
+sub collection_duration_in_days {
+  my $self = shift;
+  return $self->schema->cvterms->find_by_accession( { term_source_ref => 'VBcv',
+						      term_accession_number => '0001009',
+						    } );
+}
+memoize('collection_duration_in_days');
+
 
 
 #

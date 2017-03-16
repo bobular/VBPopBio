@@ -171,8 +171,6 @@ my $parent_term_of_present_absent = $schema->cvterms->find_by_accession({ term_s
 my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDO',
 								      term_accession_number => 'IDO:0000486' });
 
-
-
 my $iso8601 = DateTime::Format::ISO8601->new;
 
 print "[\n";
@@ -282,11 +280,8 @@ while (my $stock = $stocks->next) {
 
   my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
 
-  # if we have day-resolution dates then add a duration field
-  # (urgently requires the date cleanup for dates stored as 2003-01-01 that really mean some time in 2003)
-  if (keys %assay_date_fields) {
-    my $collection_duration_days = calculate_duration_days($assay_date_fields{collection_date_range});
-
+  if (defined $fc) {
+    my $collection_duration_days = $fc->duration_in_days();
     $assay_date_fields{collection_duration_days_i} = $collection_duration_days if defined $collection_duration_days;
   }
 

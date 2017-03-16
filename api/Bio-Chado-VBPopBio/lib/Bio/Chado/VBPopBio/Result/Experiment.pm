@@ -919,11 +919,14 @@ sub as_cytoscape_graph {
 Returns a value (integer but maybe floating point in future) of the number of days spanned by this
 assay's date multiprops ('date', and matched pairs of 'start_date' and 'end_date')
 
-Will only calculate durations if dates are all given to day resolution. If any dates are year or year-month only resolution, then it will return undefined.
+Will only calculate durations if dates are all given to day
+resolution. If any dates are year or year-month only resolution, then
+it will return undefined.
 
-Should it be careful to not count days twice (if multiple date ranges overlap)?  I think so.
+If a collection has the "collection duration in days" property then
+this will override any date-based duration calculations.
 
-
+It will not count days twice in the case where multiple date ranges overlap.
 
 =cut
 
@@ -934,7 +937,14 @@ sub duration_in_days {
 
   # filter the multiprops here for a bit of speed gain
   my @multiprops = $self->multiprops;
-  my ($start_date_id, $end_date_id, $date_id) = map { $_->id } map { $schema->types->$_ } qw/start_date end_date date/;
+  my ($start_date_id, $end_date_id, $date_id, $cdid_id) = map { $_->id } map { $schema->types->$_ }
+    qw/start_date end_date date collection_duration_in_days/;
+
+  my @cdids = grep { ($_->cvterms)[0]->id == $cdid_id } @multiprops;
+  if (@cdids == 1) {
+    return $cdids[0]->value;
+  }
+
   my @start_dates = grep { ($_->cvterms)[0]->id == $start_date_id } @multiprops;
   my @end_dates = grep { ($_->cvterms)[0]->id == $end_date_id } @multiprops;
   my @dates = grep { ($_->cvterms)[0]->id == $date_id } @multiprops;
