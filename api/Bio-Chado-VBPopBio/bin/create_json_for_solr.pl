@@ -280,12 +280,18 @@ while (my $stock = $stocks->next) {
 
   my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
 
-  if (defined $fc) {
-    my $collection_duration_days = $fc->duration_in_days();
-    $assay_date_fields{collection_duration_days_i} = $collection_duration_days if defined $collection_duration_days;
+  my $sample_type = $stock->type->name;
+
+  my $has_abundance_data = defined $sample_size &&
+    defined $assay_date_fields{collection_duration_days_i} &&
+      $sample_type eq 'pool' ? 1 : 0;
+
+  # split dates if zero abundance data
+  my @zero_abundance_dates;
+  if ($has_abundance_data && $sample_size == 0) {
+    warn "more to do here\n";
   }
 
-  my $sample_type = $stock->type->name;
 
   my $document = ohr(
 		    label => $stock->name,
@@ -352,11 +358,8 @@ while (my $stock = $stocks->next) {
 
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
-		    (defined $sample_size &&
-		     defined $assay_date_fields{collection_duration_days_i} &&
-		     $sample_type eq 'pool' ?
-		     ( has_abundance_data_b => 'true' ) : () ),
-		   );
+		     ( $has_abundance_data ? (has_abundance_data_b => 'true') : () ),
+		     );
 
   fallback_value($document->{collection_protocols}, 'no data');
   fallback_value($document->{protocols}, 'no data');
@@ -879,53 +882,62 @@ sub assay_date {
   return undef;
 }
 
-# returns key=>value data for collection_date
+# returns
 # 1. collection_date => always an iso8601 date for the date or start_date
-# 2. collection_date_range => a DateRangeField with the Chado-resolution date or [start_date TO end_date]
+# 2. collection_date_range => a multi-valued DateRangeField with the Chado-resolution dates, or start-end date ranges
 # 3. collection_season => One or more DateRangeField values in the year 1600 (an arbitrary leap year) used for seasonal search
+# 4. collection_duration_days_i => number of days of collection effort
 #
 # by Chado-resolution we mean "2010-10" will refer automatically to a range including the entire month of October 2010
 #
 sub assay_date_fields {
   my $assay = shift;
 
+  my $collection_duration_days = $assay->duration_in_days();
+  my %result = (
+		collection_date_range => [],
+		collection_season => [],
+	       );
+  $result{collection_duration_days_i} = $collection_duration_days if defined $collection_duration_days;
+
   my @dates = $assay->multiprops($date_type);
-  if (@dates == 1) {
-    my $date = $dates[0]->value;
-    return (
-	    collection_date => iso8601_date($date),
-	    collection_date_range => $date,
-	    collection_season => season($date),
-	   );
-  } else {
-    my @start_dates = $assay->multiprops($start_date_type);
-    my @end_dates = $assay->multiprops($end_date_type);
-    if (@start_dates == 1 && @end_dates == 1) {
-      my $start_date = $start_dates[0]->value;
-      my $end_date = $end_dates[0]->value;
+  my @start_dates = $assay->multiprops($start_date_type);
+  my @end_dates = $assay->multiprops($end_date_type);
 
-      # convert to datetime to check correct order
-      # swap them if start > end
-      my ($start_dt, $end_dt) = ($iso8601->parse_datetime($start_date), $iso8601->parse_datetime($end_date));
-      if (DateTime->compare($start_dt, $end_dt) > 0) {
-	($start_date, $end_date) = ($end_date, $start_date);
-      }
+  # first deal with the single date for Solr back-compatibility
+  # use the first date or start_date
+  if ($dates[0]) {
+    $result{collection_date} = iso8601_date($dates[0]->value);
+  } elsif ($start_dates[0]) {
+    $result{collection_date} = iso8601_date($start_dates[0]->value);
+  }
 
+  # now deal with the potentially multi-valued dates and date ranges
+  foreach my $date (map { $_->value } @dates) {
+    push @{$result{collection_date_range}}, $date;
+    push @{$result{collection_season}}, season($date);
+  }
 
-      return  ($start_date eq $end_date) ? (
-					    collection_date => iso8601_date($start_date),
-					    collection_date_range => $start_date,
-					    collection_season => season($start_date),
-					   ) :
-					   (
-					    collection_date => iso8601_date($start_date),
-					    collection_date_range => "[$start_date TO $end_date]",
-					    collection_season => season($start_date, $end_date),
-					   );
+  die "unequal number of start and end dates for ".$assay->stable_id."\n" unless (@start_dates == @end_dates);
+  for (my $i=0; $i<@start_dates; $i++) {
+    my $start_date = $start_dates[$i]->value;
+    my $end_date = $end_dates[$i]->value;
 
+    my ($start_dt, $end_dt) = ($iso8601->parse_datetime($start_date), $iso8601->parse_datetime($end_date));
+    if (DateTime->compare($start_dt, $end_dt) > 0) {
+      ($start_date, $end_date) = ($end_date, $start_date);
+    }
+
+    if ($start_date eq $end_date) {
+      push @{$result{collection_date_range}}, $start_date;
+      push @{$result{collection_season}}, season($start_date);
+    } else {
+      push @{$result{collection_date_range}}, "[$start_date TO $end_date]";
+      push @{$result{collection_season}}, season($start_date, $end_date);
     }
   }
-  return ();
+
+  return %result;
 }
 
 #
@@ -935,7 +947,7 @@ sub season {
     # a single date or low-resolution date (e.g. 2014) will be returned as-is
     # and converted by Solr into a date range as appropriate
     $start_date =~ s/^\d{4}/1600/;
-    return [ $start_date ];
+    return $start_date;
   } else {
     # we already parsed them in the calling function, but never mind...
     my ($start_dt, $end_dt) = ($iso8601->parse_datetime($start_date), $iso8601->parse_datetime($end_date));
@@ -952,11 +964,11 @@ sub season {
     $end_date =~ s/^\d{4}/1600/;
 
     if ($start_month <= $end_month) {
-      return [ "[$start_date TO $end_date]" ];
+      return ( "[$start_date TO $end_date]" );
     } else {
       # range spans new year, so return two ranges
-      return [ "[$start_date TO 1600-12-31]",
-	       "[1600-01-01 TO $end_date]" ];
+      return ( "[$start_date TO 1600-12-31]",
+	       "[1600-01-01 TO $end_date]" );
     }
   }
 }
