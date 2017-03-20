@@ -405,15 +405,15 @@ sub add_to_protocols_from_isatab {
 	    my $valid_start = Date->simple_validate_date($start_date, $self);
 	    my $valid_end = Date->simple_validate_date($end_date, $self);
 	    if ($valid_start && $valid_end) {
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->start_date], value=>$valid_start));
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->end_date], value=>$valid_end));
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->start_date], value=>$valid_start), 'allow_dupes');
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->end_date], value=>$valid_end), 'allow_dupes');
 	    } else {
 	      $schema->defer_exception_once("Cannot parse start/end date '$date' for assay (protocol $protocol_ref).");
 	    }
 	  } elsif ($start_date) {
 	    my $valid_date = Date->simple_validate_date($start_date, $self);
 	    if ($valid_date) {
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->date], value=>$valid_date));
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->date], value=>$valid_date), 'allow_dupes');
 	    } else {
 	      $schema->defer_exception_once("Cannot parse date '$date' for assay (protocol $protocol_ref).");
 	    }
@@ -755,19 +755,22 @@ cvterms optionally ending in a free text value.
 
 This is more flexible than adding a cvalue column to all prop tables.
 
-Usage: $experiment>add_multiprop($multiprop);
+Usage: $experiment>add_multiprop($multiprop, [$allow_duplicates]);
+
+If $allow_duplicates is true, then the property will be added, even if an identical one already exists.
 
 See also: Util::Multiprop (object) and Util::Multiprops (utility methods)
 
 =cut
 
 sub add_multiprop {
-  my ($self, $multiprop) = @_;
+  my ($self, $multiprop, $allow_duplicates) = @_;
 
   return Multiprops->add_multiprop
     ( multiprop => $multiprop,
       row => $self,
       prop_relation_name => 'nd_experimentprops',
+      allow_duplicates => $allow_duplicates,
     );
 }
 
@@ -977,7 +980,7 @@ sub duration_in_days {
     # if overlaps, use a hash of dates to sum the days
     my %days;
     map { $days{$_->as_str} = 1 } map { $_->dates } @ranges;
-    return keys %days;
+    return scalar(keys %days);
   } else {
     # otherwise use sum of Date::Range lengths
     my $days = 0;

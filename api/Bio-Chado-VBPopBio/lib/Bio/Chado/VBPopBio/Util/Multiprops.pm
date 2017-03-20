@@ -32,6 +32,7 @@ If the multiprop was already attached then it won't add a duplicate.
 hash args: row => DBIx::Class Row or Result object
            prop_relation_name => DBIx props table relation name, e.g. 'stockprops'
            multiprop => Multiprop object
+           allow_duplicates => (optional) scalar, if true, skip the duplicate property check and add willy nilly
 
 =cut
 
@@ -45,14 +46,17 @@ sub add_multiprop {
   my $row = delete $args{row};
   my $multiprop = delete $args{multiprop};
   my $prop_relation_name = delete $args{prop_relation_name};
+  my $allow_duplicates = delete $args{allow_duplicates};
 
   %args and confess "invalid option(s): ".join(', ', sort keys %args);
 
   # perform the (expensive!) check for existing multiprops
-  my $input_json = undef;
-  foreach my $existing_multiprop ($row->multiprops) {
-    $input_json //= $multiprop->as_json; # only make $input_json if there are existing multiprops
-    return $existing_multiprop if ($existing_multiprop->as_json eq $input_json);
+  unless ($allow_duplicates) {
+    my $input_json = undef;
+    foreach my $existing_multiprop ($row->multiprops) {
+      $input_json //= $multiprop->as_json; # only make $input_json if there are existing multiprops
+      return $existing_multiprop if ($existing_multiprop->as_json eq $input_json);
+    }
   }
 
   # find the highest rank of existing props
