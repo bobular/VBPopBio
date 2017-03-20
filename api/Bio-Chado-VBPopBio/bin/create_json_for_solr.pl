@@ -284,14 +284,7 @@ while (my $stock = $stocks->next) {
 
   my $has_abundance_data = defined $sample_size &&
     defined $assay_date_fields{collection_duration_days_i} &&
-      $sample_type eq 'pool' ? 1 : 0;
-
-  # split dates if zero abundance data
-  my @zero_abundance_dates;
-  if ($has_abundance_data && $sample_size == 0) {
-    warn "more to do here\n";
-  }
-
+      $sample_type eq 'pool';
 
   my $document = ohr(
 		    label => $stock->name,
@@ -366,12 +359,45 @@ while (my $stock = $stocks->next) {
   fallback_value($document->{collection_protocols_cvterms}, 'no data');
   fallback_value($document->{protocols_cvterms}, 'no data');
 
+
+
   if (!defined $limit || ++$done_samples <= $limit_samples){
-    # print the sample
-    my $json_text = $json->encode($document);
-    chomp($json_text);
-    print ",\n" if ($needcomma++);
-    print qq!$json_text\n!;
+
+    # split dates for zero abundance data
+    if ($has_abundance_data && $sample_size == 0) {
+      my $doc_id = $document->{id};
+      my $z=1;
+      # split the collection_date_range and collection_season multivalued field into separate samples
+      my @ranges = @{$assay_date_fields{collection_date_range}};
+      my @seasons = @{$assay_date_fields{collection_season}};
+      while (@ranges) {
+	my $range = shift @ranges;
+	my @season;
+	# season field may sometimes contain double entries when wrapping around new year
+	if ($seasons[0] =~ /TO 1600-12-31/ && $seasons[1] && $seasons[1] =~ /1600-01-01 TO/) {
+	  push @season, splice @seasons, 0, 2;
+	} else {
+	  push @season, shift @seasons;
+	}
+
+	$document->{id} = $doc_id.'.z'.$z++;
+	$document->{collection_date_range} = [ $range ];
+	$document->{collection_season} = \@season;
+	$document->{collection_duration_days_i} = calculate_duration_days($range);
+
+	# print the split zero abundance sample to stdout
+	my $json_text = $json->encode($document);
+	chomp($json_text);
+	print ",\n" if ($needcomma++);
+	print qq!$json_text\n!;
+      }
+    } else {
+      # print the sample to stdout as normal
+      my $json_text = $json->encode($document);
+      chomp($json_text);
+      print ",\n" if ($needcomma++);
+      print qq!$json_text\n!;
+    }
   }
 
   # now handle phenotypes
