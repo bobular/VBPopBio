@@ -561,6 +561,8 @@ while (my $stock = $stocks->next) {
 	  $doc->{id} = $phenotype_stable_ish_id;
 	  $doc->{bundle} = 'pop_sample_phenotype';
 	  $doc->{bundle_name} = 'Sample phenotype';
+	  $doc->{label} = $phenotype->name;
+	  $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 
 	  delete $doc->{phenotypes};
 	  delete $doc->{phenotypes_cvterms};
@@ -611,6 +613,8 @@ while (my $stock = $stocks->next) {
 	  $doc->{id} = $phenotype_stable_ish_id;
 	  $doc->{bundle} = 'pop_sample_phenotype';
 	  $doc->{bundle_name} = 'Sample phenotype';
+	  $doc->{label} = $phenotype->name;
+	  $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 
 	  delete $doc->{phenotypes};
 	  delete $doc->{phenotypes_cvterms};
