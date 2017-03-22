@@ -363,27 +363,24 @@ while (my $stock = $stocks->next) {
 
   if (!defined $limit || ++$done_samples <= $limit_samples){
 
-    # split dates for zero abundance data
+    # split the species for zero abundance data
     if ($has_abundance_data && $sample_size == 0) {
       my $doc_id = $document->{id};
-      my $z=1;
-      # split the collection_date_range and collection_season multivalued field into separate samples
-      my @ranges = @{$assay_date_fields{collection_date_range}};
-      my @seasons = @{$assay_date_fields{collection_season}};
-      while (@ranges) {
-	my $range = shift @ranges;
-	my @season;
-	# season field may sometimes contain double entries when wrapping around new year
-	if ($seasons[0] =~ /TO 1600-12-31/ && $seasons[1] && $seasons[1] =~ /1600-01-01 TO/) {
-	  push @season, splice @seasons, 0, 2;
-	} else {
-	  push @season, shift @seasons;
-	}
+      my $s=1;
+      # take each species identification assay separately
+      foreach my $species_assay (@species_assays) {
+	my $species = $species_assay->best_species();
 
-	$document->{id} = $doc_id.'.z'.$z++;
-	$document->{collection_date_range} = [ $range ];
-	$document->{collection_season} = \@season;
-	$document->{collection_duration_days_i} = calculate_duration_days($range);
+	$document->{id} = $doc_id.'.s'.$s++;
+	if (defined $species) {
+	  $document->{description} = "Confirmed absence of ".$species->name;
+	  $document->{species} = [ $species->name ];
+	  $document->{species_cvterms} = [ flattened_parents($species) ];
+	} else {
+	  $document->{description} = "Confirmed absence of unknown species";
+	  $document->{species} = [ 'Unknown' ];
+	  $document->{species_cvterms} = [ ];
+	}
 
 	# print the split zero abundance sample to stdout
 	my $json_text = $json->encode($document);
