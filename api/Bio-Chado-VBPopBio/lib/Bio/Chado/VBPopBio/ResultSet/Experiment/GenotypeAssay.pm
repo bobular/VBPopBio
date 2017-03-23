@@ -75,7 +75,7 @@ sub create_from_isatab {
     $genotype_assay->add_to_projects($project);
 
     # add the protocols
-    $genotype_assay->add_to_protocols_from_isatab($assay_data->{protocols}, $ontologies, $study);
+    $genotype_assay->add_to_protocols_from_isatab($assay_data->{protocols}, $ontologies, $study, $stable_id);
 
 
     # load the genotype data from the g_xxxxx ISA-Tab-like sheet(s)

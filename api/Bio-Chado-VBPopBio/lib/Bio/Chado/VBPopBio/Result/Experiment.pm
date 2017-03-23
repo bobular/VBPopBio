@@ -296,7 +296,7 @@ Protocol::create_from_isatab method.
 =cut
 
 sub add_to_protocols_from_isatab {
-  my ($self, $protocols_data, $ontologies, $study) = @_;
+  my ($self, $protocols_data, $ontologies, $study, $stable_id) = @_;
   my @protocols;
 
   if ($protocols_data) {
@@ -339,8 +339,9 @@ sub add_to_protocols_from_isatab {
 	$protocol_type = $types->placeholder;
       }
 
+      $stable_id //= $self->stable_id; # should already be provided as an argument, this is for backwards compat only
       my $protocol = $protocols->find_or_new({
-					      name => $self->stable_id.":".$protocol_ref, # $study->{study_identifier}.":".$protocol_ref,
+					      name => $stable_id.":".$protocol_ref, # $study->{study_identifier}.":".$protocol_ref,
 					      type => $protocol_type,
 					     });
 

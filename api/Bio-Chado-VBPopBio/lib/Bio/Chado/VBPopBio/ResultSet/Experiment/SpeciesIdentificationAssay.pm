@@ -65,7 +65,7 @@ sub create_from_isatab {
     # add it to the project
     $species_identification_assay->add_to_projects($project);
 
-    $species_identification_assay->add_to_protocols_from_isatab($assay_data->{protocols}, $ontologies, $study);
+    $species_identification_assay->add_to_protocols_from_isatab($assay_data->{protocols}, $ontologies, $study, $stable_id);
   }
 
   $species_identification_assay->relink($saved_links) if ($saved_links);

@@ -79,7 +79,7 @@ sub create_from_isatab {
     $field_collection->add_to_projects($project);
 
     # add the protocols
-    $field_collection->add_to_protocols_from_isatab($assay_data->{protocols}, $ontologies, $study);
+    $field_collection->add_to_protocols_from_isatab($assay_data->{protocols}, $ontologies, $study, $stable_id);
   }
 
   $field_collection->relink($saved_links) if ($saved_links);

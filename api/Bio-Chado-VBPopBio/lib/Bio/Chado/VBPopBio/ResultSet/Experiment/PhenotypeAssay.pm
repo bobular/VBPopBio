@@ -75,7 +75,7 @@ sub create_from_isatab {
     $phenotype_assay->add_to_projects($project);
 
     # add the protocols
-    $phenotype_assay->add_to_protocols_from_isatab($assay_data->{protocols}, $ontologies, $study);
+    $phenotype_assay->add_to_protocols_from_isatab($assay_data->{protocols}, $ontologies, $study, $stable_id);
 
     # load the phenotype data from the phenotype file(s)
     foreach my $p_file_name (keys %{$assay_data->{raw_data_files}}) {
