@@ -171,6 +171,8 @@ my $parent_term_of_present_absent = $schema->cvterms->find_by_accession({ term_s
 my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDO',
 								      term_accession_number => 'IDO:0000486' });
 
+my $sar_term = $schema->types->species_assay_result;
+
 my $iso8601 = DateTime::Format::ISO8601->new;
 
 print "[\n";
@@ -367,26 +369,29 @@ while (my $stock = $stocks->next) {
     if ($has_abundance_data && $sample_size == 0) {
       my $doc_id = $document->{id};
       my $s=1;
-      # take each species identification assay separately
+
+      # take each species identification assay, and result from each one separately
       foreach my $species_assay (@species_assays) {
-	my $species = $species_assay->best_species();
+	foreach my $sar_multiprop ($species_assay->multiprops($sar_term)) {
+	  my $species = $sar_multiprop->cvterms->[-1]; # second/last term in chain
 
-	$document->{id} = $doc_id.'.s'.$s++;
-	if (defined $species) {
-	  $document->{description} = "Confirmed absence of ".$species->name;
-	  $document->{species} = [ $species->name ];
-	  $document->{species_cvterms} = [ flattened_parents($species) ];
-	} else {
-	  $document->{description} = "Confirmed absence of unknown species";
-	  $document->{species} = [ 'Unknown' ];
-	  $document->{species_cvterms} = [ ];
+	  $document->{id} = $doc_id.'.s'.$s++;
+	  if (defined $species) {
+	    $document->{description} = "Confirmed absence of ".$species->name;
+	    $document->{species} = [ $species->name ];
+	    $document->{species_cvterms} = [ flattened_parents($species) ];
+	  } else {
+	    $document->{description} = "Confirmed absence of unknown species";
+	    $document->{species} = [ 'Unknown' ];
+	    $document->{species_cvterms} = [ ];
+	  }
+
+	  # print the split zero abundance sample to stdout
+	  my $json_text = $json->encode($document);
+	  chomp($json_text);
+	  print ",\n" if ($needcomma++);
+	  print qq!$json_text\n!;
 	}
-
-	# print the split zero abundance sample to stdout
-	my $json_text = $json->encode($document);
-	chomp($json_text);
-	print ",\n" if ($needcomma++);
-	print qq!$json_text\n!;
       }
     } else {
       # print the sample to stdout as normal
