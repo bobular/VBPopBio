@@ -29,7 +29,7 @@ $schema->txn_do_deferred(
 		  my $fc1 = $stock1->field_collections->first;
 		  my $fc2 = $stock2->field_collections->first;
 
-		  is($project1->stocks->count, 2, "2 stocks");
+		  is($project1->stocks->count, 6, "6 stocks");
  		  is($project2->stocks->count, 2, "also 2 stocks");
 		  is($project1->contacts->count, 4, "p1 4 contacts");
 		  is($project2->contacts->count, 4, "p2 4 contacts");
@@ -41,7 +41,7 @@ $schema->txn_do_deferred(
 		  is($fc1->stable_id, $fc2->stable_id, "same field collection stable IDs");
 		  is_deeply($fc1, $fc2, "same field collection deeply");
 
-		  is($project1->field_collections->count, 2, "project1 has two field collections");
+		  is($project1->field_collections->count, 6, "project1 has two field collections");
 		  is($project2->field_collections->count, 1, "project2 only one field collection");
 
 		  is($stock2->projects->count, 1, "second stock in just one project");

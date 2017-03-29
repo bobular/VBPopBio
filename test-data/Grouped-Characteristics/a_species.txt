@@ -1,0 +1,6 @@
+Sample Name	Assay Name	Description	Protocol REF	Performer	Date	Characteristics [group1.image acquisition device (OBI:0000398)]	Term Source Ref	Term Accession Number	Characteristics [group1.age (PATO:0000011)]	Term Source Ref	Term Accession Number	Unit	Term Source Ref	Term Accession Number	Characteristics [species assay result (VBcv:0000961)]	Term Source Ref	Term Accession Number
+Corrales-El Playón	Corrales-El Playón.spid1.taxonomical identification	taxonomical identification	SPECIES			optical microscope	OBI	0000940	5			year	UO	0000036	Anopheles nuneztovari	MIRO	40000165
+Encharcazón	Encharcazón.spid1.taxonomical identification	taxonomical identification	SPECIES			optical microscope	OBI	0000940	5			year	UO	0000036	Anopheles nuneztovari	MIRO	40000165
+Socuavó	Socuavó.spid1.taxonomical identification	taxonomical identification	SPECIES			stereo microscope	OBI	0001065	10			year	UO	0000036	Anopheles nuneztovari	MIRO	40000165
+Santa Rosa	Santa Rosa.spid1.taxonomical identification	taxonomical identification	SPECIES			stereo microscope	OBI	0001065	10			year	UO	0000036	Anopheles nuneztovari	MIRO	40000165
+Caño Victoria	Caño Victoria.spid1.taxonomical identification	taxonomical identification	SPECIES			confocal microscope	OBI	0001079	15			year	UO	0000036	Anopheles nuneztovari	MIRO	40000165

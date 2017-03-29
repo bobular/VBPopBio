@@ -31,7 +31,7 @@ $schema->txn_do_deferred(
 #		  warn "project 1 stock uniquename = ".$stock1->uniquename."\n";
 #		  warn "project 2 stock uniquename = ".$stock2->uniquename."\n";
 
-		  is($project1->stocks->count, 2, "2 stocks");
+		  is($project1->stocks->count, 6, "6 stocks");
 		  is($stock1->external_id, $stock2->external_id, "stocks should have same external id");
 		  is(scalar(@{$schema->{deferred_exceptions}}), 0, "no deferred exceptions");
 

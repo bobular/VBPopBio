@@ -128,7 +128,7 @@ $schema->txn_do_deferred(
 		  is($project1->stocks->first->sample_manipulations->first->stocks_created->first->stable_id, $project2->stocks->first->stable_id, "project 1's stock creates project 2's stock");
 		  is($project2->stocks->first->sample_manipulations->first->stocks_used->first->stable_id, $project1->stocks->first->stable_id, "and the same the other way round");
 
-		  is($project1->stocks->count, 5, "project 1 still only has 6 stocks");
+		  is($project1->stocks->count, 6, "project 1 still only has 6 stocks");
 
 		  diag("Project1 '", $project1->name, "' was created temporarily as:\n$project1_json") if ($verbose);
 		  diag("Project2 '", $project2->name, "' was created temporarily as:\n$project2_json") if ($verbose);

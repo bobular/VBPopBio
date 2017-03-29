@@ -1,4 +1,4 @@
-use Test::More tests => 7;
+use Test::More tests => 5;
 
 use strict;
 use JSON;
@@ -23,11 +23,13 @@ $schema->txn_do_deferred(
 
 		  is($samples[0]->best_species($project)->name, "Anopheles nuneztovari", "Sample one is nuneztovari");
 
-		  my ($species_term, $reason) = $samples[1]->best_species();
-		  is($species_term, undef, "Sample two species is undefined - because we didn't pass project to best_species");
-		  is($reason->name, 'unknown', "Sample two reason is unknown - because we didn't pass project to best_species");
+		  # removing these tests because this change https://github.com/bobular/VBPopBio/commit/f4c5ab3af347039f2b9b9ab8a6884a02a3affce9
+		  # invalidated them!
+		  #my ($species_term, $reason) = $samples[1]->best_species();
+		  #is($species_term, undef, "Sample two species is undefined - because we didn't pass project to best_species");
+		  #is($reason->name, 'unknown', "Sample two reason is unknown - because we didn't pass project to best_species");
 
-		  ($species_term, $reason) = $samples[1]->best_species($project);
+		  my ($species_term, $reason) = $samples[1]->best_species($project);
 		  is($species_term->name, "Anopheles funestus sensu lato", "Sample two is fallback");
 		  is($reason->name, "project default", "fallback reason");
 

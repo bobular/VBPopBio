@@ -1,0 +1,6 @@
+Source Name	Sample Name	Description	Comment [PROB REMOVE ME]	Material Type	Term Source Ref	Term Accession Number	Characteristics [group1.organism part (EFO:0000635)]	Term Source Ref	Term Accession Number	Characteristics [group1.color (PATO:0000014)]	Term Source Ref	Term Accession Number	Characteristics [sex (EFO:0000695)]	Term Source Ref	Term Accession Number	Characteristics [developmental stage (EFO:0000399)]	Term Source Ref	Term Accession Number
+Antioquia	Corrales-El Playón	Cáceres		pool	EFO	0000663	eye	TGMA	0000422	white	PATO	0000323	female	PATO	0000383	adult	IDOMAL	0000655
+Chocó	Encharcazón	Río Iró		pool	EFO	0000663	eye	TGMA	0000422	white	PATO	0000323	female	PATO	0000383	adult	IDOMAL	0000655
+Norte De Santander	Socuavó	Tibú		pool	EFO	0000663	eye	TGMA	0000422	red	PATO	0000322	female	PATO	0000383	adult	IDOMAL	0000655
+Norte De Santander	Santa Rosa	El Zulia		pool	EFO	0000663	eye	TGMA	0000422	red	PATO	0000322	female	PATO	0000383	adult	IDOMAL	0000655
+Norte De Santander	Caño Victoria	Tibú	used as control	pool	EFO	0000663	eye	TGMA	0000422	rainbow			female	PATO	0000383	adult	IDOMAL	0000655

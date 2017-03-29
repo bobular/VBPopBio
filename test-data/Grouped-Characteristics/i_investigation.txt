@@ -1,0 +1,82 @@
+"ONTOLOGY SOURCE REFERENCE"
+"Term Source Name"	MO	EFO	OBI	UO	GAZ	NCBITaxon	PATO	MIRO	efo	IDOMAL	SO	VBcv
+"Term Source File"	http://mged.sourceforge.net/ontologies/MGEDontology.php
+"Term Source Version"	1.3.0.1	http://data.bioontology.org/ontologies/EFO	47893	49121	46911	47845	47893	49589	49584	47619	49414	v0.50
+"Term Source Description"	"The Microarray Ontology"	"Experimental Factor Ontology"	"Ontology for Biomedical Investigations"	"Units of measurement"	Gazetteer	"NCBI organismal classification"	"Ontology for Biomedical Investigations"	"Mosquito insecticide resistance"	"Experimental Factor Ontology"	"Malaria Ontology"	"Sequence types and features"	"VectorBase controlled vocabulary"
+
+STUDY
+"Study Identifier"	2009-Brogdon-IR-A_nuneztovari
+"Study Title"	"Pyrethroid and organophosphates resistance in Anopheles (N.) nuneztovari Gabaldón populations from malaria endemic areas in Colombia"
+"Study Submission Date"	2009
+"Study Public Release Date"	2009-08-05
+"Study Description"	"Evaluation of insecticide susceptibility status for Anopheles nuneztovari in Colombia using WHO Bioassays, CDC bottleassays and microplate biochemical assays."
+"Study File Name"	s_samples.txt
+
+"STUDY DESIGN DESCRIPTORS"
+"Study Design Type"	"strain or line design"
+"Study Design Type Term Accession Number"	0001754
+"Study Design Type Term Source Ref"	EFO
+
+"STUDY PUBLICATIONS"
+"Study PubMed ID"	19655174
+"Study Publication DOI"	10.1007/s00436-009-1570-2
+"Study Publication Author list"	"Idalyd Fonseca-González, Rocío Cárdenas, Martha L. Quiñones, Janet McAllister, William G. Brogdon"
+"Study Publication Title"	"Pyrethroid and organophosphates resistance in Anopheles (N.) nuneztovari Gabaldón populations from malaria endemic areas in Colombia"
+"Study Publication Status"	published
+"Study Publication Status Term Accession Number"	0001796
+"Study Publication Status Term Source Ref"	EFO
+
+
+"# VectorBase is currently not planning to use factors and factor values in popbio ISA-Tab submissions."
+"# Instead we ask you to provide our curators with a description of the pertinent Characteristics, Parameter Values, Genotypes and/or Phenotypes to be used in the display of the results."
+"STUDY FACTORS"
+"Study Factor Name"
+"Study Factor Type"
+"Study Factor Type Term Accession Number"
+"Study Factor Type Term Source Ref"
+
+"STUDY ASSAYS"
+"Study Assay Measurement Type"	"species identification assay"
+"Study Assay Measurement Type Term Accession Number"
+"Study Assay Measurement Type Term Source Ref"
+"Study Assay Technology Type"
+"Study Assay Technology Type Term Accession Number"
+"Study Assay Technology Type Term Source Ref"
+"Study Assay Technology Platform"
+"Study Assay File Name"	a_species.txt
+
+"STUDY PROTOCOLS"
+"Study Protocol Name"	CATCH	SPECIES	SPECIES_PCR-RFLP	IR_WHO	IR_BA	BC_MFO	BC_NSE	BC_MACE	BC_GST
+"Study Protocol Type"	"human landing patch"	"morphological examination"	PCR-RFLP	"WHO paper kit DR test"	"bottle bioassay DT"	"mixed-function oxidases"	"non-specific esterases (NSE)"	"acetylcholinesterase assay"	"GST related assay"
+"Study Protocol Type Term Accession Number"	30000015	30000040	20000113	20000048	20000009	"need to add"	"need to add"	20000084	20000083
+"Study Protocol Type Term Source Ref"	MIRO	MIRO	MIRO	MIRO	MIRO	VBcv	VBcv	MIRO	MIRO
+"Study Protocol Description"	"collections were conducted between 17:30 and 20:00h, May - November 2006"	"Species were identified by morphological characters of the females using characteristics of wings and posterior legs (Faran 1980, Faran & Linthicum 1981)"	"Correct taxonomical identification of specimens lacking clear morphological characters was confirmed through PCR-RFLP (Ruiz et al. 2005)."	"The dose response was assayed using the WHO paper kit."	"Bottles were prepared following the Brogdon and McAllister (1998) protocol. Each population was evaluated with diagnostic doses and times previously established for A. nuneztovari (Fonseca-González 2008). Fifteen to 20 non-blood fed females from each site were introduced in 250 mL glass bottles coated with the diagnostic dose of each insecticide. Each test consisted of four treated bottles and one control bottle that was treated with ethanol only. At least three tests were done for each insecticide and population."	"The Caño Victoria strain was used as a standard population susceptible in all the biochemical analysis performed. For the MFO assay, absorbance was measured at 620 nm after 5 min incubation with 2 mM 3,3’,5,5’-tetramethyl-benzidina."	"The Caño Victoria strain was used as a standard population susceptible in all the biochemical analysis performed. NSE levels were measured at 540 nm after 10 min incubation with 3 mM β-naphthyl acetate."	"The Caño Victoria strain was used as a standard population susceptible in all the biochemical analysis performed. Modified acetylcholin esterase (MACE); Biochemical assay to measure levels and activity of AChE in a biological sample. MACE levels were measured in the reaction containing 2.6 mM acetylthiocholine iodide, 0.3 mM dithio-bis-2-nitrobenzoic acid and 100 mM propoxur. The reaction rates were measured at 414 nm at 10 min."	"The Caño Victoria strain was used as a standard population susceptible in all the biochemical analysis performed. Glutathione S-transferases (GST) levels were measured in the reaction containing 2 mM reduced glutathione and 1 mM 1-chloro-2,4-dinitrobenzene. The reaction rates were measured at 340 nm at 5 min."
+"Study Protocol URI"	http://link.springer.com/article/10.1007%2Fs00436-009-1570-2
+"Study Protocol Version"
+"Study Protocol Parameters Name"				"insecticidal substance;concentration;duration of exposure"	"insecticidal substance;concentration;duration of exposure"	"biochemical assay"	"biochemical assay"	"biochemical assay"	"biochemical assay"
+"Study Protocol Parameters Name Term Accession Number"				10000239;0000033;0000433	10000239;0000033;0000433	20000003	20000003	20000003	20000003
+"Study Protocol Parameters Name Term Source Ref"				MIRO;PATO;EFO	MIRO;PATO;EFO	MIRO	MIRO	MIRO	MIRO
+"Study Protocol Components Name"
+"Study Protocol Components Type"
+"Study Protocol Components Type Term Accession Number"
+"Study Protocol Components Type Term Source Ref"
+
+
+"# study contacts must contain a ""submitter"" or ""reporting party role"" person"
+"# please add the sample collector details in the a_collection sheet"
+"# the Email field is mandatory (emails will not be displayed on the site)"
+"# use ""sub-investigator role"" as a default role"
+"STUDY CONTACTS"
+"Study Person Last Name"	Fonseca-González	Cárdenas	Quiñones	McAllister	Brogdon
+"Study Person First Name"	Idalyd	Rocío	Martha	Janet	William
+"Study Person Mid Initials"			L		G
+"Study Person Email"	idalyd.fonseca@siu.udea.edu.co	rocicardenas@gmail.com	mlquinonesp@unal.edu.co	jvm6@cdc.gov	wgb1@cdc.gov
+"Study Person Phone"
+"Study Person Fax"
+"Study Person Address"	"Programa de Estudio y Control de Enfermedades Tropicales and Grupo de Chagas, Lab. 620, Sede de Investigación Universitaria, Instituto de Biología, Facultad de Ciencias Exactas y Naturales, Universidad de Antioquia, Calle 62 52-59, Medellín, Colombia"	"Instituto Departamental de Salud, Subgrupo Control de Vectores, Cúcuta, Colombia"	"Departamento de Salud Pública, Facultad de Medicina, Universidad Nacional, Bogotá, Colombia"	"Centers for Disease Control and Prevention, Fort Collins, CO, USA"	"Centers for Disease Control and Prevention, Atlanta, GA, USA"
+"Study Person Affiliation"	"Universidad de Antioquia"	"Instituto Departamental de Salud"	"Universidad Nacional"	"Centers for Disease Control and Prevention"	"Centers for Disease Control and Prevention"
+"Study Person Roles"	"sub-investigator role"	"sub-investigator role"	"sub-investigator role"	"sub-investigator role"	"principal investigator role"
+"Study Person Roles Term Accession Number"	0000224	0000224	0000224	0000224	0000103
+"Study Person Roles Term Source Ref"	OBI	OBI	OBI	OBI	OBI
+
+"# ISA-Tab allows multiple studies (a new STUDY section following this line) but for VectorBase submissions we only accept single studies at the moment."
