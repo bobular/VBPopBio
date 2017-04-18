@@ -223,14 +223,6 @@ sub add_multiprops_from_isatab_characteristics {
       my ($grouplabel, $onto, $acc) = ($1, $2, $3);
 
       my $multiprop_key = $grouplabel // "$onto:$acc";
-      # we'll build the multiprop either from a half-made one or a new empty one
-      my $mprop = $multiprops->{$multiprop_key} ||= Multiprop->new(cvterms => [ ]);
-
-      # however, if the multiprop already has a value, we can't do anything with it
-      if (defined $mprop->value) {
-	# if we pulled out out of the $multiprops cache it should have an undefined value attribute
-	$schema->defer_exception_once("Free text value not allowed for non-final grouped characteristic in column preceding '$cname'");
-      }
 
       my $cterm = $schema->cvterms->find_by_accession
 	({
@@ -242,13 +234,17 @@ sub add_multiprops_from_isatab_characteristics {
 	my @refs = split /;/, $cdata->{term_source_ref} // '';
 	my @accs = split /;/, $cdata->{term_accession_number} // '';
 	if (@refs > 1 && @accs == @refs) {
-	  for (my $i=0; $i<@refs; $i++) {
-	    my $vterm = $schema->cvterms->find_by_accession({ term_source_ref => $refs[$i],
-							      term_accession_number => $accs[$i],
-							      prefered_term_source_ref => $cdata->{prefered_term_source_ref}});
-	    $schema->defer_exception_once("$cname column failed to find ontology term for '$refs[$i]:$accs[$i]'") unless (defined $vterm);
+	  if (defined $grouplabel) {
+	    $schema->defer_exception_once("grouped characteristics column '$cname' cannot contain semicolon delimited term values");
+	  } else {
+	    for (my $i=0; $i<@refs; $i++) {
+	      my $vterm = $schema->cvterms->find_by_accession({ term_source_ref => $refs[$i],
+								term_accession_number => $accs[$i],
+								prefered_term_source_ref => $cdata->{prefered_term_source_ref}});
+	      $schema->defer_exception_once("$cname column failed to find ontology term for '$refs[$i]:$accs[$i]'") unless (defined $vterm);
 
-	    push @{$mprop->cvterms}, $vterm;
+	      $multiprops->{"$multiprop_key.$i"} = Multiprop->new(cvterms => [ $cterm, $vterm ]);
+	    }
 	  }
 	} else { # just carry on - if delimiting is unbalanced the next bit will fail gracefully
 	  my @cvterms;
@@ -273,8 +269,17 @@ sub add_multiprops_from_isatab_characteristics {
 	    $schema->defer_exception_once("$cname value $value unit ontology lookup error '$cdata->{unit}{term_source_ref}:$cdata->{unit}{term_accession_number}'") if ($cdata->{unit}{term_source_ref} && $cdata->{unit}{term_accession_number});
 	  }
 
+	  # we'll build the multiprop either from a half-made one or a new empty one
+	  my $mprop = $multiprops->{$multiprop_key} ||= Multiprop->new(cvterms => [ ]);
 	  push @{$mprop->cvterms}, @cvterms;
-	  $mprop->value($value);
+
+	  # however, if the multiprop already has a value, we can't do anything with it
+	  if (defined $mprop->value) {
+	    # if we pulled out out of the $multiprops cache it should have an undefined value attribute
+	    $schema->defer_exception_once("Free text value not allowed for non-final grouped characteristic in column preceding '$cname'");
+	  } else {
+	    $mprop->value($value);
+	  }
 	}
       } else {
 	$schema->defer_exception_once("Characteristics [$cname] - can't find ontology term via $onto:$acc");
