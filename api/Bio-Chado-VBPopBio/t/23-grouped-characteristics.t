@@ -34,7 +34,7 @@ $schema->txn_do_deferred(
 
 		  # test a sample multiprop with a free text value
 		  my $rainbow = pop @samples;
-		  my ($rainbow_eye_color) = $sample->multiprops($organism_part);
+		  my ($rainbow_eye_color) = $rainbow->multiprops($organism_part);
 		  isnt($rainbow_eye_color, undef, "eye color multiprop shouldn't be undef");
 
 		  my @rainbow_ec_cvterms = $rainbow_eye_color->cvterms;

@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Carp;
 use Memoize;
+use Tie::Hash::Indexed;
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 
@@ -212,11 +213,25 @@ sub add_multiprops_from_isatab_characteristics {
 
   my $schema = $row->result_source->schema;
 
+  my $multiprops = ordered_hashref(); # grouplabel or onto:acc => multiprop
+
   # for each characteristics column
   while (my ($cname, $cdata) = each %{$characteristics}) {
     # first handle the column name (first term in multiprop sentence)
-    if ($cname =~ /\((\w+):(\w+)\)/) {
-      my ($onto, $acc) = ($1, $2);
+    # could be "Characteristics [organism part (EFO:0000635)]" or "Characteristics [grouplabel.organism part (EFO:0000635)]"
+    if ($cname =~ /^\s*(?:(\w+)\.)?.+\((\w+):(\w+)\)/) {
+      my ($grouplabel, $onto, $acc) = ($1, $2, $3);
+
+      my $multiprop_key = $grouplabel // "$onto:$acc";
+      # we'll build the multiprop either from a half-made one or a new empty one
+      my $mprop = $multiprops->{$multiprop_key} ||= Multiprop->new(cvterms => [ ]);
+
+      # however, if the multiprop already has a value, we can't do anything with it
+      if (defined $mprop->value) {
+	# if we pulled out out of the $multiprops cache it should have an undefined value attribute
+	$schema->defer_exception_once("Free text value not allowed for non-final grouped characteristic in column preceding '$cname'");
+      }
+
       my $cterm = $schema->cvterms->find_by_accession
 	({
 	  term_source_ref => $onto,
@@ -232,11 +247,8 @@ sub add_multiprops_from_isatab_characteristics {
 							      term_accession_number => $accs[$i],
 							      prefered_term_source_ref => $cdata->{prefered_term_source_ref}});
 	    $schema->defer_exception_once("$cname column failed to find ontology term for '$refs[$i]:$accs[$i]'") unless (defined $vterm);
-	    $class->add_multiprop
-	      ( row => $row,
-		prop_relation_name => $prop_relation_name,
-		multiprop => Multiprop->new(cvterms=>[ $cterm, $vterm ])
-	      );
+
+	    push @{$mprop->cvterms}, $vterm;
 	  }
 	} else { # just carry on - if delimiting is unbalanced the next bit will fail gracefully
 	  my @cvterms;
@@ -260,10 +272,9 @@ sub add_multiprops_from_isatab_characteristics {
 	    # or units
 	    $schema->defer_exception_once("$cname value $value unit ontology lookup error '$cdata->{unit}{term_source_ref}:$cdata->{unit}{term_accession_number}'") if ($cdata->{unit}{term_source_ref} && $cdata->{unit}{term_accession_number});
 	  }
-	  $class->add_multiprop
-	    ( row => $row,
-	      prop_relation_name => $prop_relation_name,
-	      multiprop => Multiprop->new(cvterms=>\@cvterms, value=>$value) );
+
+	  push @{$mprop->cvterms}, @cvterms;
+	  $mprop->value($value);
 	}
       } else {
 	$schema->defer_exception_once("Characteristics [$cname] - can't find ontology term via $onto:$acc");
@@ -271,6 +282,14 @@ sub add_multiprops_from_isatab_characteristics {
     } else {
       $schema->defer_exception_once("Characteristics [$cname] - does not contain ontology accession - skipping column.");
     }
+  }
+
+  # add the fully-fledged multiprops to the item now
+  foreach my $mprop (values %{$multiprops}) {
+    $class->add_multiprop
+      ( row => $row,
+	prop_relation_name => $prop_relation_name,
+	multiprop => $mprop );
   }
 }
 
@@ -313,5 +332,22 @@ sub add_multiprops_from_isatab_comments {
 	multiprop => Multiprop->new(cvterms=>[ $comment_term ], value=>$text) );
   }
 }
+
+=head2 ordered_hashref
+
+Wrapper for Tie::Hash::Indexed - returns a hashref which has already been tied to Tie::Hash::Indexed
+
+no args.
+
+usage: $foo->{bar} = ordered_hashref();  $foo->{bar}{hello} = 123;
+
+=cut
+
+sub ordered_hashref {
+  my $ref = {};
+  tie %{$ref}, 'Tie::Hash::Indexed';
+  return $ref;
+}
+
 
 1;
