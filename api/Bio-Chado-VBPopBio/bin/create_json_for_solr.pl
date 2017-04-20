@@ -366,7 +366,9 @@ while (my $stock = $stocks->next) {
   if (!defined $limit || ++$done_samples <= $limit_samples){
 
     # split the species for zero abundance data
-    if ($has_abundance_data && $sample_size == 0) {
+    # but only where there's one assay and many results VB-6319
+    # but TO DO - write zero samples to a separate Solr output file
+    if ($has_abundance_data && $sample_size == 0 && @species_assays==1) {
       my $doc_id = $document->{id};
       my $s=1;
 
