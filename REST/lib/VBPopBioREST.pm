@@ -86,6 +86,40 @@ get qr{/project/(\w+)/components} => sub {
   };
 
 
+# find out if the project has mappable samples
+# optional l=50 parameter to limit number of samples checked for geo-coords
+get qr{/project/(\w+)/has_geodata} => sub {
+    my ($id) = splat;
+    my ($limit) = params->{l} || 50;
+    memcached_get_or_set("project/$id/has_geodata", sub {
+			   my $project = schema->projects->find_by_stable_id($id);
+			   if (defined $project) {
+			     my $samples = $project->stocks;
+			     while (my $sample = $samples->next) {
+			       foreach my $experiment ($sample->field_collections) {
+				 if ($sample->field_collections->count == 1) {
+				   my $geo = $experiment->nd_geolocation;
+				   if (defined $geo->latitude && defined $geo->longitude) {
+				     return { id => $project->stable_id,
+					      has_geodata => 1,
+					    };
+				   }
+				 }
+			       }
+			       last if ($limit-- <= 0);
+			     }
+			     # we didn't find any coords
+			     return { id => $project->stable_id,
+				      has_geodata => 0,
+				    };
+			   } else {
+			     return { error_message => "can't find project" };
+			   }
+			 });
+  };
+
+
+
 # Projects
 # not cached any more - at least while in development
 # and until we can selectively flush parts of the cache
