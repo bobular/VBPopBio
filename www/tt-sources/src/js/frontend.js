@@ -239,14 +239,11 @@ function updateProjectFull(project, element, sandbox) {
 	    "e": "$.stocks.*.field_collections[?(@.geolocation.latitude || @.geolocation.longitude)]]"
 	});
 	$('external_id_row').removeClassName('hide_on_load');
-    }
 
-    fillInListValues(vis_array, element.down('#project_visualisations'), 'no_shading').removeClassName('hide_on_load');
+	fillInListValues(vis_array, element.down('#project_visualisations'), 'no_shading').removeClassName('hide_on_load');
 
-    if (vis_array.size())	assembleProject(project, $('project_load_status'));
+	if (vis_array.size())	assembleProject(project, $('project_load_status'));
 
-    // fill in all textareas if we are in sandbox mode
-    if (sandbox) {
 	var textAreas = element.down('#project_visualisations').select('.list_row_instance textarea');
 	vis_array.each(function(vis){ textAreas.shift().update(JSON.stringify(vis, null, 2)); });
     }
