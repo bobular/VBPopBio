@@ -229,6 +229,14 @@ function updateProjectFull(project, element, sandbox) {
 	// TO DO: handle bad JSON better - it can cause a cryptic crash
     }
 
+
+    // show the map link if there is geodata for it
+    getObject('project/'+project.id+'/has_geodata',
+	      null, // no spinner at the moment
+	      function(has_geodata) {
+		  if (has_geodata.has_geodata) fillInObjectValues(project, element.down('#map_link')).removeClassName('hide_on_load');
+	      });
+
     if (sandbox) {
 	vis_array.push({
 	    "type": "geoplot",
