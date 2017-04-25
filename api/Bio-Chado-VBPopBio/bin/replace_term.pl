@@ -6,7 +6,10 @@
 #
 # usage: CHADO_DB_NAME=my_chado_instance bin/replace_term.pl OLD_ACCESSION NEW_ACCESSION
 #
+# option -relationship phenotype_attrs
 #
+# will only do the replacement for phenotype attributes. Get the name of the attributes from
+# check_term_usage.pl or this script using --dry-run
 #
 
 use strict;
@@ -19,7 +22,11 @@ use Getopt::Long;
 
 my $json = JSON->new->pretty;
 my $dry_run;
-GetOptions("dry-run|dryrun|dry_run"=>\$dry_run);
+my $opt_relationship;
+GetOptions(
+	   "dry-run|dryrun|dry_run"=>\$dry_run,
+	   "relationship=s"=>\$opt_relationship,
+	  );
 
 my ($old_accession, $new_accession) = @ARGV;
 
@@ -76,6 +83,10 @@ foreach my $relationship ($new_cvterm->result_source->relationships) {
 #exit unless ($answer =~ /^y/i);
 
 printf "REPLACING...\n";
+
+if ($opt_relationship) {
+  @relationships = ($opt_relationship);
+}
 
 $schema->txn_do_deferred
   ( sub {
