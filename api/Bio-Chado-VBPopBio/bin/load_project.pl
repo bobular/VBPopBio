@@ -10,6 +10,7 @@
 #   --sample-info filename : prints sample external ids, stable ids, and comments to TSV
 #   --limit 50             : only process first 50 samples (--dry-run implied)
 #   --graph-file filename  : will output Cytoscape JSON of the entity relationships (project, samples, assays, TBC?????)
+#   --refresh              : project's creation_date will be reset to today's date.
 
 use strict;
 use warnings;
@@ -30,6 +31,7 @@ my $samples_file;
 my $limit;
 my $delete_project;
 my $graph_file;
+my $refresh_creation_date;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "json=s"=>\$json_file,
@@ -37,6 +39,7 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "limit=i"=>\$limit,
 	   "delete=s"=>\$delete_project,
 	   "graph-file=s"=>\$graph_file,
+	   "refresh-creation-date"=>\$refresh_creation_date,
 	  );
 
 $dry_run = 1 if ($limit);
@@ -65,6 +68,9 @@ $schema->txn_do_deferred
 
       my $project = $projects->create_from_isatab({ directory => $isatab_dir,
 						    sample_limit => $limit, });
+
+
+      $project->update_creation_date() if ($refresh_creation_date);
 
       if ($json_file) {
 	if (open(my $jfile, ">$json_file")) {

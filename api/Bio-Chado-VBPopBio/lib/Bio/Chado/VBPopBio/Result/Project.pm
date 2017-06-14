@@ -410,6 +410,57 @@ sub creation_date {
   }
 }
 
+=head2 update_creation_date
+
+"touch" the timestamp on the project (stable id dbxrefprop)
+
+This is needed only in rare cases when a project is loaded and deleted (to secure a VBP ID, for example).
+When the project is loaded for real at a later date, we want to refresh the creation_date.
+This will be done with a commandline argument to bin/load_project.pl
+
+=cut
+
+sub update_creation_date {
+  my ($self) = @_;
+  my $stable_id_dbxref = $self->_stable_id_dbxref();
+
+  if (defined $stable_id_dbxref) {
+    my $schema = $self->result_source->schema;
+    my $creation_date_type = $schema->types->creation_date;
+    my $date = strftime "%Y-%m-%d", localtime;
+
+    my $search = $stable_id_dbxref->search_related('dbxrefprops',
+						   {
+						    type_id => $creation_date_type->id,
+						    rank => 0,
+						   });
+
+    my $first = $search->next;
+    if (defined $first) {
+      if (!defined $search->next) {
+	$first->update({ value => $date });
+	return $date;
+      } else {
+	croak "too many creation date dbxrefprops";
+      }
+    } else {
+      # make a brand new dbxrefprop
+      # (could probably have been done all-in-one (update_or_insert?))
+      $stable_id_dbxref->add_to_dbxrefprops( {
+					      type => $creation_date_type,
+					      value => $date,
+					      rank => 0,
+					     });
+      return $date;
+    }
+  } else {
+    croak "no stable_id dbxref for update_creation_date";
+  }
+
+}
+
+
+
 =head2 last_modified_date
 
 return the last modified date string
