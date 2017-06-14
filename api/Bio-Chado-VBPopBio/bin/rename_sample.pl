@@ -51,6 +51,10 @@ $schema->txn_do_deferred
 	} else {
 	  $schema->defer_exception("found too many/few dbxrefprops for sample external ID (@dbxrefprops)");
 	}
+
+	# update the modification timestamp for the project
+	map { $_->update_modification_date } $sample->projects->all;
+
       } else {
 	$schema->defer_exception("can't find sample '$sample_id'");
       }
