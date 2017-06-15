@@ -11,6 +11,7 @@
 #   --limit 50             : only process first 50 samples (--dry-run implied)
 #   --graph-file filename  : will output Cytoscape JSON of the entity relationships (project, samples, assays, TBC?????)
 #   --refresh              : project's creation_date will be reset to today's date.
+#   --quiet                : do not print out simple statistics after loading
 
 use strict;
 use warnings;
@@ -32,6 +33,7 @@ my $limit;
 my $delete_project;
 my $graph_file;
 my $refresh_creation_date;
+my $quiet;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "json=s"=>\$json_file,
@@ -40,6 +42,7 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "delete=s"=>\$delete_project,
 	   "graph-file=s"=>\$graph_file,
 	   "refresh-creation-date"=>\$refresh_creation_date,
+	   "quiet"=>\$quiet,
 	  );
 
 $dry_run = 1 if ($limit);
@@ -120,6 +123,23 @@ $schema->txn_do_deferred
 	}
       }
 
+      print project_summary($project)."\n" unless ($quiet);
+
       $schema->defer_exception("dry-run option - rolling back") if ($dry_run);
     } );
+
+sub project_summary {
+  my $project = shift;
+  my $n_samples = $project->stocks->count;
+  my $n_collections = $project->field_collections->count;
+  # the following two actually only cound the number of linkers but these are 1:1 with phenotypes and genotypes
+  my $n_phenotypes = $project->phenotype_assays->search_related('nd_experiment_phenotypes')->count;
+  my $n_genotypes = $project->genotype_assays->search_related('nd_experiment_genotypes')->count;
+
+
+  return sprintf qq[<a href="/popbio/project?id=%s">%s</a> (%d samples, %d collections, %d phenotypes, %d genotypes)],
+    $project->stable_id, $project->name,
+      # $project->contacts->first->description,
+      $n_samples, $n_collections, $n_phenotypes, $n_genotypes;
+}
 
