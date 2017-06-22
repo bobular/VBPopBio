@@ -761,6 +761,35 @@ sub add_to_experiments {
   return $self->add_to_nd_experiments(@args);
 }
 
+
+=head2 has_geodata
+
+arguments: limit
+
+returns true if one of the first $limit samples has a single geolocation with lat+long data
+
+=cut
+
+sub has_geodata {
+  my ($self, $limit) = @_;
+  $limit //= 50;
+
+  my $samples = $self->stocks;
+  while (my $sample = $samples->next) {
+    foreach my $experiment ($sample->field_collections) {
+      if ($sample->field_collections->count == 1) {
+	my $geo = $experiment->nd_geolocation;
+	if (defined $geo->latitude && defined $geo->longitude) {
+	  return 1;
+	}
+      }
+    }
+    last if ($limit-- <= 0);
+  }
+  # we didn't find any coords
+  return 0;
+}
+
 =head2 as_data_structure
 
 returns a json-like hashref of arrayrefs and hashrefs

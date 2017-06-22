@@ -94,30 +94,14 @@ get qr{/project/(\w+)/has_geodata} => sub {
     memcached_get_or_set("project/$id/has_geodata", sub {
 			   my $project = schema->projects->find_by_stable_id($id);
 			   if (defined $project) {
-			     my $samples = $project->stocks;
-			     while (my $sample = $samples->next) {
-			       foreach my $experiment ($sample->field_collections) {
-				 if ($sample->field_collections->count == 1) {
-				   my $geo = $experiment->nd_geolocation;
-				   if (defined $geo->latitude && defined $geo->longitude) {
-				     return { id => $project->stable_id,
-					      has_geodata => 1,
-					    };
-				   }
-				 }
-			       }
-			       last if ($limit-- <= 0);
-			     }
-			     # we didn't find any coords
 			     return { id => $project->stable_id,
-				      has_geodata => 0,
+				      has_geodata => $project->has_geodata($limit),
 				    };
 			   } else {
 			     return { error_message => "can't find project" };
 			   }
 			 });
   };
-
 
 
 # Projects
