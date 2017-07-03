@@ -43,6 +43,7 @@ my %date2samplecount;
 my %date2collectioncount;
 my %date2phenotypecount;
 my %date2genotypecount;
+my %date2projectcount;
 
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
@@ -54,6 +55,7 @@ while (my $project = $projects->next) {
   my $n_phenotypes = $project->phenotype_assays->search_related('nd_experiment_phenotypes')->count;
   my $n_genotypes = $project->genotype_assays->search_related('nd_experiment_genotypes')->count;
 
+  $date2projectcount{$date}++;
   $date2samplecount{$date} += $n_samples;
   $date2collectioncount{$date} += $n_collections;
   $date2phenotypecount{$date} += $n_phenotypes;
@@ -61,15 +63,16 @@ while (my $project = $projects->next) {
 
 }
 
-my ($sum_samples, $sum_collections, $sum_phenotypes, $sum_genotypes) = (0,0,0,0);
+my ($sum_samples, $sum_collections, $sum_phenotypes, $sum_genotypes, $sum_projects) = (0,0,0,0,0);
 
-print "date\tcollections\tsamples\tphenotypes\tgenotypes\n";
+print "date\tprojects\tcollections\tsamples\tphenotypes\tgenotypes\n";
 
 foreach my $date (sort keys %date2samplecount) {
-  printf "%s\t%d\t%d\t%d\t%d\n",
+  printf "%s\t%d\t%d\t%d\t%d\t%d\n",
     $date,
-    ($sum_collections += $date2collectioncount{$date}),
-      ($sum_samples += $date2samplecount{$date}),
-	($sum_phenotypes += $date2phenotypecount{$date}),
-	  ($sum_genotypes += $date2genotypecount{$date});
+      ($sum_projects += $date2projectcount{$date}),
+	($sum_collections += $date2collectioncount{$date}),
+	  ($sum_samples += $date2samplecount{$date}),
+	    ($sum_phenotypes += $date2phenotypecount{$date}),
+	      ($sum_genotypes += $date2genotypecount{$date});
 }
