@@ -485,7 +485,7 @@ sub relationships_to_follow {
 					       cv => 'VBcv',
 					       db => 'VBcv',
 					     });
-  $term->definition('is_a,part_of,located_in');
+  $term->definition('is_a,part_of,located_in,has_quality');
   $term->update;
   return $term;
 }
