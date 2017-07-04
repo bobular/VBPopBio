@@ -147,6 +147,9 @@ my $length_term = $schema->cvterms->find_by_accession({ term_source_ref => 'PATO
 my $mutated_protein_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDOMAL',
 								 term_accession_number => '50000004' });
 
+my $wild_type_allele_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
+								 term_accession_number => '0000001' });
+
 my $variant_frequency_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
 								   term_accession_number => '0001763' });
 
@@ -695,7 +698,7 @@ while (my $stock = $stocks->next) {
           $genotype_value = $prop->value if ($prop_terms[0]->id == $length_term->id);
 	}
 	$genotype_subtype = 'microsatellite';
-      } elsif ($mutated_protein_term->has_child($genotype_type)) {
+      } elsif ($mutated_protein_term->has_child($genotype_type) || $wild_type_allele_term->has_child($genotype_type)) {
 	# these are ontology-defined mutant allele counts/frequencies
 	# they are probably not to be confused with SNP genotype data from Ensembl when it comes to Solr...
 	$genotype_name = $genotype_type->name;
