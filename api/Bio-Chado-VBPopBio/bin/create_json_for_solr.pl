@@ -356,7 +356,7 @@ while (my $stock = $stocks->next) {
 
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
-		     ( $has_abundance_data ? (has_abundance_data_b => 'true') : () ),
+		     has_abundance_data_b => $has_abundance_data ? 'true' : 'false',
 		     );
 
   fallback_value($document->{collection_protocols}, 'no data');
