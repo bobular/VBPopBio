@@ -151,8 +151,13 @@ while ( my $stock = $stocks->next ) {
     my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
     my $has_abundance_data = defined $sample_size && defined $collection_duration_days ? 1 : undef;
 
-    # my @genotype_assays   = $stock->genotype_assays;
+    my @genotype_assays   = $stock->genotype_assays;
     # my @genotypes         = map { $_->genotypes->all } @genotype_assays;
+    my @species_assays = $stock->species_identification_assays;
+
+    my @other_protocols = map { $_->protocols } @phenotype_assays, @genotype_assays, @species_assays;
+    my @other_protocol_types = map { $_->type } @other_protocols;
+
 
 # We need several documents for each sample, one for every autocomplete entity (e.g. Taxon, Projects, pubmedid, paper titles)
 
@@ -481,6 +486,43 @@ while ( my $stock = $stocks->next ) {
         $i++;
     }
 
+    # Other protocols (species, genotype, phenotype)
+
+    my @otherProtocols =
+      map { flattened_parents($_) } @other_protocol_types;
+    $i = 0;
+    foreach my $protocol (@otherProtocols) {
+
+        my $is_synonym;
+        ( $protocol, $is_synonym ) = synonym_check($protocol);
+        my $documentColProtocol = {
+            doc => {
+                id         => $stable_id . "_colProtocol_" . $i,
+                stable_id  => $stable_id,
+                bundle     => 'pop_sample',
+		(defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
+                type       => 'Protocols',
+                geo_coords => $latlong,
+                date       => $date,
+                ( $i == 0 )
+                ? (
+                    textboost => 100,
+                    field     => 'protocols_cvterms'
+                  )
+                : (
+                    textboost => 20,
+                    field     => 'protocols_cvterms'
+                ),
+                textsuggest => $protocol,
+                is_synonym  => $is_synonym,
+            }
+        };
+
+        $json_text = $json->encode($documentColProtocol);
+        chomp($json_text);
+        print qq!"add": $json_text,\n!;
+        $i++;
+    }
 
 
 #########################################################
