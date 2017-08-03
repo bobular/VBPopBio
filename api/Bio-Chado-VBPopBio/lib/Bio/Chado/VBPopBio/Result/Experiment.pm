@@ -471,7 +471,7 @@ sub add_to_protocols_from_isatab {
 	  if ($param_data->{term_source_ref} && length($param_data->{term_accession_number})) {
 	    my $param_value_cvterm = $cvterms->find_by_accession($param_data);
 	    unless (defined $param_value_cvterm) {
-	      $schema->defer_exception("Can't find parameter value cvterm $param_data->{term_source_ref}:($param_data->{term_accession_number}");
+	      $schema->defer_exception("Can't find parameter value cvterm $param_data->{term_source_ref}:$param_data->{term_accession_number}");
 	      $param_value_cvterm = $types->placeholder;
 	    }
 	    push @cvterm_sentence, $param_value_cvterm;
