@@ -192,7 +192,9 @@ my $date_type = $schema->types->date;
 # remember some project info for sample docs
 my %project2title;
 my %project2authors;
-my %project2pubmed;
+my %project2pubmed; # PMIDs
+my %project2citations; # PMID or DOI or URL
+
 
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
@@ -221,11 +223,11 @@ while (my $project = $projects->next) {
 		    study_designs_cvterms => [
 					      map { flattened_parents($_) } @design_terms
 					     ],
-		    pubmed => [ map { "PMID:$_" } grep { $_ } map { $_->miniref } @publications ],
+		    pubmed => [ map { "PMID:$_" } grep { $_ } map { $_->pubmed_id } @publications ],
 		    publications_status => [ map { $_->status->name } @publications ],
 		    publications_status_cvterms => [ map { flattened_parents($_->status) } @publications ],
-
-		   );
+		    exp_citations_ss => [ grep { $_ } map { $_->pubmed_id, $_->doi, $_->url } @publications ],
+		    );
   my $json_text = $json->encode($document);
   chomp($json_text);
   print ",\n" if ($needcomma++);
@@ -234,6 +236,7 @@ while (my $project = $projects->next) {
   $project2title{$stable_id} = $document->{label};
   $project2authors{$stable_id} = $document->{authors};
   $project2pubmed{$stable_id} = $document->{pubmed};
+  $project2citations{$stable_id} = $document->{exp_citations_ss};
 
   last if (defined $limit && ++$done >= $limit_projects);
 }
@@ -342,6 +345,10 @@ while (my $stock = $stocks->next) {
 
 		    pubmed => [ (map { "PMID:$_" } multiprops_pubmed_ids($stock)),
 				(map { @{$project2pubmed{$_}} } @projects)
+			      ],
+
+		    exp_citations_ss => [ (map { "PMID:$_" } multiprops_pubmed_ids($stock)),
+				(map { @{$project2citations{$_}} } @projects)
 			      ],
 
 		    sample_karyotype_fields(@genotypes),
