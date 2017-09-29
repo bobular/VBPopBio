@@ -226,7 +226,9 @@ while (my $project = $projects->next) {
 		    pubmed => [ map { "PMID:$_" } grep { $_ } map { $_->pubmed_id } @publications ],
 		    publications_status => [ map { $_->status->name } @publications ],
 		    publications_status_cvterms => [ map { flattened_parents($_->status) } @publications ],
-		    exp_citations_ss => [ grep { $_ } map { $_->pubmed_id, $_->doi, $_->url } @publications ],
+		    exp_citations_ss => [ map { $_->pubmed_id ? "PMID:".$_->pubmed_id : (),
+						$_->doi ? "DOI:".$_->doi : (),
+						$_->url || () } @publications ],
 		    );
   my $json_text = $json->encode($document);
   chomp($json_text);
