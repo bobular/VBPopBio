@@ -1,7 +1,10 @@
 #!/usr/bin/env perl
 #                 -*- mode: cperl -*-
 #
-# usage: bin/create_json_for_solr.pl -dbname vb_popgen_testing_20110607 > test-samples.json
+# usage: bin/create_json_for_solr.pl output-prefix
+#
+# will write files to output-prefix-01.json.gz  output-prefix-02.json.gz etc
+#
 #
 #
 # option:
@@ -9,14 +12,6 @@
 #   -limit N              # same as above, same limit for all document types
 #
 #
-## get example solr server running (if not already)
-# cd /home/maccallr/vectorbase/popgen/search/apache-solr-3.5.0/example/
-# screen -S solr-popgen java -jar start.jar
-#
-## add data like this:
-# curl 'http://localhost:8983/solr/update/json?commit=true' --data-binary @test-samples.json -H 'Content-type:application/json'
-#
-# GitHub repo URL: https://github.com/bobular/VBPopBio/commit/c83b2d155174c247a63eca5bf8ffe5f37f27482f
 #
 
 use strict;
@@ -36,6 +31,7 @@ use PDL;
 use Math::Spline;
 use List::MoreUtils;
 use utf8::all;
+use IO::Compress::Gzip;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
@@ -44,6 +40,7 @@ my $limit;
 my $project_stable_id;
 my $inverted_IR_regexp = qr/^(LT|LC)/;
 my $loggable_IR_regexp = qr/^(LT|LC)/;
+my $chunk_size = 200000;
 # (spline transformation decision is hardcoded) #
 
 GetOptions("dbname=s"=>\$dbname,
@@ -51,10 +48,15 @@ GetOptions("dbname=s"=>\$dbname,
 	   "dry-run|dryrun"=>\$dry_run,
 	   "limit=s"=>\$limit, # for debugging/development
 	   "project=s"=>\$project_stable_id, # just one project for debugging
+	   "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
 	  );
 
 
 warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if (defined $limit && $project_stable_id);
+
+my ($output_prefix) = @ARGV;
+
+my ($document_counter, $chunk_counter, $chunk_fh) = (0, 0);
 
 my ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes, $limit_bm_phenotypes, $limit_infection_phenotypes);
 if (defined $limit) {
@@ -178,8 +180,6 @@ my $sar_term = $schema->types->species_assay_result;
 
 my $iso8601 = DateTime::Format::ISO8601->new;
 
-print "[\n";
-
 ### PROJECTS ###
 $done = 0;
 my $study_design_type = $schema->types->study_design;
@@ -230,10 +230,8 @@ while (my $project = $projects->next) {
 						$_->doi ? "DOI:".$_->doi : (),
 						$_->url || () } @publications ],
 		    );
-  my $json_text = $json->encode($document);
-  chomp($json_text);
-  print ",\n" if ($needcomma++);
-  print qq!$json_text\n!;
+
+  print_document($output_prefix, $document);
 
   $project2title{$stable_id} = $document->{label};
   $project2authors{$stable_id} = $document->{authors};
@@ -400,19 +398,13 @@ while (my $stock = $stocks->next) {
 	    $document->{species_cvterms} = [ ];
 	  }
 
-	  # print the split zero abundance sample to stdout
-	  my $json_text = $json->encode($document);
-	  chomp($json_text);
-	  print ",\n" if ($needcomma++);
-	  print qq!$json_text\n!;
+	  # print the split zero abundance sample
+	  print_document($output_prefix, $document);
 	}
       }
     } else {
-      # print the sample to stdout as normal
-      my $json_text = $json->encode($document);
-      chomp($json_text);
-      print ",\n" if ($needcomma++);
-      print qq!$json_text\n!;
+      # print the sample as normal
+      print_document($output_prefix, $document);
     }
   }
 
@@ -537,10 +529,7 @@ while (my $stock = $stocks->next) {
 		  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
 
 		  if (!defined $limit || ++$done_ir_phenotypes<=$limit_ir_phenotypes) {
-		    my $json_text = $json->encode($doc);
-		    chomp($json_text);
-		    print ",\n" if ($needcomma++);
-		    print qq!$json_text\n!;
+		    print_document($output_prefix, $doc);
 		  }
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
@@ -612,10 +601,7 @@ while (my $stock = $stocks->next) {
 
 
 	  if (!defined $limit || ++$done_bm_phenotypes<=$limit_bm_phenotypes) {
-	    my $json_text = $json->encode($doc);
-	    chomp($json_text);
-	    print ",\n" if ($needcomma++);
-	    print qq!$json_text\n!;
+	    print_document($output_prefix, $doc);
 	  }
 
 	  ### infection phenotype ###
@@ -662,10 +648,7 @@ while (my $stock = $stocks->next) {
 	  }
 
 	  if (!defined $limit || ++$done_infection_phenotypes<=$limit_infection_phenotypes) {
-	    my $json_text = $json->encode($doc);
-	    chomp($json_text);
-	    print ",\n" if ($needcomma++);
-	    print qq!$json_text\n!;
+	    print_document($output_prefix, $doc);
 	  }
 
 	} else {
@@ -774,10 +757,7 @@ while (my $stock = $stocks->next) {
 	# Printing out a doc
 	if (!defined $limit || ++$done_genotypes<=$limit_genotypes) {
 	  # print out the genotype doc (cloned from $document)
-	  my $json_text = $json->encode($doc);
-	  chomp($json_text);
-	  print ",\n" if ($needcomma++);
-	  print qq!$json_text\n!;
+	  print_document($output_prefix, $doc);
 	}
       }
     }
@@ -851,23 +831,26 @@ foreach my $phenotype_stable_ish_id (keys %phenotype_id2signature) {
     my $rescaled = $normaliser->($phenotype_id2value{$phenotype_stable_ish_id});
     my $n = scalar @{$phenotype_signature2values{$phenotype_signature}};
 
-    my $json_text = $json->encode(ohr(
-				     id => $phenotype_stable_ish_id,
-				     phenotype_rescaled_value_f => { set => $rescaled },
-				     phenotype_rescaling_signature_s => { set => $phenotype_signature },
-				     phenotype_rescaling_count_i => { set => $n }
-				    )
-				  );
-    chomp($json_text);
-    print ",\n" if ($needcomma++);
-    print qq!$json_text\n!;
-
+    my $atomic_update_doc = ohr(
+				id => $phenotype_stable_ish_id,
+				phenotype_rescaled_value_f => { set => $rescaled },
+				phenotype_rescaling_signature_s => { set => $phenotype_signature },
+				phenotype_rescaling_count_i => { set => $n }
+			       );
+    print_document($output_prefix, $atomic_update_doc);
   }
 }
 
 
-# the commit is needed to resolve the trailing comma
-print qq!]\n!;
+#
+# close the final chunk of output if necessary
+#
+if (defined $chunk_fh) {
+  print $chunk_fh "]\n";
+  close($chunk_fh);
+}
+
+
 
 # returns just the 'proper' cvterms for all multiprops
 # of the argument
@@ -1273,3 +1256,36 @@ sub fallback_value {
   }
 }
 
+#
+# print JSON document to chunked output files
+#
+
+#
+# use global variables $document_counter, $chunk_counter, $chunk_size, $chunk_fh, $needcomma
+#
+
+sub print_document {
+  my ($prefix, $document) = @_;
+
+  if (!defined $chunk_fh) { # start a new chunk
+    $chunk_counter++;
+    $chunk_fh = new IO::Compress::Gzip sprintf("$prefix-%02d.json.gz", $chunk_counter);
+    die unless (defined $chunk_fh);
+    print $chunk_fh "[\n";
+    $needcomma = 0;
+  }
+
+  my $json_text = $json->encode($document);
+  chomp($json_text);
+  print $chunk_fh ",\n" if ($needcomma++);
+  print $chunk_fh qq!$json_text\n!;
+
+  $document_counter++;
+
+  if ($document_counter % $chunk_size == 0) { # close the current chunk
+    print $chunk_fh "]\n";
+    close($chunk_fh);
+    undef $chunk_fh;
+  }
+
+}

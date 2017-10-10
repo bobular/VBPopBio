@@ -4,17 +4,10 @@
 # How to run
 # psql --list to get the latest version of vb-popbio
 # export CHADO_DB_NAME=popbio-v4.1.1-VB-2015-08-prod-01
-# usage: bin/create_json_for_solr.pl -dbname vb_popgen_testing_20110607 > test-samples.json
+# usage: bin/create_json_for_solr.pl output-prefix
 #
+# see create_json_for_solr.pl regarding output file chunks
 #
-#
-#
-## get example solr server running (if not already)
-# cd /home/maccallr/vectorbase/popgen/search/apache-solr-3.5.0/example/
-# screen -S solr-popgen java -jar start.jar
-#
-## add data like this:
-# curl 'http://localhost:8983/solr/update/json?commit=true' --data-binary @test-samples.json -H 'Content-type:application/json'
 #
 #
 
@@ -31,12 +24,14 @@ use Geohash;
 use Tie::IxHash;
 use Scalar::Util qw(looks_like_number);
 use utf8::all;
+use IO::Compress::Gzip;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
 my $limit;
 my $project_stable_id;
+my $chunk_size = 200000;
 
 GetOptions(
     "dbname=s"       => \$dbname,
@@ -44,7 +39,11 @@ GetOptions(
     "dry-run|dryrun" => \$dry_run,
     "limit=i"        => \$limit,                # for debugging/development
     "project=s"      => \$project_stable_id,    # just one project for debugging
+    "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
 );
+
+my ($output_prefix) = @ARGV;
+my ($document_counter, $chunk_counter, $needcomma, $chunk_fh) = (0, 0, 0);
 
 my $dsn = "dbi:Pg:dbname=$dbname";
 my $schema =
@@ -124,7 +123,6 @@ my $date_type       = $schema->types->date;
 my %project2authors;
 my %project2title;
 
-print "{\n";
 
 ### SAMPLES ###
 $done = 0;
@@ -201,9 +199,7 @@ while ( my $stock = $stocks->next ) {
             }
         };
 
-        $json_text = $json->encode($documentTaxons);
-        chomp($json_text);
-        print qq!"add": $json_text,\n!;
+	print_document($output_prefix, $documentTaxons);
         $i++;
     }
 
@@ -226,10 +222,7 @@ while ( my $stock = $stocks->next ) {
 
         }
     };
-
-    $json_text = $json->encode($documentDescription);
-    chomp($json_text);
-    print qq!"add": $json_text,\n!;
+    print_document($output_prefix, $documentDescription);
 
     # Title
     my $documentTitle = {
@@ -248,9 +241,7 @@ while ( my $stock = $stocks->next ) {
         }
     };
 
-    $json_text = $json->encode($documentTitle);
-    chomp($json_text);
-    print qq!"add": $json_text,\n!;
+    print_document($output_prefix, $documentTitle);
 
     # Stable ID
     my $documentID = {
@@ -269,9 +260,7 @@ while ( my $stock = $stocks->next ) {
         }
     };
 
-    $json_text = $json->encode($documentID);
-    chomp($json_text);
-    print qq!"add": $json_text,\n!;
+    print_document($output_prefix, $documentID);
 
     # Pubmed ID(s)
 
@@ -297,9 +286,7 @@ while ( my $stock = $stocks->next ) {
 
             }
         };
-        $json_text = $json->encode($documentPubmedIDs);
-        chomp($json_text);
-        print qq!"add": $json_text,\n!;
+	print_document($output_prefix, $documentPubmedIDs);
         $i++;
     }
 
@@ -324,10 +311,7 @@ while ( my $stock = $stocks->next ) {
             }
         };
 
-        $json_text = $json->encode($documentProjects);
-        chomp($json_text);
-        print qq!"add": $json_text,\n!;
-
+	print_document($output_prefix, $documentProjects);
 
 	# project_authors_txt and project_titles_txt
 	my $j=0;
@@ -351,9 +335,7 @@ while ( my $stock = $stocks->next ) {
 					    }
 				    };
 
-        $json_text = $json->encode($documentProjectTitles);
-        chomp($json_text);
-        print qq!"add": $json_text,\n!;
+	print_document($output_prefix, $documentProjectTitles);
 
 	# do this once per project only, for speed.
 	$project2authors{$project_id} //= [ (map { sanitise_contact($_->description) } $project->contacts),
@@ -375,10 +357,7 @@ while ( my $stock = $stocks->next ) {
             }
           };
 
-	  $json_text = $json->encode($documentProjectAuthors);
-	  chomp($json_text);
-	  print qq!"add": $json_text,\n!;
-
+	  print_document($output_prefix, $documentProjectAuthors);
 	  $j++;
 	}
 
@@ -402,9 +381,7 @@ while ( my $stock = $stocks->next ) {
         }
     };
 
-    $json_text = $json->encode($documentSampleType);
-    chomp($json_text);
-    print qq!"add": $json_text,\n!;
+    print_document($output_prefix, $documentSampleType);
 
     # Geolocations
     my @geolocations = remove_gaz_crap(
@@ -442,9 +419,7 @@ while ( my $stock = $stocks->next ) {
             }
         };
 
-        $json_text = $json->encode($documentGeolocations);
-        chomp($json_text);
-        print qq!"add": $json_text,\n!;
+	print_document($output_prefix, $documentGeolocations);
         $i++;
     }
 
@@ -480,9 +455,7 @@ while ( my $stock = $stocks->next ) {
             }
         };
 
-        $json_text = $json->encode($documentColProtocol);
-        chomp($json_text);
-        print qq!"add": $json_text,\n!;
+	print_document($output_prefix, $documentColProtocol);
         $i++;
     }
 
@@ -495,7 +468,7 @@ while ( my $stock = $stocks->next ) {
 
         my $is_synonym;
         ( $protocol, $is_synonym ) = synonym_check($protocol);
-        my $documentColProtocol = {
+        my $documentOtherProtocol = {
             doc => {
                 id         => $stable_id . "_colProtocol_" . $i,
                 stable_id  => $stable_id,
@@ -518,9 +491,7 @@ while ( my $stock = $stocks->next ) {
             }
         };
 
-        $json_text = $json->encode($documentColProtocol);
-        chomp($json_text);
-        print qq!"add": $json_text,\n!;
+	print_document($output_prefix, $documentOtherProtocol);
         $i++;
     }
 
@@ -587,10 +558,7 @@ while ( my $stock = $stocks->next ) {
                                 is_synonym  => $is_synonym,
                             }
                         };
-
-                        $json_text = $json->encode($documentTaxons);
-                        chomp($json_text);
-                        print qq!"add": $json_text,\n!;
+			print_document($output_prefix, $documentTaxons);
                         $i++;
                     }
 
@@ -619,10 +587,7 @@ while ( my $stock = $stocks->next ) {
 
                         }
                     };
-
-                    $json_text = $json->encode($documentDescription);
-                    chomp($json_text);
-                    print qq!"add": $json_text,\n!;
+		    print_document($output_prefix, $documentDescription);
 
                     # Title
                     my $documentTitle = {
@@ -640,10 +605,7 @@ while ( my $stock = $stocks->next ) {
 
                         }
                     };
-
-                    $json_text = $json->encode($documentTitle);
-                    chomp($json_text);
-                    print qq!"add": $json_text,\n!;
+		    print_document($output_prefix, $documentTitle);
 
                     # Stable ID
                     my $documentID = {
@@ -661,10 +623,7 @@ while ( my $stock = $stocks->next ) {
 
                         }
                     };
-
-                    $json_text = $json->encode($documentID);
-                    chomp($json_text);
-                    print qq!"add": $json_text,\n!;
+		    print_document($output_prefix, $documentID);
 
                     # Pubmed ID(s)
                     my @pubs = multiprops_pubmed_ids($stock);
@@ -685,9 +644,7 @@ while ( my $stock = $stocks->next ) {
 
                             }
                         };
-                        $json_text = $json->encode($documentPubmedIDs);
-                        chomp($json_text);
-                        print qq!"add": $json_text,\n!;
+			print_document($output_prefix, $documentPubmedIDs);
                         $i++;
                     }
 
@@ -710,10 +667,7 @@ while ( my $stock = $stocks->next ) {
 
                             }
                         };
-
-                        $json_text = $json->encode($documentProjects);
-                        chomp($json_text);
-                        print qq!"add": $json_text,\n!;
+			print_document($output_prefix, $documentProjects);
 
 			my $documentProjectTitles = {
 						     doc => {
@@ -730,10 +684,7 @@ while ( my $stock = $stocks->next ) {
 							    }
 						    };
 
-			$json_text = $json->encode($documentProjectTitles);
-			chomp($json_text);
-			print qq!"add": $json_text,\n!;
-
+			print_document($output_prefix, $documentProjectTitles);
 
 			# project_authors_txt
 			my $j=0;
@@ -753,10 +704,7 @@ while ( my $stock = $stocks->next ) {
 
 							       }
 						       };
-
-			  $json_text = $json->encode($documentProjectAuthors);
-			  chomp($json_text);
-			  print qq!"add": $json_text,\n!;
+			  print_document($output_prefix, $documentProjectAuthors);
 			  $j++;
 			}
 
@@ -780,10 +728,7 @@ while ( my $stock = $stocks->next ) {
 
                         }
                     };
-
-                    $json_text = $json->encode($documentSampleType);
-                    chomp($json_text);
-                    print qq!"add": $json_text,\n!;
+		    print_document($output_prefix, $documentSampleType);
 
                     # Geolocations
                     my @geolocations = remove_gaz_crap(
@@ -820,10 +765,7 @@ while ( my $stock = $stocks->next ) {
                                 is_synonym  => $is_synonym,
                             }
                         };
-
-                        $json_text = $json->encode($documentGeolocations);
-                        chomp($json_text);
-                        print qq!"add": $json_text,\n!;
+			print_document($output_prefix, $documentGeolocations);
                         $i++;
                     }
 
@@ -857,10 +799,7 @@ while ( my $stock = $stocks->next ) {
                                 is_synonym  => $is_synonym,
                             }
                         };
-
-                        $json_text = $json->encode($documentColProtocol);
-                        chomp($json_text);
-                        print qq!"add": $json_text,\n!;
+			print_document($output_prefix, $documentColProtocol);
                         $i++;
                     }
 
@@ -894,10 +833,7 @@ while ( my $stock = $stocks->next ) {
                                 is_synonym  => $is_synonym,
                             }
                         };
-
-                        $json_text = $json->encode($documentProtocols);
-                        chomp($json_text);
-                        print qq!"add": $json_text,\n!;
+			print_document($output_prefix, $documentProtocols);
                         $i++;
                     }
 
@@ -946,10 +882,7 @@ while ( my $stock = $stocks->next ) {
                                     is_synonym  => $is_synonym,
                                 }
                             };
-
-                            $json_text = $json->encode($documentInsecticides);
-                            chomp($json_text);
-                            print qq!"add": $json_text,\n!;
+			    print_document($output_prefix, $documentInsecticides);
                             $i++;
                         }
                     }
@@ -965,8 +898,15 @@ while ( my $stock = $stocks->next ) {
     last if ( $limit && ++$done >= $limit );
 }
 
-# the commit is needed to resolve the trailing comma
-print qq!\"commit\" : { } }\n!;
+
+#
+# close the final chunk of output if necessary
+#
+if (defined $chunk_fh) {
+  print $chunk_fh "]\n";
+  close($chunk_fh);
+}
+
 
 # returns just the 'proper' cvterms for all multiprops
 # of the argument
@@ -1235,3 +1175,30 @@ sub sanitise_contact {
   return $contact;
 }
 
+
+## COPY-PASTED FROM create_json_for_solr.pl !!!
+sub print_document {
+  my ($prefix, $document) = @_;
+
+  if (!defined $chunk_fh) { # start a new chunk
+    $chunk_counter++;
+    $chunk_fh = new IO::Compress::Gzip sprintf("$prefix-%02d.json.gz", $chunk_counter);
+    die unless (defined $chunk_fh);
+    print $chunk_fh "[\n";
+    $needcomma = 0;
+  }
+
+  my $json_text = $json->encode($document);
+  chomp($json_text);
+  print $chunk_fh ",\n" if ($needcomma++);
+  print $chunk_fh qq!$json_text\n!;
+
+  $document_counter++;
+
+  if ($document_counter % $chunk_size == 0) { # close the current chunk
+    print $chunk_fh "]\n";
+    close($chunk_fh);
+    undef $chunk_fh;
+  }
+
+}
