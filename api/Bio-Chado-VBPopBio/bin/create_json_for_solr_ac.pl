@@ -31,7 +31,7 @@ my $dbuser = $ENV{USER};
 my $dry_run;
 my $limit;
 my $project_stable_id;
-my $chunk_size = 200000;
+my $chunk_size = 2000000;
 
 GetOptions(
     "dbname=s"       => \$dbname,
