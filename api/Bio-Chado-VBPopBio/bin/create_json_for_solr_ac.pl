@@ -1176,7 +1176,7 @@ sub sanitise_contact {
 }
 
 
-## COPY-PASTED FROM create_json_for_solr.pl !!!
+## almost COPY-PASTED FROM create_json_for_solr.pl !!!
 sub print_document {
   my ($prefix, $document) = @_;
 
@@ -1188,7 +1188,7 @@ sub print_document {
     $needcomma = 0;
   }
 
-  my $json_text = $json->encode($document);
+  my $json_text = $json->encode($document->{doc}); # << difference on this line compared with create_json_for_solr.pl
   chomp($json_text);
   print $chunk_fh ",\n" if ($needcomma++);
   print $chunk_fh qq!$json_text\n!;
