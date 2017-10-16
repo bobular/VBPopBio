@@ -74,7 +74,6 @@ my $schema = Bio::Chado::VBPopBio->connect($dsn, $dbuser, undef, { AutoCommit =>
 $schema->storage->_use_join_optimizer(0);
 my $stocks = $schema->stocks;
 my $projects = $schema->projects;
-my $assays = $schema->assays;
 
 my $json = JSON->new->pretty; # useful for debugging
 my $gh = Geohash->new();
@@ -84,11 +83,9 @@ my $needcomma = 0;
 #
 # debug only
 #
-if ($project_stable_id) {
+if (defined $project_stable_id) {
   my $project = $projects->find_by_stable_id($project_stable_id);
   $stocks = $project->stocks;
-  $assays = $project->experiments;
-  $projects = $schema->projects->search({ project_id => $project->id });
 }
 
 
@@ -231,7 +228,7 @@ while (my $project = $projects->next) {
 						$_->url || () } @publications ],
 		    );
 
-  print_document($output_prefix, $document);
+  print_document($output_prefix, $document) if (!defined $project_stable_id || $project_stable_id eq $stable_id);
 
   $project2title{$stable_id} = $document->{label};
   $project2authors{$stable_id} = $document->{authors};
@@ -335,7 +332,7 @@ while (my $stock = $stocks->next) {
 		    annotations => [ map { $_->as_string } $stock->multiprops ],
 		    annotations_cvterms => [ map { flattened_parents($_) } multiprops_cvterms($stock) ],
 
-		    projects => @projects,
+		    projects => [ @projects ],
 
 		    # used to be plain 'date' from any assay
 		    # now it's collection_date if there's an unambiguous collection
@@ -370,8 +367,6 @@ while (my $stock = $stocks->next) {
   fallback_value($document->{protocols}, 'no data');
   fallback_value($document->{collection_protocols_cvterms}, 'no data');
   fallback_value($document->{protocols_cvterms}, 'no data');
-
-
 
   if (!defined $limit || ++$done_samples <= $limit_samples){
 
