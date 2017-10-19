@@ -85,11 +85,15 @@ sub vcf_file {
 If the relevant properties are available
 (provided by ISA-Tab columns
 Characteristics [reference_genome (SO:0001505)]
-Characteristics [variation_collection (SO:0001507)]
 Characteristics [experimental result region (SO:0000703)]
 )
 then return a path that would open the genome browser at the
 given location with the variation set track turned on.
+
+This function now uses the Project ID in the genome browser path.
+If an assay belongs to multiple projects, the "first" project will be used.
+(It seems that the projects come back in order of being attached to the assay.
+But this was tested with multi-project samples.)
 
 (This should possibly be in the Javascript client.)
 
@@ -100,30 +104,23 @@ sub genome_browser_path {
   my $schema = $self->result_source->schema;
   my $cvterms = $schema->cvterms;
   my $ref_type = $cvterms->find_by_accession({term_source_ref => 'SO', term_accession_number=>'0001505'});
-  my $var_set_type = $cvterms->find_by_accession({term_source_ref => 'SO', term_accession_number=>'0001507'});
   my $region_type = $cvterms->find_by_accession({term_source_ref => 'SO', term_accession_number=>'0000703'});
+  my ($project_id) = map { $_->stable_id } $self->projects;
 
   my @multiprops = $self->multiprops;
-  if (@multiprops >= 3) {
+  if (@multiprops >= 2) {
     my ($ref, $var_set, $region);
     foreach my $multiprop ($self->multiprops) {
       my $prop_key_id = $multiprop->cvterms->[0]->cvterm_id;
       if ($prop_key_id == $ref_type->cvterm_id) {
 	$ref = $multiprop->value;
-      } elsif ($prop_key_id == $var_set_type->cvterm_id) {
-	$var_set = $multiprop->value;
       } elsif ($prop_key_id == $region_type->cvterm_id) {
 	$region = $multiprop->value;
       }
     }
 
-    # /Anopheles_gambiae/Location/View?db=core;r=2L:39215647-39228146;contigviewbottom=variation_set_AgSNP01=normal
-    if ($ref && $var_set && $region) {
-      # $var_set needs any url-escaping? no but it needs sanitising in the same way as Ensembl browser
-      # see https://www.ebi.ac.uk/panda/jira/browse/VB-2285
-      my $var_set_sanitised = $var_set;
-      $var_set_sanitised =~ s/[^\w-]/_/g;
-      return "/$ref/Location/View?db=core;r=$region;contigviewbottom=variation_set_$var_set_sanitised=normal";
+    if ($ref && $region && $project_id) {
+      return "/$ref/Location/View?db=core;r=$region;contigviewbottom=variation_feature_variation_$project_id=normal";
     }
   }
   return undef;
