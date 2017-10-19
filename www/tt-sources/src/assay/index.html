@@ -1,7 +1,7 @@
 [% INCLUDE header.html
    title = 'VectorBase Population Browser - Assay'
    js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.2.0/prototype.js', 'js/config.js', 
-'js/phenovis-0.01.js', 'js/frontend.js' 'js/protovis-d3.2.js' 'https://maps.google.com/maps/api/js?sensor=false' ]
+'js/phenovis-0.01.js', 'js/frontend.js' 'js/protovis-d3.2.js' ]
 %]
 
 <div id="assay">
@@ -10,7 +10,7 @@
 
   <div class="vbpg_object_info assay hide_on_load" id="assay_info">
     [% IF development_environment %]<h1><span class="object_value scalar capitalize" id="type"></span>: <span class="object_value scalar" id="name"></span></h1>[% END %]
-
+    <div class="hide_on_load" id="mini_map_panel"><h3>Map view</h3><a class="object_value href" href="/popbio/map/?assayID=####" id="id"><img width=200 height=116 src="[% root_static %]vbpg_images/empty-popbio-map-300px.png"/></a></div>
     <table>
       <tr>
 	<th class="row_heading">VectorBase stable ID</th>
@@ -44,7 +44,37 @@
   
   </div> <!-- assay_info -->
 
-  <!-- Protocols -->
+
+  <!-- Collection site -->
+  <div class="vbpg_object_info hide_on_load" id="assay_geolocation_info">
+    <h2>Collection site</h2>
+    <div id="assay_geolocation_text">
+      <table>
+        <tr>
+          <th class="row_heading">Name</th>
+          <td class="object_value scalar" id="name"></td>
+        </tr>
+        <tr>
+          <th class="row_heading">Coordinates</th>
+          <td class="object_value clear_if_missing" id="latitude"><a class="auto_link" title="Google Maps (external site)" href="http://maps.google.com/maps?hl=en&tab=wl&z=8&q=####+(Collection+site)"><span class="object_value scalar" id="latitude"></span>,<span class="object_value scalar" id="longitude"></span></a> (<span class="object_value scalar" id="geodetic_datum"></span>)</td>
+        </tr>
+        <tr>
+          <th class="row_heading">Altitude</th>
+          <td class="object_value scalar" id="altitude"></td>
+        </tr>
+      </table>
+      <table class="nested_props_list no_shading">
+        <tr class="list_row_template">
+          <th class="row_heading prop_type" delimiter=", "></th>
+          <td class="prop_value"></td>
+        </tr> 
+      </table>
+    </div><!-- assay_geolocation_text -->
+    <br clear="all"/>
+  </div> <!-- assay_geolocation_info -->
+
+
+<!-- Protocols -->
   <div class="vbpg_object_info hide_on_load" id="assay_protocols">
     <h2>Protocols</h2>
     <div class="assay_protocol list_row_template">
@@ -80,35 +110,6 @@
       </table>
     </div>
   </div>
-
-  <!-- Collection site -->
-  <div class="vbpg_object_info hide_on_load" id="assay_geolocation_info">
-    <h2>Collection site</h2>
-    <div id="mini_map_panel"></div>
-    <div id="assay_geolocation_text">
-      <table>
-        <tr>
-          <th class="row_heading">Name</th>
-          <td class="object_value scalar" id="name"></td>
-        </tr>
-        <tr>
-          <th class="row_heading">Coordinates</th>
-          <td class="object_value clear_if_missing" id="latitude"><a class="auto_link" title="Google Maps (external site)" href="http://maps.google.com/maps?hl=en&tab=wl&z=8&q=####+(Collection+site)"><span class="object_value scalar" id="latitude"></span>,<span class="object_value scalar" id="longitude"></span></a> (<span class="object_value scalar" id="geodetic_datum"></span>)</td>
-        </tr>
-        <tr>
-          <th class="row_heading">Altitude</th>
-          <td class="object_value scalar" id="altitude"></td>
-        </tr>
-      </table>
-      <table class="nested_props_list no_shading">
-        <tr class="list_row_template">
-          <th class="row_heading prop_type" delimiter=", "></th>
-          <td class="prop_value"></td>
-        </tr> 
-      </table>
-    </div><!-- assay_geolocation_text -->
-    <br clear="all"/>
-  </div> <!-- assay_geolocation_info -->
 
 
   <!-- Phenotypes -->

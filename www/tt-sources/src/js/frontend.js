@@ -145,22 +145,12 @@ function updateAssayFull(assay, element) {
 	fillInObjectValues(assay.geolocation, geoloc_div).removeClassName('hide_on_load');
 
 	var map_panel = $('mini_map_panel');
-	if (map_panel) {
-	    if (assay.geolocation &&
-		assay.geolocation.latitude &&
-		assay.geolocation.longitude &&
-		assay.geolocation.name) {
-		var vis = {
-		    "type": "geoplot",
-		    "x": "$.geolocation.latitude",
-		    "y": "$.geolocation.longitude",
-		    "z": "$.geolocation.name",
-		    "e": "$.geolocation"
-		};
-		renderVisualisation(assay, vis, map_panel);
-	    } else {
-		map_panel.hide();
-	    }
+	if (map_panel &&
+	    assay.geolocation &&
+	    assay.geolocation.latitude &&
+	    assay.geolocation.longitude) {
+
+	    map_panel.removeClassName('hide_on_load');
 	}
     }
 

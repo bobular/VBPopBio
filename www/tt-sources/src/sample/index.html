@@ -45,6 +45,7 @@
       <tr>
         <th class="sample_assays_col1">Collection</th>
         <th>Summary</th>
+        <th>Info</th>
         <th class="assay_projects">Project(s)</th>
       </tr>
       <tr class="list_row_template sample">
@@ -53,6 +54,14 @@
           <span class="object_value scalar" id="id"></span></td>
         <td>
           <span class="object_value scalar" id="result_summary"></span><br />
+        </td>
+        <td>
+	  <table class="nested_props_list no_shading">
+	    <tr class="list_row_template">
+              <th class="row_heading prop_type" delimiter=", "></th>
+              <td class="prop_value"></td>
+	    </tr>
+	  </table>
         </td>
 	<td class="object_id id assay_projects" id="####">
 	  <!-- will be populated with linked project IDs via AJAX calls to assay/ID/projects/head -->
