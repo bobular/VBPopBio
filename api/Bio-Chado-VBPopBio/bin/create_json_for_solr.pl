@@ -412,6 +412,10 @@ while (my $stock = $stocks->next) {
 
     my $assay_stable_id = $phenotype_assay->stable_id;
 
+
+    my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $assay_sample_size, $errors) =
+      assay_insecticides_concentrations_units_and_more($phenotype_assay);
+
     # is it a phenotype that we can use?
     my @protocol_types = map { $_->type } $phenotype_assay->protocols->all;
 
@@ -484,9 +488,6 @@ while (my $stock = $stocks->next) {
 
 		  # to do: insecticide + concentrations + duration
 		  # die "to do...";
-
-		  my ($insecticide, $concentration, $concentration_unit, $duration, $duration_unit, $assay_sample_size, $errors) =
-		    assay_insecticides_concentrations_units_and_more($phenotype_assay);
 
 		  die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
 
@@ -578,6 +579,10 @@ while (my $stock = $stocks->next) {
 	  $doc->{blood_meal_source_cvterms} = [ flattened_parents($attribute) ];
 	  $doc->{blood_meal_status_s} = $cvalue->name;
 
+	  if (defined $assay_sample_size) {
+	    $doc->{sample_size_i} = $assay_sample_size;
+	  }
+
 	  # now add a fractional index if available
 	  my ($index_prop) = $phenotype->multiprops($arthropod_host_blood_index_term);
 	  if (defined $index_prop) {
@@ -627,6 +632,10 @@ while (my $stock = $stocks->next) {
 	  $doc->{infection_source_cvterms} = [ flattened_parents($attribute) ];
 	  $doc->{infection_status_s} = $cvalue->name;
 
+	  if (defined $assay_sample_size) {
+	    $doc->{sample_size_i} = $assay_sample_size;
+	  }
+
 	  # now add a fractional index if available
 	  my ($index_prop) = $phenotype->multiprops($infection_prevalence_term);
 	  if (defined $index_prop) {
@@ -658,9 +667,14 @@ while (my $stock = $stocks->next) {
     last if (defined $limit && $done_genotypes >= $limit_genotypes);
     my $assay_stable_id = $genotype_assay->stable_id;
     my @protocol_types = map { $_->type } $genotype_assay->protocols->all;
+
+    my ($sample_size_prop) = $genotype_assay->multiprops($sample_size_term);
+    my $assay_sample_size = defined $sample_size_prop ? $sample_size_prop->value : undef;
+
     foreach my $genotype ($genotype_assay->genotypes) {
       my ($genotype_name, $genotype_value, $genotype_subtype, $genotype_unit); # these vars are "undefined" to start with
       my $genotype_type = $genotype->type; # cvterm/ontology term object
+
 
       # check if this genotype's type is the same as 'chromosomal inversion' or a child of it.
       if ($genotype_type->id == $chromosomal_inversion_term->id ||
@@ -734,6 +748,10 @@ while (my $stock = $stocks->next) {
 	$doc->{genotype_cvterms} = [ map { flattened_parents($_) } grep { defined $_ } ( $genotype->type, multiprops_cvterms($genotype) ) ];
 
 	$doc->{genotype_name_s} = $genotype_name;
+
+	if (defined $assay_sample_size) {
+	  $doc->{sample_size_i} = $assay_sample_size;
+	}
 
 	given($genotype_subtype) {
 	  when('chromosomal inversion') {
