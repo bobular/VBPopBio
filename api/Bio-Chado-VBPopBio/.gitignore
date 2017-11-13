@@ -5,3 +5,5 @@ README-bob-google-fetch
 test*
 temp*
 nytprof*
+*.json.gz
+*.jsonl.gz
