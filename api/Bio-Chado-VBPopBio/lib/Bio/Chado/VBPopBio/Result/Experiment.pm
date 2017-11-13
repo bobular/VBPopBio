@@ -25,7 +25,7 @@ use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 use aliased 'Bio::Chado::VBPopBio::Util::Extra';
 use aliased 'Bio::Chado::VBPopBio::Util::Date';
-use Tie::Hash::Indexed;
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 use Date::Simple;
 use Date::Range;
@@ -868,22 +868,6 @@ sub basic_info {
 	 );
 }
 
-
-=head2 ordered_hashref
-
-Wrapper for Tie::Hash::Indexed - returns a hashref which has already been tied to Tie::Hash::Indexed
-
-no args.
-
-usage: $foo->{bar} = ordered_hashref();  $foo->{bar}{hello} = 123;
-
-=cut
-
-sub ordered_hashref {
-  my $ref = {};
-  tie %{$ref}, 'Tie::Hash::Indexed';
-  return $ref;
-}
 
 
 =head2 as_cytoscape_graph

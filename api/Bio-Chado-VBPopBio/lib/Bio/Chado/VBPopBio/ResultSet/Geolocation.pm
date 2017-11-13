@@ -3,7 +3,8 @@ package Bio::Chado::VBPopBio::ResultSet::Geolocation;
 use base 'DBIx::Class::ResultSet';
 use Carp;
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
-use Tie::Hash::Indexed;
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
+
 
 =head1 NAME
 
@@ -96,21 +97,6 @@ sub find_or_create_from_isatab {
   return $geolocation;
 }
 
-=head2 ordered_hashref
-
-Wrapper for Tie::Hash::Indexed - returns a hashref which has already been tied to Tie::Hash::Indexed
-
-no args.
-
-usage: $foo->{bar} = ordered_hashref();  $foo->{bar}{hello} = 123;
-
-=cut
-
-sub ordered_hashref {
-  my $ref = {};
-  tie %{$ref}, 'Tie::Hash::Indexed';
-  return $ref;
-}
 
 =head1 AUTHOR
 

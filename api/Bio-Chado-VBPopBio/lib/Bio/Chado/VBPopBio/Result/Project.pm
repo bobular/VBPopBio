@@ -816,6 +816,39 @@ sub as_data_structure {
 	 };
 }
 
+
+=head2 write_to_isatab
+
+
+
+=cut
+
+sub write_to_isatab {
+  my ($self, $options) = @_;
+  my $output_directory = $options->{directory} || die "must provide { directory => 'output_directory' } to write_to_isatab\n";
+
+  my $isatab = $self->as_isatab();
+
+  my $writer = Bio::Parser::ISATab->new(directory=>$output_directory);
+  $writer->write($isatab);
+}
+
+
+=head2 as_isatab
+
+deeply transform project u
+
+=cut
+
+
+sub as_isatab {
+  my $self = shift;
+
+  my $isatab = {};
+
+  return $isatab;
+}
+
 =head2 as_cytoscape_graph
 
 returns a perl data structure corresponding to Cytoscape JSON format
