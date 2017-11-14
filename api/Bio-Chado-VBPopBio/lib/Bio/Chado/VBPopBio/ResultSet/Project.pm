@@ -59,7 +59,7 @@ sub create_from_isatab {
   croak "Multiple studies not yet supported" if (@studies > 1);
 
   my $ontologies = $isa->{ontology_lookup};
-  carp "Warning, no ontologies in ISA-Tab" unless (keys %$ontologies);
+  # ontology info not actually used in VBPopBio
 
   my $schema = $self->result_source->schema;
   my $cvterms = $schema->cvterms;

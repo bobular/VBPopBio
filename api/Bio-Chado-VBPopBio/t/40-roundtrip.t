@@ -19,10 +19,12 @@ $schema->txn_do_deferred(
 
 		  # read in a project
 		  my $project = $projects->create_from_isatab({ directory=>$isatabdir});
+		  my $project_data = $project->as_data_structure;
 		  $project->write_to_isatab({ directory=>$tempdir });
+		  $project->delete;
 
 		  my $project2 = $projects->create_from_isatab({ directory=>$tempdir });
-		  is_deeply($project2->as_data_structure, $project->as_data_structure, "JSON data structures the same");
+		  is_deeply($project2->as_data_structure, $project_data, "JSON data structures the same");
 
 		  # we were just pretending!
 		  $schema->defer_exception("This is the only exception we should see.");

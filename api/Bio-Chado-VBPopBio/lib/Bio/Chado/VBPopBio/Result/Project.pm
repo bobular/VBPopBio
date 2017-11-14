@@ -836,7 +836,9 @@ sub write_to_isatab {
 
 =head2 as_isatab
 
-deeply transform project u
+transform project into isatab data structure
+
+will descend into samples, assays etc.
 
 =cut
 
@@ -844,9 +846,43 @@ deeply transform project u
 sub as_isatab {
   my $self = shift;
 
-  my $isatab = {};
+  my $isa = { studies => [ {} ] };
+  my $study = $isa->{studies}[0];
 
-  return $isatab;
+  $study->{study_title} = $self->name;
+  $study->{study_description} = $self->description;
+  $study->{study_identifier} = $self->external_id;
+  $study->{study_submission_date} = $self->submission_date;
+  $study->{study_public_release_date} = $self->public_release_date;
+  $study->{study_file_name} = 's_samples.txt';
+
+  # start with the contacts because these throw the first error in the loader if not present
+  foreach my $contact ($self->contacts) {
+    # reverse the packing into Chado in ResultSet::Contact::find_or_create_from_isatab()
+    my $description = $contact->description;
+    my ($name, $place) = $description =~ /(.+?)(?: \((.+?)\))?$/;
+    my ($first_name, $initials, $surname) = split " ", $name, 3;
+    while (!$surname) {
+      $surname = $initials;
+      $initials = $first_name;
+      $first_name = '';
+    }
+    if (!$first_name && $initials) {
+      $first_name = $initials;
+      $initials = '';
+    }
+
+    push @{$study->{study_contacts}}, {
+				       study_person_email => $contact->name,
+				       study_person_first_name => $first_name // '',
+				       study_person_mid_initials => [ $initials // () ],
+				       study_person_last_name => $surname,
+				       study_person_address => $place // '',
+		       };
+  }
+
+
+  return $isa;
 }
 
 =head2 as_cytoscape_graph
