@@ -15,6 +15,7 @@ __PACKAGE__->resultset_attributes({ order_by => 'stock_id' });
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use Carp;
 use POSIX;
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 =head1 NAME
 
@@ -433,6 +434,29 @@ sub as_data_structure {
 
 	 };
 }
+
+=head2 as_isatab
+
+generates isatab datastructure for writing to files with Bio::Parser::ISATab
+
+=cut
+
+sub as_isatab {
+  my $self = shift;
+  my $isa = { };
+
+  my $material_type = $self->type;
+  my $mt_dbxref = $material_type->dbxref;
+  $isa->{material_type}{value} = $material_type->name;
+  $isa->{material_type}{term_source_ref} = $mt_dbxref->db->name;
+  $isa->{material_type}{term_accession_number} = $mt_dbxref->accession;
+  $isa->{description} = $self->description;
+
+  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
+  return $isa;
+}
+
 
 
 =head2 best_species

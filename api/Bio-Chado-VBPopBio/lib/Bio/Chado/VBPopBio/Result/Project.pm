@@ -21,6 +21,7 @@ __PACKAGE__->resultset_attributes({ order_by => 'project_id' });
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use aliased 'Bio::Chado::VBPopBio::Util::Extra';
 use aliased 'Bio::Chado::VBPopBio::Util::Date';
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 =head1 NAME
 
@@ -851,7 +852,7 @@ sub as_isatab {
 
   $study->{study_title} = $self->name;
   $study->{study_description} = $self->description;
-  $study->{study_identifier} = $self->external_id;
+  my $external_id = $study->{study_identifier} = $self->external_id;
   $study->{study_submission_date} = $self->submission_date;
   $study->{study_public_release_date} = $self->public_release_date;
   $study->{study_file_name} = 's_samples.txt';
@@ -879,6 +880,16 @@ sub as_isatab {
 				       study_person_last_name => $surname,
 				       study_person_address => $place // '',
 		       };
+
+
+    # process the samples
+    my $samples = $self->stocks;
+    my $samples_data = $study->{sources}{$external_id}{samples} = ordered_hashref();
+    while (my $sample = $samples->next) {
+      my $sample_name = $sample->name;
+      $samples_data->{$sample_name} = $sample->as_isatab();
+    }
+
   }
 
 

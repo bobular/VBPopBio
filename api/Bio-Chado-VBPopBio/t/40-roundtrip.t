@@ -10,6 +10,7 @@ my $projects = $schema->projects;
 my $json = JSON->new->pretty;
 my $verbose = 0; # print out JSON (or not)
 
+#my $isatabdir = '../../test-data/Grouped-Characteristics';
 my $isatabdir = '../../test-data/VectorBase_PopBio_ISA-Tab_full_example';
 my $tempdir = "/tmp/temp-roundtrip-$$";
 mkdir $tempdir;
