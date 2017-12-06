@@ -117,6 +117,11 @@ my $sample_size_term = $schema->cvterms->find_by_accession(
     }
 );
 
+my $mutated_protein_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDOMAL',
+								 term_accession_number => '50000004' });
+my $wild_type_allele_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
+								 term_accession_number => '0000001' });
+
 my $iso8601 = DateTime::Format::ISO8601->new;
 
 my $start_date_type = $schema->types->start_date;
@@ -181,7 +186,7 @@ while ( my $stock = $stocks->next ) {
         my $documentTaxons = {
             doc => {
                 id         => $stable_id . "_taxon_" . $i,
-                stable_id  => $stable_id,
+                stable_id  => $stable_id,  #### NOTE WHEN REFACTORING: is this field ever used?
                 type       => 'Taxonomy',
                 bundle     => 'pop_sample',
 		(defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
@@ -251,7 +256,7 @@ while ( my $stock = $stocks->next ) {
             id          => $stable_id . "_stable_id",
             stable_id   => $stable_id,
             type        => 'Stable ID',
-            field       => 'id',
+            field       => 'sample_id_s',
             bundle      => 'pop_sample',
 	    (defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
             geo_coords  => $latlong,
@@ -519,6 +524,7 @@ while ( my $stock = $stocks->next ) {
 
   # We need several documents for each sample, one for every autocomplete entity
   # (e.g. Taxon, Projects, pubmedid, paper titles)
+  	    my $phenotype_assay_stable_id = $phenotype_assay->stable_id;
 
             foreach my $phenotype ( $phenotype_assay->phenotypes ) {
 
@@ -526,7 +532,7 @@ while ( my $stock = $stocks->next ) {
 
                 if ( defined $value && looks_like_number($value) ) {
 
-                    my $assay_stable_id = $stable_id . "." . $phenotype->id;
+                    my $stablish_phenotype_id = $stable_id . "." . $phenotype->id;
                     my $json_text;
 
                     my @taxons = flattened_parents($stock_best_species);
@@ -540,8 +546,8 @@ while ( my $stock = $stocks->next ) {
                         # Taxonomy
                         my $documentTaxons = {
                             doc => {
-                                id        => $assay_stable_id . "_taxon_" . $i,
-                                stable_id => $assay_stable_id,
+                                id        => $stablish_phenotype_id . "_taxon_" . $i,
+                                stable_id => $stablish_phenotype_id,
                                 type      => 'Taxonomy',
                                 bundle    => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
@@ -567,8 +573,8 @@ while ( my $stock = $stocks->next ) {
                     # Description
                     my $documentDescription = {
                         doc => {
-                            id               => $assay_stable_id . "_desc",
-                            stable_id        => $assay_stable_id,
+                            id               => $stablish_phenotype_id . "_desc",
+                            stable_id        => $stablish_phenotype_id,
                             type             => 'Description',
                             field            => 'description',
                             bundle           => 'pop_sample_phenotype',
@@ -594,8 +600,8 @@ while ( my $stock = $stocks->next ) {
                     # Title
                     my $documentTitle = {
                         doc => {
-                            id               => $assay_stable_id . "_title",
-                            stable_id        => $assay_stable_id,
+                            id               => $stablish_phenotype_id . "_title",
+                            stable_id        => $stablish_phenotype_id,
                             type             => 'Title',
                             field            => 'label',
                             bundle           => 'pop_sample_phenotype',
@@ -612,15 +618,15 @@ while ( my $stock = $stocks->next ) {
                     # Stable ID
                     my $documentID = {
                         doc => {
-                            id               => $assay_stable_id . "_stable_id",
-                            stable_id        => $assay_stable_id,
+                            id               => $stablish_phenotype_id . "_stable_id",
+                            stable_id        => $stablish_phenotype_id,
                             type             => 'Stable ID',
-                            field            => 'id',
+                            field            => 'assay_id_s',
                             bundle           => 'pop_sample_phenotype',
                             phenotype_type_s => 'insecticide resistance',
                             geo_coords       => $latlong,
                             date             => $date,
-                            textsuggest      => $assay_stable_id,
+                            textsuggest      => $phenotype_assay_stable_id,
                             is_synonym       => 'false',
 
                         }
@@ -633,8 +639,8 @@ while ( my $stock = $stocks->next ) {
                     foreach my $pub (@pubs) {
                         my $documentPubmedIDs = {
                             doc => {
-                                id        => $assay_stable_id . "_pmid_" . $i,
-                                stable_id => $assay_stable_id,
+                                id        => $stablish_phenotype_id . "_pmid_" . $i,
+                                stable_id => $stablish_phenotype_id,
                                 bundle    => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
                                 type             => 'Pubmed references',
@@ -656,8 +662,8 @@ while ( my $stock = $stocks->next ) {
 		        my $project_id = quick_project_stable_id($project);
                         my $documentProjects = {
                             doc => {
-                                id        => $assay_stable_id . "_proj_" . $i,
-                                stable_id => $assay_stable_id,
+                                id        => $stablish_phenotype_id . "_proj_" . $i,
+                                stable_id => $stablish_phenotype_id,
                                 bundle    => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
                                 type             => 'Projects',
@@ -673,8 +679,8 @@ while ( my $stock = $stocks->next ) {
 
 			my $documentProjectTitles = {
 						     doc => {
-							     id          => $assay_stable_id . "_proj_" . $i . "_title",
-							     stable_id   => $assay_stable_id,
+							     id          => $stablish_phenotype_id . "_proj_" . $i . "_title",
+							     stable_id   => $stablish_phenotype_id,
 							     bundle      => 'pop_sample_phenotype',
 							     type        => 'Project titles',
 							     geo_coords  => $latlong,
@@ -693,8 +699,8 @@ while ( my $stock = $stocks->next ) {
 			foreach my $author ( @{$project2authors{$project_id}} ) {
 			  my $documentProjectAuthors = {
 							doc => {
-								id          => $assay_stable_id . "_proj_" . $i . "_auth_" . $j,
-								stable_id   => $assay_stable_id,
+								id          => $stablish_phenotype_id . "_proj_" . $i . "_auth_" . $j,
+								stable_id   => $stablish_phenotype_id,
 								bundle      => 'pop_sample_phenotype',
 								type        => 'Authors',
 								geo_coords  => $latlong,
@@ -717,8 +723,8 @@ while ( my $stock = $stocks->next ) {
                     # Sample type
                     my $documentSampleType = {
                         doc => {
-                            id        => $assay_stable_id . "_sample_type",
-                            stable_id => $assay_stable_id,
+                            id        => $stablish_phenotype_id . "_sample_type",
+                            stable_id => $stablish_phenotype_id,
                             type      => 'Sample type',
                             field     => 'sample_type',
                             bundle    => 'pop_sample_phenotype',
@@ -747,8 +753,8 @@ while ( my $stock = $stocks->next ) {
                           synonym_check($geolocation);
                         my $documentGeolocations = {
                             doc => {
-                                id => $assay_stable_id . "_geolocation_" . $i,
-                                stable_id        => $assay_stable_id,
+                                id => $stablish_phenotype_id . "_geolocation_" . $i,
+                                stable_id        => $stablish_phenotype_id,
                                 type             => 'Geography',
                                 bundle           => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
@@ -781,8 +787,8 @@ while ( my $stock = $stocks->next ) {
                         ( $protocol, $is_synonym ) = synonym_check($protocol);
                         my $documentColProtocol = {
                             doc => {
-                                id => $assay_stable_id . "_colProtocol_" . $i,
-                                stable_id        => $assay_stable_id,
+                                id => $stablish_phenotype_id . "_colProtocol_" . $i,
+                                stable_id        => $stablish_phenotype_id,
                                 bundle           => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
                                 type             => 'Collection protocols',
@@ -815,8 +821,8 @@ while ( my $stock = $stocks->next ) {
                         ( $protocol, $is_synonym ) = synonym_check($protocol);
                         my $documentProtocols = {
                             doc => {
-                                id => $assay_stable_id . "_protocol_" . $i,
-                                stable_id        => $assay_stable_id,
+                                id => $stablish_phenotype_id . "_protocol_" . $i,
+                                stable_id        => $stablish_phenotype_id,
                                 bundle           => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
                                 type             => 'Protocols',
@@ -846,7 +852,7 @@ while ( my $stock = $stocks->next ) {
                       = assay_insecticides_concentrations_units_and_more(
                         $phenotype_assay);
 
-                    die "assay $assay_stable_id had fatal issues: $errors\n"
+                    die "assay $stablish_phenotype_id had fatal issues: $errors\n"
                       if ($errors);
 
                     if ( defined $insecticide ) {
@@ -859,10 +865,10 @@ while ( my $stock = $stocks->next ) {
                               synonym_check($insecticide);
                             my $documentInsecticides = {
                                 doc => {
-                                    id => $assay_stable_id
+                                    id => $stablish_phenotype_id
                                       . "_insecticide_"
                                       . $i,
-                                    stable_id => $assay_stable_id,
+                                    stable_id => $stablish_phenotype_id,
                                     bundle    => 'pop_sample_phenotype',
                                     phenotype_type_s =>
                                       'insecticide resistance',
@@ -895,7 +901,355 @@ while ( my $stock = $stocks->next ) {
 
     }
 
-##########################################
+    ##########################################
+    # now handle the genotypes
+    #
+    foreach my $genotype_assay (@genotype_assays) {
+      my $genotype_assay_stable_id = $genotype_assay->stable_id;
+      foreach my $genotype ($genotype_assay->genotypes) {
+	my $stablish_genotype_id = $genotype_assay_stable_id . "." . $genotype->id;
+
+	my $genotype_type = $genotype->type;
+	# if it's the right kind of genotype
+	if ($mutated_protein_term->has_child($genotype_type) || $wild_type_allele_term->has_child($genotype_type)) {
+
+	  my @taxons = flattened_parents($stock_best_species);
+
+	  my $i = 0;
+	  foreach my $taxon (@taxons) {
+
+	    my $is_synonym;
+	    ( $taxon, $is_synonym ) = synonym_check($taxon);
+
+
+	    # Allele
+	    my $documentAllele = {
+				 doc => {
+					 id               => $stablish_genotype_id . "_allele",
+					 stable_id        => $stablish_genotype_id,
+					 type             => 'Allele',
+					 field            => 'genotype_name_s',
+					 bundle           => 'pop_sample_genotype',
+					 genotype_type_s => 'mutated protein',
+					 geo_coords       => $latlong,
+					 date             => $date,
+					 textsuggest      => $genotype_type->name,
+					 is_synonym       => 'false',
+					}
+				};
+	    print_document($output_prefix, $documentAllele);
+
+
+
+	    # Taxonomy
+	    my $documentTaxons = {
+				  doc => {
+					  id        => $stablish_genotype_id . "_taxon_" . $i,
+					  stable_id => $stablish_genotype_id,
+					  type      => 'Taxonomy',
+					  bundle    => 'pop_sample_genotype',
+					  genotype_type_s => 'mutated protein',
+					  date             => $date,
+					  geo_coords       => $latlong,
+					  ( $i == 0 )
+					  ? (
+					     textboost => 100,
+					     field     => 'species_cvterms'
+					    )
+					  : (
+					     textboost => 20,
+					     field     => 'species_cvterms'
+					    ),
+					  textsuggest => $taxon,
+					  is_synonym  => $is_synonym,
+					 }
+				 };
+	    print_document($output_prefix, $documentTaxons);
+	    $i++;
+	  }
+
+	  # Description
+	  my $documentDescription = {
+				     doc => {
+					     id               => $stablish_genotype_id . "_desc",
+					     stable_id        => $stablish_genotype_id,
+					     type             => 'Description',
+					     field            => 'description',
+					     bundle           => 'pop_sample_genotype',
+					     genotype_type_s => 'mutated protein',
+					     geo_coords       => $latlong,
+					     date             => $date,
+					     textsuggest      => $stock->description || join(
+											     ' ',
+											     (
+											      $stock_best_species
+											      ? $stock_best_species->name
+											      : ()
+											     ),
+											     $stock->type->name,
+											     ( $fc ? $fc->geolocation->summary : () )
+											    ),
+					     is_synonym => 'false',
+
+					    }
+				    };
+	  print_document($output_prefix, $documentDescription);
+
+	  # Title
+	  my $documentTitle = {
+			       doc => {
+				       id               => $stablish_genotype_id . "_title",
+				       stable_id        => $stablish_genotype_id,
+				       type             => 'Title',
+				       field            => 'label',
+				       bundle           => 'pop_sample_genotype',
+				       genotype_type_s => 'mutated protein',
+				       geo_coords       => $latlong,
+				       date             => $date,
+				       textsuggest      => $genotype->name,
+				       is_synonym       => 'false',
+
+				      }
+			      };
+	  print_document($output_prefix, $documentTitle);
+
+	  # Stable ID
+	  my $documentID = {
+			    doc => {
+				    id               => $stablish_genotype_id . "_stable_id",
+				    stable_id        => $stablish_genotype_id,
+				    type             => 'Stable ID',
+				    field            => 'assay_id_s',
+				    bundle           => 'pop_sample_genotype',
+				    genotype_type_s => 'mutated protein',
+				    geo_coords       => $latlong,
+				    date             => $date,
+				    textsuggest      => $genotype_assay_stable_id,
+				    is_synonym       => 'false',
+
+				   }
+			   };
+	  print_document($output_prefix, $documentID);
+
+	  # Pubmed ID(s)
+	  my @pubs = multiprops_pubmed_ids($stock);
+	  $i = 0;
+	  foreach my $pub (@pubs) {
+	    my $documentPubmedIDs = {
+				     doc => {
+					     id        => $stablish_genotype_id . "_pmid_" . $i,
+					     stable_id => $stablish_genotype_id,
+					     bundle    => 'pop_sample_genotype',
+					     genotype_type_s => 'mutated protein',
+					     type             => 'Pubmed references',
+					     field            => 'pubmed',
+					     geo_coords       => $latlong,
+					     date             => $date,
+					     textsuggest      => "PMID:" . $pub,
+					     is_synonym       => 'false',
+
+					    }
+				    };
+	    print_document($output_prefix, $documentPubmedIDs);
+	    $i++;
+	  }
+
+	  # Project(s)
+	  $i = 0;
+	  foreach my $project (@projects) {
+	    my $project_id = quick_project_stable_id($project);
+	    my $documentProjects = {
+				    doc => {
+					    id        => $stablish_genotype_id . "_proj_" . $i,
+					    stable_id => $stablish_genotype_id,
+					    bundle    => 'pop_sample_genotype',
+					    genotype_type_s => 'mutated protein',
+					    type             => 'Projects',
+					    geo_coords       => $latlong,
+					    date             => $date,
+					    textsuggest => $project_id,
+					    field      => 'projects',
+					    is_synonym => 'false',
+
+					   }
+				   };
+	    print_document($output_prefix, $documentProjects);
+
+	    my $documentProjectTitles = {
+					 doc => {
+						 id          => $stablish_genotype_id . "_proj_" . $i . "_title",
+						 stable_id   => $stablish_genotype_id,
+						 bundle      => 'pop_sample_genotype',
+						 type        => 'Project titles',
+						 geo_coords  => $latlong,
+						 date        => $date,
+						 textsuggest => $project2title{$project_id},
+						 field       => 'project_titles_txt',
+						 is_synonym  => 'false',
+						 genotype_type_s => 'mutated protein',
+						}
+					};
+
+	    print_document($output_prefix, $documentProjectTitles);
+
+	    # project_authors_txt
+	    my $j=0;
+	    foreach my $author ( @{$project2authors{$project_id}} ) {
+	      my $documentProjectAuthors = {
+					    doc => {
+						    id          => $stablish_genotype_id . "_proj_" . $i . "_auth_" . $j,
+						    stable_id   => $stablish_genotype_id,
+						    bundle      => 'pop_sample_genotype',
+						    type        => 'Authors',
+						    geo_coords  => $latlong,
+						    date        => $date,
+						    textsuggest => $author,
+						    field       => 'project_authors_txt',
+						    is_synonym  => 'false',
+						    genotype_type_s => 'mutated protein',
+
+						   }
+					   };
+	      print_document($output_prefix, $documentProjectAuthors);
+	      $j++;
+	    }
+
+	    $i++;
+	  }
+
+
+	  # Sample type
+	  my $documentSampleType = {
+				    doc => {
+					    id        => $stablish_genotype_id . "_sample_type",
+					    stable_id => $stablish_genotype_id,
+					    type      => 'Sample type',
+					    field     => 'sample_type',
+					    bundle    => 'pop_sample_genotype',
+					    genotype_type_s => 'mutated protein',
+					    geo_coords       => $latlong,
+					    date             => $date,
+					    textsuggest      => $stock->type->name,
+					    is_synonym       => 'false',
+
+					   }
+				   };
+	  print_document($output_prefix, $documentSampleType);
+
+	  # Geolocations
+	  my @geolocations = remove_gaz_crap(
+					     map { flattened_parents($_) }
+					     map {
+					       multiprops_cvterms( $_->geolocation, qr/^GAZ:\d+$/ )
+					     } @field_collections
+					    );
+
+	  $i = 0;
+	  foreach my $geolocation (@geolocations) {
+	    my $is_synonym;
+	    ( $geolocation, $is_synonym ) =
+	      synonym_check($geolocation);
+	    my $documentGeolocations = {
+					doc => {
+						id => $stablish_genotype_id . "_geolocation_" . $i,
+						stable_id        => $stablish_genotype_id,
+						type             => 'Geography',
+						bundle           => 'pop_sample_genotype',
+						genotype_type_s => 'mutated protein',
+						date             => $date,
+						geo_coords       => $latlong,
+						( $i == 0 )
+						? (
+						   textboost => 100,
+						   field     => 'geolocations_cvterms'
+						  )
+						: (
+						   textboost => 30,
+						   field     => 'geolocations_cvterms'
+						  ),
+						textsuggest => $geolocation,
+						is_synonym  => $is_synonym,
+					       }
+				       };
+	    print_document($output_prefix, $documentGeolocations);
+	    $i++;
+	  }
+
+	  # Collection protocols
+
+	  my @collectionProtocols =
+	    map { flattened_parents($_) } @collection_protocol_types;
+	  $i = 0;
+	  foreach my $protocol (@collectionProtocols) {
+	    my $is_synonym;
+	    ( $protocol, $is_synonym ) = synonym_check($protocol);
+	    my $documentColProtocol = {
+				       doc => {
+					       id => $stablish_genotype_id . "_colProtocol_" . $i,
+					       stable_id        => $stablish_genotype_id,
+					       bundle           => 'pop_sample_genotype',
+					       genotype_type_s => 'mutated protein',
+					       type             => 'Collection protocols',
+					       geo_coords       => $latlong,
+					       date             => $date,
+					       ( $i == 0 )
+					       ? (
+						  textboost => 100,
+						  field     => 'collection_protocols_cvterms'
+						 )
+					       : (
+						  textboost => 30,
+						  field     => 'collection_protocols_cvterms'
+						 ),
+					       textsuggest => $protocol,
+					       is_synonym  => $is_synonym,
+					      }
+				      };
+	    print_document($output_prefix, $documentColProtocol);
+	    $i++;
+	  }
+
+	  # Protocols
+
+	  my @protocol_types = map { $_->type } $genotype_assay->protocols->all;
+	  my @protocols =
+	    map { flattened_parents($_) } @protocol_types;
+	  $i = 0;
+	  foreach my $protocol (@protocols) {
+	    my $is_synonym;
+	    ( $protocol, $is_synonym ) = synonym_check($protocol);
+	    my $documentProtocols = {
+				     doc => {
+					     id => $stablish_genotype_id . "_protocol_" . $i,
+					     stable_id        => $stablish_genotype_id,
+					     bundle           => 'pop_sample_genotype',
+					     genotype_type_s => 'mutated protein',
+					     type             => 'Protocols',
+					     geo_coords       => $latlong,
+					     date             => $date,
+					     ( $i == 0 )
+					     ? (
+						textboost => 100,
+						field     => 'protocols_cvterms'
+					       )
+					     : (
+						textboost => 30,
+						field     => 'protocols_cvterms'
+					       ),
+					     textsuggest => $protocol,
+					     is_synonym  => $is_synonym,
+					    }
+				    };
+	    print_document($output_prefix, $documentProtocols);
+	    $i++;
+	  }
+
+	}
+
+      }
+    ##########################################
+
+    }
 
     last if ( $limit && ++$done >= $limit );
 }
