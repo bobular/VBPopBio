@@ -442,7 +442,7 @@ generates isatab datastructure for writing to files with Bio::Parser::ISATab
 =cut
 
 sub as_isatab {
-  my $self = shift;
+  my ($self, $study) = @_;
   my $isa = { };
 
   my $material_type = $self->type;
@@ -453,6 +453,33 @@ sub as_isatab {
   $isa->{description} = $self->description;
 
   ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
+  foreach my $assay ($self->nd_experiments) {
+    next unless ($assay->has_isatab_sheet);
+    my $study_assay_measurement_type = $assay->isatab_measurement_type;
+
+    # every assay with a different protocol (or combination of protocols) will
+    # be put in a different study_assay
+    my $protocols_fingerprint = join ' ', $study_assay_measurement_type, sort map { $_->type->name } $assay->protocols;
+    $protocols_fingerprint =~ s/\W+/_/g;
+    $protocols_fingerprint =~ s/_$//;
+
+    my $num_existing_assays = @{$study->{study_assays} // []};
+    my $isa_assay_root =
+      $study->{study_assay_fingerprint_lookup}{$protocols_fingerprint} //=
+	$study->{study_assays}[$num_existing_assays] =
+	  {
+	   study_assay_measurement_type => $study_assay_measurement_type,
+	   study_assay_file_name => "a_$protocols_fingerprint.txt",
+	  };
+
+    my ($sample_name, $assay_name) = ($self->name, $assay->external_id);
+    $isa_assay_root->{samples}{$sample_name}{assays}{$assay_name} = $assay->as_isatab();
+
+#    my $study_assay_file_name = '???';
+#    $study->{study_assay_lookup}{$assay_type} //= 123;
+  }
+
 
   return $isa;
 }

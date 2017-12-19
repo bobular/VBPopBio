@@ -887,7 +887,7 @@ sub as_isatab {
     my $samples_data = $study->{sources}{$external_id}{samples} = ordered_hashref();
     while (my $sample = $samples->next) {
       my $sample_name = $sample->name;
-      $samples_data->{$sample_name} = $sample->as_isatab();
+      $samples_data->{$sample_name} = $sample->as_isatab($study);
     }
 
   }

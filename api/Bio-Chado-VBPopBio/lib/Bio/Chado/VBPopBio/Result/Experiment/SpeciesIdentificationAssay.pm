@@ -196,6 +196,17 @@ sub as_cytoscape_graph {
   return $graph;
 }
 
+=head isatab_measurement_type
+
+returns the text needed for the "Study Assay Measurement Type" row in i_investigation.txt
+
+=cut
+
+sub isatab_measurement_type {
+  my $self = shift;
+  return 'species identification assay';
+}
+
 
 =head1 AUTHOR
 

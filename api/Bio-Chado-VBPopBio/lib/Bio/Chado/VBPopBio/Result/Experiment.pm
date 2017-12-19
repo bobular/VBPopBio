@@ -847,6 +847,21 @@ sub as_data_structure {
 	 };
 }
 
+=head2 as_isatab
+
+returns the data needed for ISA-Tab export
+
+=cut
+
+sub as_isatab {
+  my ($self) = @_;
+  my $isa = { };
+
+  return $isa;
+}
+
+
+
 =head2 basic_info (private/protected)
 
 returns hash of key/value pairs for Experiment base class
@@ -973,6 +988,35 @@ sub duration_in_days {
     return $days;
   }
 }
+
+
+=head2 has_isatab_sheet 
+
+returns true if the assay should be represented in ISA-Tab
+
+currently only false for sample manipulation assays
+
+=cut
+
+sub has_isatab_sheet {
+  my $self = shift;
+  return 1;
+}
+
+
+=head isatab_measurement_type
+
+returns the text needed for the "Study Assay Measurement Type" row in i_investigation.txt
+
+(overridden in species_identification_assays)
+
+=cut
+
+sub isatab_measurement_type {
+  my $self = shift;
+  return $self->type->name;
+}
+
 
 
 =head1 AUTHOR
