@@ -359,7 +359,7 @@ sub to_isatab {
   # handle all multiprops (characteristics and comments)
 
   my $type2characteristics = ordered_hashref; # need to collate all props of the same type (to output semicolon delimited)
-  # key "ONTO:ACC" => value multiprop
+  # key "ONTO:ACC" => [ multiprop, ... ]
 
   foreach my $multiprop ($row->multiprops) {
     my @cvterms = $multiprop->cvterms;
@@ -378,72 +378,105 @@ sub to_isatab {
   }
   # now render the characteristics to isatab
   my $groupnum = 1;
-  foreach my $multiprops (values %{$type2characteristics}) {
+  foreach my $key (keys %{$type2characteristics}) {
+    my $multiprops = $type2characteristics->{$key};
     my ($mprop_type) = $multiprops->[0]->cvterms; # first cvterm of first multiprop (all share the same first cvterm)
 
+    my $done_multiprops = 0;
     if (@$multiprops > 1) {
       my $heading = sprintf "%s (%s)", $mprop_type->name, $mprop_type->dbxref->as_string;
-      # this is the case where a Characteristics column(s) should contain
-      # semicolon delimited ontology terms only (no plain text values)
-      $characteristics->{$heading}{value} = join ';', map { ($_->cvterms)[1]->name } @$multiprops;
-      $characteristics->{$heading}{term_source_ref} = join ';', map { ($_->cvterms)[1]->dbxref->db->name } @$multiprops;
-      $characteristics->{$heading}{term_accession_number} = join ';', map { ($_->cvterms)[1]->dbxref->accession } @$multiprops;
-      warn "this code hasn't been tested and doesn't have much error checking";
-    } else {
-      my $multiprop = $multiprops->[0];
-      my $value = $multiprop->value;
-      my @cvterms = $multiprop->cvterms;
-      if (@cvterms > 2) {
-	# needs group prefix to render proper multiprop to multiple Characteristics columns
-	my $group_prefix = sprintf "group%d", $groupnum++;
-	for (my $i=0; $i<@cvterms; $i+=2) {
-	  my ($term1, $term2) = ($cvterms[$i], $cvterms[$i+1]);
-	  my $reached_the_end = $i >= @cvterms-2;
-	  my $heading = sprintf "%s.%s (%s)", $group_prefix, $term1->name, $term1->dbxref->as_string;
-	  if ($reached_the_end) {
-	    if (defined $value && defined $term2) {
-	      # we have units
-	      $characteristics->{$heading}{value} = $value;
-	      $characteristics->{$heading}{unit}{value} = $term2->name;
-	      $characteristics->{$heading}{unit}{term_source_ref} = $term2->dbxref->db->name;
-	      $characteristics->{$heading}{unit}{term_accession_number} = $term2->dbxref->accession;
-	    } elsif (defined $value) {
-	      # we have unitless free text value
-	      $characteristics->{$heading}{value} = $value;
-	    } elsif (defined $term2) {
-	      # we have an ontology term value
+      # the values should be all ontology terms or all free text (and perhaps units)
+      # so let's test if they are all ontology term values
+      my ($num_ontology_term_vals, $num_values_with_units, $num_plain_vals) = (0,0,0);
+      map {
+	if (@{$_->cvterms} == 2) {
+	  if (defined $_->value) {
+	    $num_values_with_units++;
+	  } else {
+	    $num_ontology_term_vals++;
+	  }
+	} elsif (@{$_->cvterms} == 1 && defined $_->value) {
+	  $num_plain_vals++;
+	} else {
+	  my $num = @{$_->cvterms};
+	  warn "$key: num cvterms = $num     value = ".$_->value."\n";
+	}
+      } @$multiprops;
+
+      if ($num_ontology_term_vals == @$multiprops) {
+	$characteristics->{$heading}{value} = join ';', map { ($_->cvterms)[1]->name } @$multiprops;
+	$characteristics->{$heading}{term_source_ref} = join ';', map { ($_->cvterms)[1]->dbxref->db->name } @$multiprops;
+	$characteristics->{$heading}{term_accession_number} = join ';', map { ($_->cvterms)[1]->dbxref->accession } @$multiprops;
+	$done_multiprops = 1;
+      } elsif ($num_values_with_units == @$multiprops) {
+	$characteristics->{$heading}{value} = join ';', map { $_->value } @$multiprops;
+	$characteristics->{$heading}{unit}{value} = join ';', map { ($_->cvterms)[1]->name } @$multiprops;
+	$characteristics->{$heading}{unit}{term_source_ref} = join ';', map { ($_->cvterms)[1]->dbxref->db->name } @$multiprops;
+	$characteristics->{$heading}{unit}{term_accession_number} = join ';', map { ($_->cvterms)[1]->dbxref->accession } @$multiprops;
+	$done_multiprops = 1;
+      } elsif ($num_plain_vals == @$multiprops) {
+	$characteristics->{$heading}{value} = join ';', map { $_->value } @$multiprops;
+	$done_multiprops = 1;
+      } else {
+	# warn "uncaught multiprop condition: key=$key num_plain=$num_plain_vals num_onto=$num_ontology_term_vals num_units=$num_values_with_units";
+      }
+      # warn "this code hasn't been tested and doesn't have much error checking";
+    }
+    unless ($done_multiprops) {
+      foreach my $multiprop (@$multiprops) {
+	my $value = $multiprop->value;
+	my @cvterms = $multiprop->cvterms;
+	if (@cvterms > 2) {
+	  # needs group prefix to render proper multiprop to multiple Characteristics columns
+	  my $group_prefix = sprintf "group%d", $groupnum++;
+	  for (my $i=0; $i<@cvterms; $i+=2) {
+	    my ($term1, $term2) = ($cvterms[$i], $cvterms[$i+1]);
+	    my $reached_the_end = $i >= @cvterms-2;
+	    my $heading = sprintf "%s.%s (%s)", $group_prefix, $term1->name, $term1->dbxref->as_string;
+	    if ($reached_the_end) {
+	      if (defined $value && defined $term2) {
+		# we have units
+		$characteristics->{$heading}{value} = $value;
+		$characteristics->{$heading}{unit}{value} = $term2->name;
+		$characteristics->{$heading}{unit}{term_source_ref} = $term2->dbxref->db->name;
+		$characteristics->{$heading}{unit}{term_accession_number} = $term2->dbxref->accession;
+	      } elsif (defined $value) {
+		# we have unitless free text value
+		$characteristics->{$heading}{value} = $value;
+	      } elsif (defined $term2) {
+		# we have an ontology term value
+		$characteristics->{$heading}{value} = $term2->name;
+		$characteristics->{$heading}{term_source_ref} = $term2->dbxref->db->name;
+		$characteristics->{$heading}{term_accession_number} = $term2->dbxref->accession;
+	      } else {
+		$schema->defer_exception("unexpected condition in MultiProps->to_isatab");
+	      }
+	    } else {
+	      # if not at the end of the multiprop sentence it must be an ontology term value
 	      $characteristics->{$heading}{value} = $term2->name;
 	      $characteristics->{$heading}{term_source_ref} = $term2->dbxref->db->name;
 	      $characteristics->{$heading}{term_accession_number} = $term2->dbxref->accession;
-	    } else {
-	      $schema->defer_exception("unexpected condition in MultiProps->to_isatab");
 	    }
-	  } else {
-	    # if not at the end of the multiprop sentence it must be an ontology term value
-	    $characteristics->{$heading}{value} = $term2->name;
-	    $characteristics->{$heading}{term_source_ref} = $term2->dbxref->db->name;
-	    $characteristics->{$heading}{term_accession_number} = $term2->dbxref->accession;
 	  }
-	}
-      } else {
-	# simple single term or plain text value with units
-	my $heading = sprintf "%s (%s)", $mprop_type->name, $mprop_type->dbxref->as_string;
-	if (@cvterms == 2) {
-	  if (defined $multiprop->value) {
+	} else {
+	  # simple single term or plain text value with units
+	  my $heading = sprintf "%s (%s)", $mprop_type->name, $mprop_type->dbxref->as_string;
+	  if (@cvterms == 2) {
+	    if (defined $multiprop->value) {
+	      $characteristics->{$heading}{value} = $multiprop->value;
+	      $characteristics->{$heading}{unit}{value} = $cvterms[1]->name;
+	      $characteristics->{$heading}{unit}{term_source_ref} = $cvterms[1]->dbxref->db->name;
+	      $characteristics->{$heading}{unit}{term_accession_number} = $cvterms[1]->dbxref->accession;
+	    } else {
+	      $characteristics->{$heading}{value} = $cvterms[1]->name;
+	      $characteristics->{$heading}{term_source_ref} = $cvterms[1]->dbxref->db->name;
+	      $characteristics->{$heading}{term_accession_number} = $cvterms[1]->dbxref->accession;
+	    }
+	  } elsif (defined $multiprop->value) {
 	    $characteristics->{$heading}{value} = $multiprop->value;
-	    $characteristics->{$heading}{unit}{value} = $cvterms[1]->name;
-	    $characteristics->{$heading}{unit}{term_source_ref} = $cvterms[1]->dbxref->db->name;
-	    $characteristics->{$heading}{unit}{term_accession_number} = $cvterms[1]->dbxref->accession;
-	  } else  {
-	    $characteristics->{$heading}{value} = $cvterms[1]->name;
-	    $characteristics->{$heading}{term_source_ref} = $cvterms[1]->dbxref->db->name;
-	    $characteristics->{$heading}{term_accession_number} = $cvterms[1]->dbxref->accession;
 	  }
-	} elsif (defined $multiprop->value) {
-	  $characteristics->{$heading}{value} = $multiprop->value;
 	}
       }
-
     }
   }
 

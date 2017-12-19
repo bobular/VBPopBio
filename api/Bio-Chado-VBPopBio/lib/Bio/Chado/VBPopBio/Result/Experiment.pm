@@ -857,6 +857,8 @@ sub as_isatab {
   my ($self) = @_;
   my $isa = { };
 
+  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
   return $isa;
 }
 
