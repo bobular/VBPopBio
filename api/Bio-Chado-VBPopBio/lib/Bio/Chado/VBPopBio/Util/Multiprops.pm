@@ -399,7 +399,6 @@ sub to_isatab {
 	  $num_plain_vals++;
 	} else {
 	  my $num = @{$_->cvterms};
-	  warn "$key: num cvterms = $num     value = ".$_->value."\n";
 	}
       } @$multiprops;
 

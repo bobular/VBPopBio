@@ -854,10 +854,53 @@ returns the data needed for ISA-Tab export
 =cut
 
 sub as_isatab {
-  my ($self) = @_;
+  my ($self, $study) = @_;
   my $isa = { };
 
+  my $contacts = $self->contacts;
+  my $protocols = $self->nd_protocols;
+  while (my $protocol = $protocols->next) {
+    my ($prefix_ignored, $protocol_key) = split /:/, $protocol->name;
+    unless (defined $protocol_key) {
+      my $schema = $self->result_source->schema;
+      $schema->defer_exception_once("Cannot get Protocol REF from protocol name: ".$protocol->name);
+    }
+
+    my $protocol_isa = $isa->{protocols}{$protocol_key} = {};
+
+    my $protocol_type = $protocol->type;
+
+    my $already_added_to_investigation_sheet =
+      grep { $_->{study_protocol_name} eq $protocol_key }
+	@{$study->{study_protocols}};
+    unless ($already_added_to_investigation_sheet) {
+      push @{$study->{study_protocols}},
+	{
+	 study_protocol_name => $protocol_key,
+	 study_protocol_type => $protocol_type->name,
+	 study_protocol_type_term_source_ref => $protocol_type->dbxref->db->name,
+	 study_protocol_type_term_accession_number => $protocol_type->dbxref->accession,
+	 study_protocol_description => $protocol->description,
+	 study_protocol_uri => $protocol->uri,
+	};
+    }
+
+    # we bind the contacts with each protocol
+    # hoping the order remains the same
+    my $contact = $contacts->next;
+    if ($contact) {
+      $protocol_isa->{performer} = $contact->name; # the name field contains the email address that we need
+    }
+
+  }
+
+
   ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
+  $isa->{description} = $self->description;
+
+
+warn "to do: move (or merge start/end) date characteristics to Protocols Date column?";
 
   return $isa;
 }

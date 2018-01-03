@@ -474,7 +474,7 @@ sub as_isatab {
 	  };
 
     my ($sample_name, $assay_name) = ($self->name, $assay->external_id);
-    $isa_assay_root->{samples}{$sample_name}{assays}{$assay_name} = $assay->as_isatab();
+    $isa_assay_root->{samples}{$sample_name}{assays}{$assay_name} = $assay->as_isatab($study);
 
 #    my $study_assay_file_name = '???';
 #    $study->{study_assay_lookup}{$assay_type} //= 123;
