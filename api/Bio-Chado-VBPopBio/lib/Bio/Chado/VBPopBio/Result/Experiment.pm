@@ -855,7 +855,8 @@ returns the data needed for ISA-Tab export
 
 sub as_isatab {
   my ($self, $study) = @_;
-  my $isa = { };
+  my $isa = ordered_hashref;
+  $isa->{protocols} = ordered_hashref;
 
   my $contacts = $self->contacts;
   my $protocols = $self->nd_protocols;
@@ -899,8 +900,36 @@ sub as_isatab {
 
   $isa->{description} = $self->description;
 
+  ##################
+  # sort out dates #
+  ##################
+  # move any dates from $isa->{characteristics} into $isa->{protocols}{xxx}{Date}
+  # but which protocol do we use?
+  # I guess the first one
+  my ($first_protocol_ref) = keys %{$isa->{protocols}};
+  my $protocol_isa = $isa->{protocols}{$first_protocol_ref};
 
-warn "to do: move (or merge start/end) date characteristics to Protocols Date column?";
+  # first get the start/end pairs
+  my (@starts, @ends, @dates);
+  foreach my $heading (keys %{$isa->{characteristics}}) {
+    my $value = $isa->{characteristics}{$heading}{value};
+    if ($heading =~ /^start.date/) {
+      push @starts, split /;/, $value;
+      delete $isa->{characteristics}{$heading};
+    } elsif ($heading =~ /^end.date/) {
+      push @ends, split /;/, $value;
+      delete $isa->{characteristics}{$heading};
+    } elsif ($heading =~ /^date/) {
+      push @dates, split /;/, $value;
+      delete $isa->{characteristics}{$heading};
+    }
+  }
+  # merge the start/end pairs into @dates
+  while (@starts) {
+    push @dates, join '/', shift @starts, shift @ends;
+  }
+  # put these dates back in ISA-Tab's single Date column
+  $protocol_isa->{date} = join ';', @dates;
 
   return $isa;
 }
