@@ -460,7 +460,7 @@ sub as_isatab {
 
     # every assay with a different protocol (or combination of protocols) will
     # be put in a different study_assay
-    my $protocols_fingerprint = join ' ', $study_assay_measurement_type, sort map { $_->type->name } $assay->protocols;
+    my $protocols_fingerprint = join ' ', $study_assay_measurement_type, sort map { my ($a,$b)=split /:/,$_->name; $b; } $assay->protocols;
     $protocols_fingerprint =~ s/\W+/_/g;
     $protocols_fingerprint =~ s/_$//;
 
