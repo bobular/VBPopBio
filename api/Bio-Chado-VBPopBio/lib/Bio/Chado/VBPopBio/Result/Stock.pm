@@ -465,16 +465,17 @@ sub as_isatab {
     $protocols_fingerprint =~ s/_$//;
 
     my $num_existing_assays = @{$study->{study_assays} // []};
+    my $assay_filename = "a_$protocols_fingerprint.txt";
     my $isa_assay_root =
       $study->{study_assay_fingerprint_lookup}{$protocols_fingerprint} //=
 	$study->{study_assays}[$num_existing_assays] =
 	  {
 	   study_assay_measurement_type => $study_assay_measurement_type,
-	   study_assay_file_name => "a_$protocols_fingerprint.txt",
+	   study_assay_file_name => $assay_filename,
 	  };
 
     my ($sample_name, $assay_name) = ($self->name, $assay->external_id);
-    $isa_assay_root->{samples}{$sample_name}{assays}{$assay_name} = $assay->as_isatab($study);
+    $isa_assay_root->{samples}{$sample_name}{assays}{$assay_name} = $assay->as_isatab($study, $assay_filename);
 
 #    my $study_assay_file_name = '???';
 #    $study->{study_assay_lookup}{$assay_type} //= 123;

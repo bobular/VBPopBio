@@ -854,7 +854,7 @@ returns the data needed for ISA-Tab export
 =cut
 
 sub as_isatab {
-  my ($self, $study) = @_;
+  my ($self, $study, $assay_filename) = @_;
   my $isa = ordered_hashref;
   $isa->{protocols} = ordered_hashref;
 
