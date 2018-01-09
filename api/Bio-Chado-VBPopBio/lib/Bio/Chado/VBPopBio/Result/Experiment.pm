@@ -399,30 +399,6 @@ sub add_to_protocols_from_isatab {
 	  $schema->defer_exception_once("Can't find assay (protocol $protocol_ref) performer by email '$performer_email' in Study Contacts section");
 	}
       }
-      if (my $dates = $protocol_data->{date}) {
-	foreach my $date (split /;\s*/, $dates) {
-	  my ($start_date, $end_date) = split qr{/}, $date;
-	  if ($start_date && $end_date) {
-	    my $valid_start = Date->simple_validate_date($start_date, $self);
-	    my $valid_end = Date->simple_validate_date($end_date, $self);
-	    if ($valid_start && $valid_end) {
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->start_date], value=>$valid_start), 'allow_dupes');
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->end_date], value=>$valid_end), 'allow_dupes');
-	    } else {
-	      $schema->defer_exception_once("Cannot parse start/end date '$date' for assay (protocol $protocol_ref).");
-	    }
-	  } elsif ($start_date) {
-	    my $valid_date = Date->simple_validate_date($start_date, $self);
-	    if ($valid_date) {
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->date], value=>$valid_date), 'allow_dupes');
-	    } else {
-	      $schema->defer_exception_once("Cannot parse date '$date' for assay (protocol $protocol_ref).");
-	    }
-	  } else {
-	    $schema->defer_exception_once("Some problem with date string '$date' in assay (protocol $protocol_ref).")
-	  }
-	}
-      }
 
       if ($protocol_data->{parameter_values}) {
 
@@ -509,6 +485,30 @@ sub add_to_protocols_from_isatab {
 	}
       }
 
+      if (my $dates = $protocol_data->{date}) {
+	foreach my $date (split /;\s*/, $dates) {
+	  my ($start_date, $end_date) = split qr{/}, $date;
+	  if ($start_date && $end_date) {
+	    my $valid_start = Date->simple_validate_date($start_date, $self);
+	    my $valid_end = Date->simple_validate_date($end_date, $self);
+	    if ($valid_start && $valid_end) {
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->start_date], value=>$valid_start), 'allow_dupes');
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->end_date], value=>$valid_end), 'allow_dupes');
+	    } else {
+	      $schema->defer_exception_once("Cannot parse start/end date '$date' for assay (protocol $protocol_ref).");
+	    }
+	  } elsif ($start_date) {
+	    my $valid_date = Date->simple_validate_date($start_date, $self);
+	    if ($valid_date) {
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->date], value=>$valid_date), 'allow_dupes');
+	    } else {
+	      $schema->defer_exception_once("Cannot parse date '$date' for assay (protocol $protocol_ref).");
+	    }
+	  } else {
+	    $schema->defer_exception_once("Some problem with date string '$date' in assay (protocol $protocol_ref).")
+	  }
+	}
+      }
 
       push @protocols, $protocol;
     }
@@ -875,6 +875,38 @@ sub as_isatab {
       grep { $_->{study_protocol_name} eq $protocol_key }
 	@{$study->{study_protocols}};
     unless ($already_added_to_investigation_sheet) {
+
+      # protocol components
+      # these seem to be the only thing stored in protocol multiprops
+      my @components;
+      foreach my $mprop ($protocol->multiprops) {
+	my ($component_name, $component_type, $component_tsr, $component_tan);
+
+	my @cvterms = $mprop->cvterms;
+	if ($mprop->value) {
+	  ($component_name, $component_type) = split /: /, $mprop->value, 2;
+	} elsif (@cvterms == 2) {
+	  my $type = pop @cvterms;
+	  my $throwaway = $type->recursive_parents; # to fill the cvtermpath cache
+	  $component_name = $type->direct_parents->first->name; # this doesn't actually get read back into Chado - it's just to make the isa-tab pretty
+	  $component_type = $type->name;
+	  my $dbxref = $type->dbxref;
+	  $component_tsr = $dbxref->db->name;
+	  $component_tan = $dbxref->accession;
+	} else {
+	  my $schema = $self->result_source->schema;
+	  $schema->defer_exception_once("to_isatab problem with protocol ".$protocol->name." component ".$mprop->as_string);
+	}
+
+	push @components,
+	  {
+	   study_protocol_component_name => $component_name,
+	   study_protocol_component_type => $component_type,
+	   study_protocol_component_type_term_source_ref => $component_tsr,
+	   study_protocol_component_type_term_accession_number => $component_tan,
+	  };
+      }
+
       push @{$study->{study_protocols}},
 	{
 	 study_protocol_name => $protocol_key,
@@ -883,6 +915,7 @@ sub as_isatab {
 	 study_protocol_type_term_accession_number => $protocol_type->dbxref->accession,
 	 study_protocol_description => $protocol->description,
 	 study_protocol_uri => $protocol->uri,
+	 study_protocol_components => \@components,
 	};
     }
 
@@ -892,7 +925,6 @@ sub as_isatab {
     if ($contact) {
       $protocol_isa->{performer} = $contact->name; # the name field contains the email address that we need
     }
-
   }
 
 
