@@ -12,6 +12,7 @@ __PACKAGE__->subclass({
 		      });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 =head1 NAME
 
@@ -113,6 +114,47 @@ sub as_data_structure {
 		   },
 	  props => [ map { $_->as_data_structure } $self->multiprops ],
 	 };
+}
+
+=head2 as_isatab
+
+=cut
+
+sub as_isatab {
+  my ($self) = @_;
+  my $isa = ordered_hashref;
+  my $term;
+  if ($term = $self->observable) {
+    $isa->{observable}{value} = $term->name;
+    my $dbxref = $term->dbxref;
+    $isa->{observable}{term_source_ref} = $dbxref->db->name;
+    $isa->{observable}{term_accession_number} = $dbxref->accession;
+  }
+  if ($term = $self->attr) {
+    $isa->{attribute}{value} = $term->name;
+    my $dbxref = $term->dbxref;
+    $isa->{attribute}{term_source_ref} = $dbxref->db->name;
+    $isa->{attribute}{term_accession_number} = $dbxref->accession;
+  }
+  if ($term = $self->cvalue) {
+    $isa->{value}{value} = $term->name;
+    my $dbxref = $term->dbxref;
+    $isa->{value}{term_source_ref} = $dbxref->db->name;
+    $isa->{value}{term_accession_number} = $dbxref->accession;
+  } else {
+    $isa->{value}{value} = $self->value;
+    # units stored in Chado's assay field
+    if ($term = $self->assay) {
+      $isa->{value}{unit}{value} = $term->name;
+      my $dbxref = $term->dbxref;
+      $isa->{value}{unit}{term_source_ref} = $dbxref->db->name;
+      $isa->{value}{unit}{term_accession_number} = $dbxref->accession;
+    }
+  }
+
+  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
+  return $isa;
 }
 
 =head1 AUTHOR

@@ -262,19 +262,19 @@ sub annotate_from_isatab {
     $self->description($assay_data->{description});
   }
 
-  Multiprops->add_multiprops_from_isatab_characteristics
-    (
-     row => $self,
-     prop_relation_name => 'nd_experimentprops',
-     characteristics => $assay_data->{characteristics},
-    ) if ($assay_data->{characteristics});
-
   Multiprops->add_multiprops_from_isatab_comments
     (
      row => $self,
      prop_relation_name => 'nd_experimentprops',
      comments => $assay_data->{comments},
     ) if ($assay_data->{comments});
+
+  Multiprops->add_multiprops_from_isatab_characteristics
+    (
+     row => $self,
+     prop_relation_name => 'nd_experimentprops',
+     characteristics => $assay_data->{characteristics},
+    ) if ($assay_data->{characteristics});
 
 }
 
@@ -961,7 +961,7 @@ sub as_isatab {
     push @dates, join '/', shift @starts, shift @ends;
   }
   # put these dates back in ISA-Tab's single Date column
-  $protocol_isa->{date} = join ';', @dates;
+  $protocol_isa->{date} = join ';', sort @dates;
 
   return $isa;
 }

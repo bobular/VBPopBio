@@ -863,7 +863,15 @@ sub write_to_isatab {
 				   'Type' => 'attribute',
 				   'Genotype Name' => 'reusable node',
 				  });
-
+  }
+  foreach my $p_filename (keys %filename2assays2phenotypes) {
+    $writer->write_study_or_assay($p_filename, $filename2assays2phenotypes{$p_filename},
+				  ordered_hashref(
+				   'Phenotype Name' => 'reusable node',
+				   'Observable' => 'attribute',
+				   'Attribute' => 'attribute',
+				   'Value' => 'attribute',
+				  ));
   }
 }
 
@@ -925,6 +933,44 @@ sub as_isatab {
 
   }
 
+  # all props are study designs
+  foreach my $prop ($self->multiprops) {
+    my ($sd, $design_type) = $prop->cvterms;
+    my $dbxref = $design_type->dbxref;
+    push @{$study->{study_designs}},
+      {
+       study_design_type => $design_type->name,
+       study_design_type_term_source_ref => $dbxref->db->name,
+       study_design_type_term_accession_number => $dbxref->accession,
+      };
+
+  }
+
+  # publications (could move this code into Result/Publication.pm)
+  foreach my $pub ($self->publications) {
+    my $status = $pub->status;
+    my $status_dbxref = $status ? $status->dbxref : undef;
+    my $url = $pub->url;
+    push @{$study->{study_publications}},
+      {
+       study_publication_doi => $pub->doi,
+       study_pubmed_id => $pub->pubmed_id,
+       study_publication_status => $status ? $status->name : '',
+       study_publication_status_term_source_ref => $status_dbxref ? $status_dbxref->db->name : '',
+       study_publication_status_term_accession_number => $status_dbxref ? $status_dbxref->accession : '',
+       study_publication_title => $pub->title,
+       study_publication_author_list => join('; ', $pub->authors),
+       $url ? (comments => { URL => $url }) : (),
+      };
+
+  }
+
+
+  # need to convert fallback_species_accession comments
+  my $fsa = $self->fallback_species_accession;
+  if (defined $fsa) {
+    $study->{comments}{'fallback species accession'} = $fsa;
+  }
 
   return $isa;
 }
