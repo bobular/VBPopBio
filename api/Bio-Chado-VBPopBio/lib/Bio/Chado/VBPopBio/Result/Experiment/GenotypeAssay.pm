@@ -224,6 +224,10 @@ sub as_isatab {
   my $genotypes_filename = $assay_filename;
   $genotypes_filename =~ s/^a_/g_/;
 
+  my $vcf_file = $self->vcf_file;
+  if ($vcf_file) {
+    $isa->{raw_data_files}{$vcf_file} = {};
+  }
 
   foreach my $genotype ($self->genotypes) {
     $isa->{genotypes} //= ordered_hashref;
