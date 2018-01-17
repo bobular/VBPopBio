@@ -56,6 +56,8 @@ warn "project and limit options are not usually compatible - limit may never be 
 
 my ($output_prefix) = @ARGV;
 
+die "must provide output prefix commandline arg\n" unless ($output_prefix);
+
 my ($document_counter, $chunk_counter, $chunk_fh) = (0, 0);
 
 my ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes, $limit_bm_phenotypes, $limit_infection_phenotypes);
@@ -172,6 +174,9 @@ my $parent_term_of_present_absent = $schema->cvterms->find_by_accession({ term_s
 
 my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDO',
 								      term_accession_number => 'IDO:0000486' });
+
+my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
+								      term_accession_number => '0000123' });
 
 my $sar_term = $schema->types->species_assay_result;
 
@@ -674,7 +679,7 @@ while (my $stock = $stocks->next) {
     foreach my $genotype ($genotype_assay->genotypes) {
       my ($genotype_name, $genotype_value, $genotype_subtype, $genotype_unit); # these vars are "undefined" to start with
       my $genotype_type = $genotype->type; # cvterm/ontology term object
-
+      my $locus_term;
 
       # check if this genotype's type is the same as 'chromosomal inversion' or a child of it.
       if ($genotype_type->id == $chromosomal_inversion_term->id ||
@@ -711,6 +716,16 @@ while (my $stock = $stocks->next) {
 	}
 	die "mutated protein genotype has no units" unless defined $genotype_unit;
 	$genotype_subtype = 'mutated protein';
+
+	# determine which locus the allele is for
+	# preload parent relationships
+	$genotype_type->recursive_parents;
+	my $genotype_parents = $genotype_type->direct_parents;
+	while (my $term = $genotype_parents->next) {
+	  if ($sequence_variant_position->has_child($term)) {
+	    $locus_term = $term;
+	  }
+	}
       }
       if (defined $genotype_name && defined $genotype_value && defined $genotype_subtype) {
 
@@ -764,6 +779,10 @@ while (my $stock = $stocks->next) {
 	    $doc->{genotype_mutated_protein_value_f} = $genotype_value;
 	    $doc->{genotype_mutated_protein_unit_s} = $genotype_unit->name;
 	    $doc->{genotype_mutated_protein_unit_cvterms} = [ flattened_parents($genotype_unit) ];
+	    if (defined $locus_term) {
+	      $doc->{locus_name_s} = $locus_term->name;
+	      $doc->{locus_name_cvterms} = [ flattened_parents($locus_term) ];
+	    }
 	  }
 	}
 

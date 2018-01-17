@@ -43,6 +43,8 @@ GetOptions(
 );
 
 my ($output_prefix) = @ARGV;
+die "must provide output prefix commandline arg\n" unless ($output_prefix);
+
 my ($document_counter, $chunk_counter, $needcomma, $chunk_fh) = (0, 0, 0);
 
 my $dsn = "dbi:Pg:dbname=$dbname";
