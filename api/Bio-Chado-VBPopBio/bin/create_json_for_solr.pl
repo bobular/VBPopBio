@@ -177,6 +177,7 @@ my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_sourc
 
 my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
 								      term_accession_number => '0000123' });
+die "critical 'sequence variant position' term not in Chado\n" unless (defined $sequence_variant_position);
 
 my $sar_term = $schema->types->species_assay_result;
 

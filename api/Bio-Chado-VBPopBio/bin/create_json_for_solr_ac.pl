@@ -124,6 +124,7 @@ my $wild_type_allele_term = $schema->cvterms->find_by_accession({ term_source_re
 
 my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
 								      term_accession_number => '0000123' });
+die "critical 'sequence variant position' term not in Chado\n" unless (defined $sequence_variant_position);
 
 my $iso8601 = DateTime::Format::ISO8601->new;
 
