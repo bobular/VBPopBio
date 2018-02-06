@@ -11,7 +11,7 @@
 #   --project stable-id           : which project to update (defaults to all)
 #
 #   --old_reference_genome gggg   : assay props from ISA-Tab column Characteristics [reference_genome (SO:0001505)] containing this
-#   --new_reference_genome hhhh   : will be replaced by this (old and new required)
+#   --new_reference_genome hhhh   : will be replaced by this (old and new required if you want to replace this)
 #
 #   --old_region rrrr             : matches to this
 #   --new_region ssss             : replaced by this (old and new required)
@@ -46,7 +46,7 @@ my $list;
 my ($old_reference_genome, $new_reference_genome);
 my ($old_region, $new_region);
 
-
+$| = 1;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "project=s"=>\$project_id,
@@ -77,9 +77,12 @@ $schema->txn_do_deferred
 	$genotype_assays = $project->genotype_assays;
       }
 
-      printf "num genotype assays to check %d\n", $genotype_assays->count;
+      my $total = $genotype_assays->count;
+      printf "num genotype assays to check %d\n", $total;
 
       my %assays; # reference_genome => region => [ $assays... ]
+      my %projects; # reference_genome => region => project stable ID => 1
+      my $numchecked = 0;
 
       while (my $assay = $genotype_assays->next) {
 	# easy way to test if this is a high throughput assay
@@ -97,19 +100,22 @@ $schema->txn_do_deferred
 	      }
 	    }
 
-	    if ($ref && $region && $project_id) {
+	    if ($ref && $region) {
 	      push @{$assays{$ref}{$region}}, $assay;
+	      $projects{$ref}{$region}{$assay->projects->first->stable_id} = 1;
 	    }
 	  }
 	}
+	printf "\rchecked %7d/%d assays", $numchecked, $total if (++$numchecked % 1000 == 0);
       }
+      print "\n";
 
       if ($list) {
 	# print them out most numerous first
 	foreach my $ref (sort { keys %{$assays{$b}} <=> keys %{$assays{$a}} } keys %assays) {
 	  foreach my $region (sort { @{$assays{$ref}{$b}} <=> @{$assays{$ref}{$a}} } keys %{$assays{$ref}}) {
-	    printf "%-15s\t%-15s\t%d\n",
-	      $ref, $region, scalar @{$assays{$ref}{$region}};
+	    printf "%-15s\t%-15s\t%d\t%s\n",
+	      $ref, $region, scalar @{$assays{$ref}{$region}}, join(' ', sort keys %{$projects{$ref}{$region}});
 	  }
 	}
       }
