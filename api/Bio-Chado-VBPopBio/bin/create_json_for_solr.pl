@@ -438,6 +438,11 @@ while (my $stock = $stocks->next) {
       $doc->{bundle} = 'pop_sample_phenotype';
       $doc->{bundle_name} = 'Sample phenotype';
 
+      $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
+      $doc->{accession} = $assay_stable_id;
+      $doc->{assay_id_s} = $assay_stable_id;
+      $doc->{sample_name_s} = $document->{label};
+
       delete $doc->{phenotypes};
       delete $doc->{phenotypes_cvterms};
 
@@ -456,10 +461,7 @@ while (my $stock = $stocks->next) {
 		my $phenotype_stable_ish_id = $assay_stable_id.".".$phenotype->id;
 		# alter fields
 		$doc->{id} = $phenotype_stable_ish_id;
-		$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 		$doc->{label} = $phenotype->name;
-		$doc->{accession} = $assay_stable_id;
-		$doc->{assay_id_s} = $assay_stable_id;
 		$doc->{description} = "IR phenotype '".$phenotype->name."' for $stable_id";
 		# NEW fields
 
@@ -571,6 +573,7 @@ while (my $stock = $stocks->next) {
 	  $doc->{label} = $phenotype->name;
 	  $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 	  $doc->{assay_id_s} = $assay_stable_id;
+	  $doc->{sample_name_s} = $document->{label};
 
 	  delete $doc->{phenotypes};
 	  delete $doc->{phenotypes_cvterms};
@@ -625,6 +628,7 @@ while (my $stock = $stocks->next) {
 	  $doc->{label} = $phenotype->name;
 	  $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 	  $doc->{assay_id_s} = $assay_stable_id;
+	  $doc->{sample_name_s} = $document->{label};
 
 	  delete $doc->{phenotypes};
 	  delete $doc->{phenotypes_cvterms};
@@ -742,6 +746,7 @@ while (my $stock = $stocks->next) {
 	# always change these fields
 	$doc->{bundle}      = 'pop_sample_genotype';
 	$doc->{bundle_name} = 'Sample genotype';
+	$doc->{sample_name_s} = $document->{label};
 
 	delete $doc->{genotypes};
 	delete $doc->{genotypes_cvterms};
