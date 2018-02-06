@@ -106,7 +106,7 @@ $schema->txn_do_deferred
 	    }
 	  }
 	}
-	printf "\rchecked %7d/%d assays", $numchecked, $total if (++$numchecked % 1000 == 0);
+	printf "\rchecked %7d/%d assays", $numchecked, $total if (++$numchecked % 1000 == 0 || $numchecked == $total);
       }
       print "\n";
 
