@@ -938,6 +938,11 @@ sub as_isatab {
     if ($samples_main_project_id eq $project_id) {
       my $sample_name = $sample->name;
       $samples_data->{$sample_name} = $sample->as_isatab($study);
+      while (my $dependent_project = $projects->next) {
+	my $schema = $self->result_source->schema;
+	my $dependent_project_id = $dependent_project->stable_id;
+	$schema->defer_exception_once("This project contains samples used in another dependent project $dependent_project_id. You must dump and delete that project first before dumping and deleting this one.");
+      }
     } else {
       # this sample belongs to another project
       # so we dump it very simply

@@ -477,7 +477,7 @@ sub as_isatab {
     } elsif ($sample_used->id == $self->id) {
       my $schema = $self->result_source->schema;
       my $other_project_id = $sample_created->projects->first->stable_id;
-      $schema->defer_exception("$sample_key is used by a 'derived from' sample manipulation from another project $other_project_id. The ISA-Tab dumper won't currently allow you to dump this project until that project has been dumped and deleted.");
+      $schema->defer_exception("$sample_key is used by a 'derived from' sample manipulation from another project $other_project_id. You must dump and delete that project first before dumping and deleting this one.");
     } else {
       my $schema = $self->result_source->schema;
       schema->defer_exception("unexpected sample manipulation situation for $sample_key");

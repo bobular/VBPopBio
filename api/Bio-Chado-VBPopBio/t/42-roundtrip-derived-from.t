@@ -42,6 +42,6 @@ $schema->txn_do_deferred(
 
 
 		  # we were just pretending!
-		  $schema->defer_exception("This is the only exception we should see.");
+		  $schema->defer_exception("This exception is thrown intentionally as part of the unit testing process.");
 		}
 	       );

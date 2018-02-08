@@ -1,4 +1,4 @@
-use Test::More tests => 1;
+use Test::More tests => 2;
 
 use strict;
 use JSON;
@@ -25,10 +25,10 @@ $schema->txn_do_deferred(
 		  # read in a project
 		  my $project1 = $projects->create_from_isatab({ directory=>$isatabdir1});
 		  my $project1_data = $project1->as_data_structure;
-		  $project1->write_to_isatab({ directory=>$tempdir1 });
 
 		  my $project2 = $projects->create_from_isatab({ directory=>$isatabdir2});
 		  my $project2_data = $project2->as_data_structure;
+		  $project1->write_to_isatab({ directory=>$tempdir1 }); # should throw exceptions because samples are used by dependent project
 		  $project2->write_to_isatab({ directory=>$tempdir2 });
 		  $project2->delete;
 
@@ -36,9 +36,10 @@ $schema->txn_do_deferred(
 		  is_deeply($project2r->as_data_structure, $project2_data, "Project 2: JSON data structures the same after delete and reload");
 
 
+		  is(scalar @{$schema->{deferred_exceptions}}, 1, "Should be two deferred exceptions at this point due to attempt to dump a 'source' project before 'dependent' project");
 
 
 		  # we were just pretending!
-		  $schema->defer_exception("This is the only exception we should see.");
+		  $schema->defer_exception("This exception is thrown intentionally as part of the unit testing process.");
 		}
 	       );
