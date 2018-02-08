@@ -462,6 +462,28 @@ sub as_isatab {
     $sample_key = $self->name;
   }
 
+  my $sample_manipulations = $self->sample_manipulations;
+  my $manipulation = $sample_manipulations->first;
+  if ($sample_manipulations->next) {
+    my $schema = $self->result_source->schema;
+    $schema->defer_exception("Wasn't expecting multiple sample_manipulations for $sample_key - perhaps its 'derived from' other samples in other projects that should be deleted first before dumping this one");
+  }
+  if ($manipulation) {
+    my $sample_used = $manipulation->stocks_used->first;
+    my $sample_created = $manipulation->stocks_created->first;
+
+    if ($sample_created->id == $self->id) {
+      $isa->{comments}{'derived from'} = $sample_used->stable_id;
+    } elsif ($sample_used->id == $self->id) {
+      my $schema = $self->result_source->schema;
+      my $other_project_id = $sample_created->projects->first->stable_id;
+      $schema->defer_exception("$sample_key is used by a 'derived from' sample manipulation from another project $other_project_id. The ISA-Tab dumper won't currently allow you to dump this project until that project has been dumped and deleted.");
+    } else {
+      my $schema = $self->result_source->schema;
+      schema->defer_exception("unexpected sample manipulation situation for $sample_key");
+    }
+  }
+
   foreach my $assay ($self->nd_experiments) {
     next unless ($assay->has_isatab_sheet);
 
