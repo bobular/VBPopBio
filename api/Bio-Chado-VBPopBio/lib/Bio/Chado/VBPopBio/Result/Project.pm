@@ -922,15 +922,28 @@ sub as_isatab {
 				       study_person_address => $place // '',
 		       };
 
+  }
 
-    # process the samples
-    my $samples = $self->stocks;
-    my $samples_data = $study->{sources}{$external_id}{samples} = ordered_hashref();
-    while (my $sample = $samples->next) {
+
+  # process the samples
+  my $project_id = $self->stable_id;
+
+  my $samples = $self->stocks;
+  my $samples_data = $study->{sources}{$external_id}{samples} = ordered_hashref();
+  while (my $sample = $samples->next) {
+    my $projects = $sample->projects;
+    my $samples_main_project = $projects->first;
+    my $samples_main_project_id = $samples_main_project->stable_id;
+
+    if ($samples_main_project_id eq $project_id) {
       my $sample_name = $sample->name;
       $samples_data->{$sample_name} = $sample->as_isatab($study);
+    } else {
+      # this sample belongs to another project
+      # so we dump it very simply
+      my $sample_id = $sample->stable_id;
+      $samples_data->{$sample_id} = $sample->as_isatab($study, $sample_id, $project_id);
     }
-
   }
 
   # all props are study designs

@@ -442,7 +442,7 @@ generates isatab datastructure for writing to files with Bio::Parser::ISATab
 =cut
 
 sub as_isatab {
-  my ($self, $study) = @_;
+  my ($self, $study, $sample_id, $project_id) = @_;
   my $isa = { };
 
   my $material_type = $self->type;
@@ -450,12 +450,24 @@ sub as_isatab {
   $isa->{material_type}{value} = $material_type->name;
   $isa->{material_type}{term_source_ref} = $mt_dbxref->db->name;
   $isa->{material_type}{term_accession_number} = $mt_dbxref->accession;
-  $isa->{description} = $self->description;
 
-  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+  my $sample_key; # needed for attaching assays below
+
+  if ($sample_id && $project_id) { # passed as args when re-using a sample from another project
+    $sample_key = $sample_id;
+  } else {
+    # this sample belongs to the project being dumped and needs all the columns
+    $isa->{description} = $self->description;
+    ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+    $sample_key = $self->name;
+  }
 
   foreach my $assay ($self->nd_experiments) {
     next unless ($assay->has_isatab_sheet);
+
+    # don't dump the assay if it doesn't primarily belong to this project
+    next if (defined $project_id && $assay->projects->first->stable_id ne $project_id);
+
     my $study_assay_measurement_type = $assay->isatab_measurement_type;
 
     # every assay with a different protocol (or combination of protocols) will
@@ -474,8 +486,8 @@ sub as_isatab {
 	   study_assay_file_name => $assay_filename,
 	  };
 
-    my ($sample_name, $assay_name) = ($self->name, $assay->external_id);
-    $isa_assay_root->{samples}{$sample_name}{assays}{$assay_name} = $assay->as_isatab($study, $assay_filename);
+    my $assay_name = $assay->external_id;
+    $isa_assay_root->{samples}{$sample_key}{assays}{$assay_name} = $assay->as_isatab($study, $assay_filename);
 
 #    my $study_assay_file_name = '???';
 #    $study->{study_assay_lookup}{$assay_type} //= 123;
@@ -484,7 +496,6 @@ sub as_isatab {
 
   return $isa;
 }
-
 
 
 =head2 best_species
