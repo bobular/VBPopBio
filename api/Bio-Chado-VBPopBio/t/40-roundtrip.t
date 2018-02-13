@@ -3,6 +3,8 @@ use Test::More tests => 1;
 use strict;
 use JSON;
 use Bio::Chado::VBPopBio;
+use Test::Deep;
+
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
 my $projects = $schema->projects;
@@ -25,7 +27,7 @@ $schema->txn_do_deferred(
 		  $project->delete;
 
 		  my $project2 = $projects->create_from_isatab({ directory=>$tempdir });
-		  is_deeply($project2->as_data_structure, $project_data, "JSON data structures the same");
+		  cmp_deeply($project2->as_data_structure, $project_data, "JSON data structures the same");
 
 		  # we were just pretending!
 		  $schema->defer_exception("This is the only exception we should see.");

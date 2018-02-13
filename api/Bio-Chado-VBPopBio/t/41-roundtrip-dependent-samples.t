@@ -3,6 +3,8 @@ use Test::More tests => 2;
 use strict;
 use JSON;
 use Bio::Chado::VBPopBio;
+use Test::Deep;
+
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
 my $projects = $schema->projects;
@@ -33,7 +35,7 @@ $schema->txn_do_deferred(
 		  $project2->delete;
 
 		  my $project2r = $projects->create_from_isatab({ directory=>$tempdir2 });
-		  is_deeply($project2r->as_data_structure, $project2_data, "Project 2: JSON data structures the same after delete and reload");
+		  cmp_deeply($project2r->as_data_structure, $project2_data, "Project 2: JSON data structures the same after delete and reload");
 
 
 		  is(scalar @{$schema->{deferred_exceptions}}, 1, "Should be two deferred exceptions at this point due to attempt to dump a 'source' project before 'dependent' project");
