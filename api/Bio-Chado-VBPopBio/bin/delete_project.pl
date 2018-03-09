@@ -27,6 +27,7 @@ use utf8::all;
 use POSIX 'strftime';
 use Test::Deep::NoTest qw/cmp_details deep_diag ignore any set/;
 use Data::Walk;
+use Data::Dumper;
 
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
@@ -77,6 +78,10 @@ $schema->txn_do_deferred
 	  my $reloaded = $projects->create_from_isatab({ directory=>$output_dir });
 	  my $reloaded_data = $reloaded->as_data_structure;
 	  $reloaded_data->{last_modified_date} = ignore(); # because this will always be different!
+
+print Dumper($project_data->{"stocks"}[1]{"phenotype_assays"}[2]{"props"});
+print Dumper($reloaded_data->{"stocks"}[1]{"phenotype_assays"}[2]{"props"});
+
 
 	  my ($result, $diagnostics) = cmp_details($project_data, preprocess_data($reloaded_data));
 	  unless ($result) {
