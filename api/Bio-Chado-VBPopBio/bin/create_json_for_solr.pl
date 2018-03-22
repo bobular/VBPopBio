@@ -23,6 +23,7 @@ use Bio::Chado::VBPopBio;
 use JSON;
 use DateTime::Format::ISO8601;
 use DateTime;
+use DateTime::EpiWeek;
 use Geohash;
 use Clone qw(clone);
 use Tie::IxHash;
@@ -294,7 +295,7 @@ while (my $stock = $stocks->next) {
   my $sample_type = $stock->type->name;
 
   my $has_abundance_data = defined $sample_size &&
-    defined $assay_date_fields{collection_duration_days_i} &&
+    $assay_date_fields{collection_duration_days_i} &&
       $sample_type eq 'pool';
 
   my $document = ohr(
@@ -366,7 +367,12 @@ while (my $stock = $stocks->next) {
 
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
-		     has_abundance_data_b => $has_abundance_data ? 'true' : 'false',
+		     ($has_abundance_data ?
+		      (has_abundance_data_b => 'true', # <-- this field could be deprecated perhaps
+		       abundance_f => $sample_size / $assay_date_fields{collection_duration_days_i})
+		      :
+		      (has_abundance_data_b => 'false')
+		     ),
 		     );
 
   fallback_value($document->{collection_protocols}, 'no data');
@@ -980,6 +986,15 @@ sub assay_date_fields {
   } elsif ($start_dates[0]) {
     $result{collection_date} = iso8601_date($start_dates[0]->value);
   }
+  # fixed granularity, single-valued date fields for timeline plot zooming
+  # we currently consider the START DATE ONLY - but subject to change...
+  # the following could possibly be *_tdt TrieDate type for performance? (need to understand Solr's precisionStep)
+  $result{collection_year_dt} = substr($result{collection_date}, 0, 4);
+  $result{collection_month_dt} = substr($result{collection_date}, 0, 7);
+  $result{collection_epiweek_dt} = epiweek($result{collection_date});
+
+  # TO DO warn "NEED TO THINK ABOUT ADDING collection_day_dt field\n"; #<<<<<<<<<<<<<<<<<<<<<<<<<<<
+  # ALSO CHECK if each value is appropriate
 
   # now deal with the potentially multi-valued dates and date ranges
   foreach my $date (map { $_->value } @dates) {
@@ -1080,6 +1095,13 @@ sub iso8601_date {
     return $datetime->datetime."Z";
   }
 }
+
+sub epiweek {
+  my $string = shift;
+  my $datetime = $iso8601->parse_datetime($string);
+  return sprintf "%d-W%02d", $datetime->epiweek;
+}
+
 
 #DEPRECATED
 # returns an array of cvterms
