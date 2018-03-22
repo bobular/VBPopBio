@@ -1,0 +1,19 @@
+Sample Name	Assay Name	Protocol REF	Parameter Value [first.insecticide]	Term Source REF	Term Accession Number	Parameter Value [first.concentration]	Unit	Term Source REF	Term Accession Number	Characteristics[sample size (VBcv:0000983)]	Raw Data File
+IRBS3	IRBRA20	AssayProtocol_0	control	EFO	0001461	0	percent	UO	0000187	0
+IRBS3	IRBRA21	AssayProtocol_0	carbosulfan	MIRO	10000012	0.025	percent	UO	0000187	302	p_phenotypes.txt
+IRBS3	IRBRA22	AssayProtocol_0	carbosulfan	MIRO	10000012	0.05	percent	UO	0000187	296	p_phenotypes.txt
+IRBS3	IRBRA23	AssayProtocol_0	carbosulfan	MIRO	10000012	0.1	percent	UO	0000187	290	p_phenotypes.txt
+IRBS3	IRBRA24	AssayProtocol_0	carbosulfan	MIRO	10000012	0.2	percent	UO	0000187	309	p_phenotypes.txt
+IRBS3	IRBRA25	AssayProtocol_0	carbosulfan	MIRO	10000012	0.4	percent	UO	0000187	269	p_phenotypes.txt
+IRBS4	IRBRA26	AssayProtocol_0	carbosulfan	MIRO	10000012	0.4	percent	UO	0000187	99	p_phenotypes.txt
+IRBS4	IRBRA27	AssayProtocol_0	control	EFO	0001461	0	percent	UO	0000187	0
+IRBS4	IRBRA28	AssayProtocol_0	carbosulfan	MIRO	10000012					49	p_phenotypes.txt
+IRBS4	IRBRA29	AssayProtocol_0	control	EFO	0001461	0	percent	UO	0000187	0
+IRBS5	IRBRA30	AssayProtocol_0	carbosulfan	MIRO	10000012	0.4	percent	UO	0000187	95	p_phenotypes.txt
+IRBS5	IRBRA31	AssayProtocol_0	control	EFO	0001461	0	percent	UO	0000187	0
+IRBS5	IRBRA32	AssayProtocol_0	carbosulfan	MIRO	10000012					50	p_phenotypes.txt
+IRBS5	IRBRA33	AssayProtocol_0	control	EFO	0001461	0	percent	UO	0000187	0
+IRBS6	IRBRA34	AssayProtocol_0	carbosulfan	MIRO	10000012	0.4	percent	UO	0000187	99	p_phenotypes.txt
+IRBS6	IRBRA35	AssayProtocol_0	control	EFO	0001461	0	percent	UO	0000187	0
+IRBS6	IRBRA36	AssayProtocol_0	carbosulfan	MIRO	10000012					59	p_phenotypes.txt
+IRBS6	IRBRA37	AssayProtocol_0	control	EFO	0001461	0	percent	UO	0000187	0
