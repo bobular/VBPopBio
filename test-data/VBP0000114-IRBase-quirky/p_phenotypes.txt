@@ -1,0 +1,19 @@
+Assay Name	Phenotype Name	Observable	Term Source REF	Term Accession Number	Attribute	Term Source REF	Term Accession Number	Value	Term Source REF	Term Accession Number	Unit	Term Source REF	Term Accession Number
+IRBRA20	Mortality percentage: 4.1, Control				mortality percentage	VBcv	0000703	4.1			percent	UO	0000187
+IRBRA21	Mortality percentage: 21.2, 0.025% carbosulfan				mortality percentage	VBcv	0000703	21.2			percent	UO	0000187
+IRBRA22	Mortality percentage: 50.7, 0.05% carbosulfan				mortality percentage	VBcv	0000703	50.7			percent	UO	0000187
+IRBRA23	Mortality percentage: 97.2, 0.1% carbosulfan				mortality percentage	VBcv	0000703	97.2			percent	UO	0000187
+IRBRA24	Mortality percentage: 100, 0.2% carbosulfan				mortality percentage	VBcv	0000703	100			percent	UO	0000187
+IRBRA25	Mortality percentage: 100, 0.4% carbosulfan				mortality percentage	VBcv	0000703	100			percent	UO	0000187
+IRBRA26	Mortality percentage: 29.3, 0.4% carbosulfan				mortality percentage	VBcv	0000703	29.3			percent	UO	0000187
+IRBRA27	Mortality percentage: 0, Control				mortality percentage	VBcv	0000703	0			percent	UO	0000187
+IRBRA28	Mortality percentage: 12.2, 200mg/m2 carbosulfan				mortality percentage	VBcv	0000703	12.2			percent	UO	0000187
+IRBRA29	Mortality percentage: 2.0, Control				mortality percentage	VBcv	0000703	2.0			percent	UO	0000187
+IRBRA30	Mortality percentage: 62.1, 0.4% carbosulfan				mortality percentage	VBcv	0000703	62.1			percent	UO	0000187
+IRBRA31	Mortality percentage: 2.6, Control				mortality percentage	VBcv	0000703	2.6			percent	UO	0000187
+IRBRA32	Mortality percentage: 88.0, 200mg/m2 carbosulfan				mortality percentage	VBcv	0000703	88.0			percent	UO	0000187
+IRBRA33	Mortality percentage: 2.0, Control				mortality percentage	VBcv	0000703	2.0			percent	UO	0000187
+IRBRA34	Mortality percentage: 100, 0.4% carbosulfan				mortality percentage	VBcv	0000703	100			percent	UO	0000187
+IRBRA35	Mortality percentage: 8.7, Control				mortality percentage	VBcv	0000703	8.7			percent	UO	0000187
+IRBRA36	Mortality percentage: 100, 200 mg/m2 carbosulfan				mortality percentage	VBcv	0000703	100			percent	UO	0000187
+IRBRA37	Mortality percentage: 3.5, Control				mortality percentage	VBcv	0000703	3.5			percent	UO	0000187

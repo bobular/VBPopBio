@@ -1,0 +1,5 @@
+Source Name	Sample Name	Description	Material Type	Term Source REF	Term Accession Number	Characteristics [sex (EFO:0000695)]	Term Source REF	Term Accession Number	Characteristics [organism part (EFO:0000635)]	Term Source REF	Term Accession Number
+IRBS3	IRBS3		pool	EFO	0000663	female	PATO	0000383	whole organism	EFO	0002906
+IRBS4	IRBS4		pool	EFO	0000663	female	PATO	0000383	whole organism	EFO	0002906
+IRBS5	IRBS5		pool	EFO	0000663	female	PATO	0000383	whole organism	EFO	0002906
+IRBS6	IRBS6		pool	EFO	0000663	female	PATO	0000383	whole organism	EFO	0002906
