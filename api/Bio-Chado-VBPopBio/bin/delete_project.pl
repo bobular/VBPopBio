@@ -77,13 +77,7 @@ $schema->txn_do_deferred
 	if ($verify) {
 	  my $reloaded = $projects->create_from_isatab({ directory=>$output_dir });
 	  my $reloaded_data = $reloaded->as_data_structure;
-	  $reloaded_data->{last_modified_date} = ignore(); # because this will always be different!
-
-print Dumper($project_data->{"stocks"}[1]{"phenotype_assays"}[2]{"props"});
-print Dumper($reloaded_data->{"stocks"}[1]{"phenotype_assays"}[2]{"props"});
-
-
-	  my ($result, $diagnostics) = cmp_details($project_data, preprocess_data($reloaded_data));
+	  my ($result, $diagnostics) = cmp_details($reloaded_data, preprocess_data($project_data));
 	  unless ($result) {
 	    $schema->defer_exception("ERROR! Project reloaded from ISA-Tab has differences:\n".deep_diag($diagnostics));
 	  }
@@ -106,6 +100,7 @@ print Dumper($reloaded_data->{"stocks"}[1]{"phenotype_assays"}[2]{"props"});
 sub preprocess_data {
   my ($data) = @_;
   $data->{vis_configs} = ignore();
+  $data->{last_modified_date} = ignore(); # because this will always be different!
 
   walk sub {
     my $node = shift;
@@ -117,6 +112,15 @@ sub preprocess_data {
 	  $node->{$key} = set(@{$node->{$key}});
 	} elsif ($key eq 'geolocation' && $ignore_geo_name) {
 	  $node->{geolocation}{name} = ignore(); # because we dump the correct term names, but load the user-provided ones
+	} elsif ($key eq 'uniquename') {
+	  # ignore non-standard uniquenames
+	  # added for a few projects
+	  # by modify_genotypes_for_karyotype_summaries.pl
+	  my $val = $node->{$key};
+	  if ($val =~ s/:arrangement:/:/ ||
+	      $val =~ s/:(\d)$/.$1/) {
+	    $node->{$key} = $val;
+	  }
 	}
       }
     }
