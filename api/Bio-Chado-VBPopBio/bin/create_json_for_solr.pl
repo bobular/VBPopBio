@@ -368,8 +368,7 @@ while (my $stock = $stocks->next) {
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
 		     ($has_abundance_data ?
-		      (has_abundance_data_b => 'true', # <-- this field could be deprecated perhaps
-		       abundance_f => $sample_size / $assay_date_fields{collection_duration_days_i})
+		      (has_abundance_data_b => 'true')
 		      :
 		      (has_abundance_data_b => 'false')
 		     ),
@@ -989,9 +988,10 @@ sub assay_date_fields {
   # fixed granularity, single-valued date fields for timeline plot zooming
   # we currently consider the START DATE ONLY - but subject to change...
   # the following could possibly be *_tdt TrieDate type for performance? (need to understand Solr's precisionStep)
-  $result{collection_year_dt} = substr($result{collection_date}, 0, 4);
-  $result{collection_month_dt} = substr($result{collection_date}, 0, 7);
-  $result{collection_epiweek_dt} = epiweek($result{collection_date});
+  $result{collection_year_s} = substr($result{collection_date}, 0, 4);
+  $result{collection_month_s} = substr($result{collection_date}, 0, 7);
+  $result{collection_epiweek_s} = epiweek($result{collection_date});
+  $result{collection_day_s} = epiweek($result{collection_date});
 
   # TO DO warn "NEED TO THINK ABOUT ADDING collection_day_dt field\n"; #<<<<<<<<<<<<<<<<<<<<<<<<<<<
   # ALSO CHECK if each value is appropriate
