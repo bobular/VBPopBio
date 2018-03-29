@@ -987,14 +987,12 @@ sub assay_date_fields {
   }
   # fixed granularity, single-valued date fields for timeline plot zooming
   # we currently consider the START DATE ONLY - but subject to change...
-  # the following could possibly be *_tdt TrieDate type for performance? (need to understand Solr's precisionStep)
-  $result{collection_year_s} = substr($result{collection_date}, 0, 4);
-  $result{collection_month_s} = substr($result{collection_date}, 0, 7);
-  $result{collection_epiweek_s} = epiweek($result{collection_date});
-  $result{collection_day_s} = epiweek($result{collection_date});
-
-  # TO DO warn "NEED TO THINK ABOUT ADDING collection_day_dt field\n"; #<<<<<<<<<<<<<<<<<<<<<<<<<<<
-  # ALSO CHECK if each value is appropriate
+  if ($result{collection_date}) {
+    $result{collection_year_s} = substr($result{collection_date}, 0, 4);
+    $result{collection_month_s} = substr($result{collection_date}, 0, 7) if (length($result{collection_date}) >= 7);
+    $result{collection_epiweek_s} = epiweek($result{collection_date}) if (length($result{collection_date}) == 10);
+    $result{collection_day_s} = $result{collection_date} if (length($result{collection_date}) == 10);
+  }
 
   # now deal with the potentially multi-valued dates and date ranges
   foreach my $date (map { $_->value } @dates) {
