@@ -989,9 +989,16 @@ sub assay_date_fields {
   # we currently consider the START DATE ONLY - but subject to change...
   if ($result{collection_date}) {
     $result{collection_year_s} = substr($result{collection_date}, 0, 4);
-    $result{collection_month_s} = substr($result{collection_date}, 0, 7) if (length($result{collection_date}) >= 7);
-    $result{collection_epiweek_s} = epiweek($result{collection_date}) if (length($result{collection_date}) == 10);
-    $result{collection_day_s} = $result{collection_date} if (length($result{collection_date}) == 10);
+    $result{collection_date_resolution_s} = 'year';
+    if (length($result{collection_date}) >= 7) {
+      $result{collection_month_s} = substr($result{collection_date}, 0, 7);
+      $result{collection_date_resolution_s} = 'month';
+      if (length($result{collection_date}) == 10) {
+	$result{collection_epiweek_s} = epiweek($result{collection_date});
+	$result{collection_day_s} = $result{collection_date};
+	$result{collection_date_resolution_s} = 'day';
+      }
+    }
   }
 
   # now deal with the potentially multi-valued dates and date ranges
