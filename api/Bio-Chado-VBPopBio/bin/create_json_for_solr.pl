@@ -984,7 +984,7 @@ sub assay_date_fields {
   if ($dates[0]) {
     $single_date_from_chado = $dates[0]->value;
   } elsif ($start_dates[0]) {
-    $single_date_from_chado = $start_dates[0]->valuel
+    $single_date_from_chado = $start_dates[0]->value;
   }
   $result{collection_date} = iso8601_date($single_date_from_chado);
 
