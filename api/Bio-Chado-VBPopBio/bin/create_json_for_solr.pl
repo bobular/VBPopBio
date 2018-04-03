@@ -986,11 +986,12 @@ sub assay_date_fields {
   } elsif ($start_dates[0]) {
     $single_date_from_chado = $start_dates[0]->value;
   }
-  $result{collection_date} = iso8601_date($single_date_from_chado);
 
   # fixed granularity, single-valued date fields for timeline plot zooming
   # we currently consider the START DATE ONLY - but subject to change...
   if ($single_date_from_chado) {
+    $result{collection_date} = iso8601_date($single_date_from_chado);
+
     $result{collection_year_s} = substr($single_date_from_chado, 0, 4);
     $result{collection_date_resolution_s} = 'year';
     if (length($single_date_from_chado) >= 7) {
