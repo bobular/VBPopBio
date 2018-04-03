@@ -980,22 +980,25 @@ sub assay_date_fields {
 
   # first deal with the single date for Solr back-compatibility
   # use the first date or start_date
+  my $single_date_from_chado;
   if ($dates[0]) {
-    $result{collection_date} = iso8601_date($dates[0]->value);
+    $single_date_from_chado = $dates[0]->value;
   } elsif ($start_dates[0]) {
-    $result{collection_date} = iso8601_date($start_dates[0]->value);
+    $single_date_from_chado = $start_dates[0]->valuel
   }
+  $result{collection_date} = iso8601_date($single_date_from_chado);
+
   # fixed granularity, single-valued date fields for timeline plot zooming
   # we currently consider the START DATE ONLY - but subject to change...
-  if ($result{collection_date}) {
-    $result{collection_year_s} = substr($result{collection_date}, 0, 4);
+  if ($single_date_from_chado) {
+    $result{collection_year_s} = substr($single_date_from_chado, 0, 4);
     $result{collection_date_resolution_s} = 'year';
-    if (length($result{collection_date}) >= 7) {
-      $result{collection_month_s} = substr($result{collection_date}, 0, 7);
+    if (length($single_date_from_chado) >= 7) {
+      $result{collection_month_s} = substr($single_date_from_chado, 0, 7);
       $result{collection_date_resolution_s} = 'month';
-      if (length($result{collection_date}) == 10) {
-	$result{collection_epiweek_s} = epiweek($result{collection_date});
-	$result{collection_day_s} = $result{collection_date};
+      if (length($single_date_from_chado) >= 10) {
+	$result{collection_epiweek_s} = epiweek($single_date_from_chado);
+	$result{collection_day_s} = $single_date_from_chado;
 	$result{collection_date_resolution_s} = 'day';
       }
     }
