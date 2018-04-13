@@ -5,7 +5,7 @@
 #
 # will write files to output-prefix-01.json.gz  output-prefix-02.json.gz etc
 #
-#
+# writes an error log to output-prefix.log
 #
 # option:
 #   -limit P,Q,R,S,T,U    # for debugging - limit output to P projects, R samples, R IR phenotypes and S genotypes, T bloodmeal pheno's, U infection pheno's
@@ -58,6 +58,9 @@ warn "project and limit options are not usually compatible - limit may never be 
 my ($output_prefix) = @ARGV;
 
 die "must provide output prefix commandline arg\n" unless ($output_prefix);
+
+my $log_filename = "$output_prefix.log";
+my $log_size = 0;
 
 my ($document_counter, $chunk_counter, $chunk_fh) = (0, 0);
 
@@ -496,13 +499,17 @@ while (my $stock = $stocks->next) {
 		    $doc->{phenotype_value_type_cvterms} = [ flattened_parents($value_type) ];
 
 		  } else {
-		    warn "no value type for phenotype of $assay_stable_id\n";
+		    log_message("$assay_stable_id (@projects) has no value type for phenotype ".$phenotype->name." - skipping");
+		    next;
 		  }
 
 		  # to do: insecticide + concentrations + duration
 		  # die "to do...";
 
-		  die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
+		  if ($errors) {
+		    log_message("$assay_stable_id (@projects) phenotype ".$phenotype->name." had fatal errors: $errors - skipping");
+		    next;
+		  }
 
 		  if (defined $insecticide) {
 		    $doc->{insecticide_s} = $insecticide->name;
@@ -515,11 +522,12 @@ while (my $stock = $stocks->next) {
 		    } elsif (not grep { $_->id == $dose_response_test_term->id ||
 					  $dose_response_test_term->has_child($_) } @protocol_types) {
 		      # this warning only for non-DR tests
-		      warn "no/incomplete/corrupted concentration data for $assay_stable_id in @projects\n";
+		      log_message("$assay_stable_id (@projects) has no/incomplete/corrupted concentration data for phenotype ".$phenotype->name." - keeping");
 		    }
 
 		  } else {
-		    warn "no insecticide for $assay_stable_id !!!\n";
+		    log_message("$assay_stable_id (@projects) - no insecticide for phenotype ".$phenotype->name." - skipping");
+		    next;
 		  }
 
 		  if (defined $duration && defined $duration_unit) {
@@ -609,7 +617,8 @@ while (my $stock = $stocks->next) {
 	      $doc->{phenotype_value_unit_s} = $unit_term->name;
 	      $doc->{phenotype_value_unit_cvterms} =  [ flattened_parents($unit_term) ];
 	    } else {
-	      die "unitless blood meal index value"
+	      log_message("$assay_stable_id (@projects) - unitless blood meal index value for phenotype ".$phenotype->name." - skipping");
+	      next;
 	    }
 	  }
 
@@ -664,7 +673,8 @@ while (my $stock = $stocks->next) {
 	      $doc->{phenotype_value_unit_s} = $unit_term->name;
 	      $doc->{phenotype_value_type_cvterms} = [ flattened_parents($unit_term) ];
 	    } else {
-	      die "unitless infection prevalence value"
+	      log_message("$assay_stable_id (@projects) - unitless infection prevalence value for phenotype ".$phenotype->name." - skipping");
+	      next;
 	    }
 	  }
 
@@ -673,7 +683,7 @@ while (my $stock = $stocks->next) {
 	  }
 
 	} else {
-	  warn "Unknown or unexpected phenotype from $assay_stable_id in @projects\n";
+	  log_message("$assay_stable_id (@projects) has unexpected phenotype ".$phenotype->name." - skipped");
 	}
       }
     }
@@ -726,7 +736,12 @@ while (my $stock = $stocks->next) {
 					     $prop_terms[0]->id == $variant_frequency_term->id);
 	  $genotype_unit = $prop_terms[-1];
 	}
-	die "mutated protein genotype has no units" unless defined $genotype_unit;
+
+	unless (defined $genotype_unit) {
+	  log_message("$assay_stable_id (@projects) mutated protein genotype ".$genotype->name." has no units - skipping");
+	  next;
+	}
+
 	$genotype_subtype = 'mutated protein';
 
 	# determine which locus the allele is for
@@ -895,7 +910,9 @@ if (defined $chunk_fh) {
   close($chunk_fh);
 }
 
-
+if ($log_size) {
+  warn "$log_size errors or warnings reported in $log_filename\n";
+}
 
 # returns just the 'proper' cvterms for all multiprops
 # of the argument
@@ -1011,7 +1028,10 @@ sub assay_date_fields {
     push @{$result{collection_season}}, season($date);
   }
 
-  die "unequal number of start and end dates for ".$assay->stable_id."\n" unless (@start_dates == @end_dates);
+  unless (@start_dates == @end_dates) {
+    log_message($assay->stable_id." has unequal number of start and end dates - records will have no date fields");
+    return ();
+  }
   for (my $i=0; $i<@start_dates; $i++) {
     my $start_date = $start_dates[$i]->value;
     my $end_date = $end_dates[$i]->value;
@@ -1198,9 +1218,10 @@ sub quick_project_stable_id {
 sub geo_coords_fields {
   my $latlong = shift;
   my ($lat, $long) = split /,/, $latlong;
-  die "some unexpected problem with latlog arg to geo_coords_fields\n"
-    unless (defined $lat && defined $long);
-
+  unless (defined $lat && defined $long) {
+    log_message("!! some unexpected problem with latlog arg '$latlong' to geo_coords_fields - look for latlong_error_s field in Solr docs");
+    return (latlong_error_s => $latlong);
+  }
   my $geohash = $gh->encode($lat, $long, 7);
 
   return (geo_coords => $latlong,
@@ -1359,4 +1380,19 @@ sub print_document {
     undef $chunk_fh;
   }
 
+}
+
+#
+# log_message
+#
+# write $message to the global logfile and increment a counter
+#
+
+
+sub log_message {
+  my ($message) = @_;
+  open LOG, ">>$log_filename" || die "can't write to $log_filename\n";
+  print LOG "$message\n";
+  close(LOG);
+  $log_size++;
 }
