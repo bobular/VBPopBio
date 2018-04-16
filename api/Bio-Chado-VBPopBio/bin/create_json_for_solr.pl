@@ -11,6 +11,7 @@
 #   -limit P,Q,R,S,T,U    # for debugging - limit output to P projects, R samples, R IR phenotypes and S genotypes, T bloodmeal pheno's, U infection pheno's
 #   -limit N              # same as above, same limit for all document types
 #
+#   -project VBP0000123   # or comma-delimited list of VBPs - will only process these project(s)
 #
 #
 
@@ -48,7 +49,7 @@ GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
 	   "dry-run|dryrun"=>\$dry_run,
 	   "limit=s"=>\$limit, # for debugging/development
-	   "project=s"=>\$project_stable_id, # just one project for debugging
+	   "projects=s"=>\$project_stable_id, # project(s) for debugging, can be comma-separated
 	   "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
 	  );
 
@@ -87,11 +88,17 @@ my $done;
 my $needcomma = 0;
 
 #
-# debug only
+# restrict to one or several projects
 #
 if (defined $project_stable_id) {
-  my $project = $projects->find_by_stable_id($project_stable_id);
-  $stocks = $project->stocks;
+  # need to collect the raw database IDs for the $projects->search below
+  my @project_db_ids;
+  foreach my $vbp (split /\W+/, $project_stable_id) {
+    my $project = $projects->find_by_stable_id($vbp);
+    push @project_db_ids, $project->project_id; 
+  }
+  $projects = $projects->search({ "me.project_id" => { in => \@project_db_ids }});
+  $stocks = $projects->stocks;
 }
 
 

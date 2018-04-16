@@ -40,7 +40,7 @@ $schema->txn_do_deferred(
 		  is($pub2->url, "https://www.vectorbase.org", "pub2 has a URL");
 
 
-		  my $stock = $project->stocks->first;
+		  my $stock = $project->stocks->ordered_by_id->first;
 		  isa_ok($stock, "Bio::Chado::VBPopBio::Result::Stock", "first stock is a stock");
 
 		  # check best species term (loaded from a MIRO accession)
@@ -85,7 +85,7 @@ $schema->txn_do_deferred(
 #		  is($project->stocks->first->nd_experiments->count, 3, "3 assays for one stock");
 #
 
-		  my @samples = $project->stocks->all;
+		  my @samples = $project->stocks->ordered_by_id->all;
 		  my $sample3 = $samples[2]; # Date: 2010-11-12;2010-11-15
 		  my $fc3 = $sample3->field_collections->first;
 		  is(scalar $fc3->multiprops($start_date_type), 0, "shouldn't have start or end dates");
@@ -124,9 +124,9 @@ $schema->txn_do_deferred(
 		  my $project1_json = $json->encode($project1->as_data_structure);
 
 
-		  is($project1->stocks->first->sample_manipulations->count, 1, "project 1 stocks have manipulations");
-		  is($project1->stocks->first->sample_manipulations->first->stocks_created->first->stable_id, $project2->stocks->first->stable_id, "project 1's stock creates project 2's stock");
-		  is($project2->stocks->first->sample_manipulations->first->stocks_used->first->stable_id, $project1->stocks->first->stable_id, "and the same the other way round");
+		  is($project1->stocks->ordered_by_id->first->sample_manipulations->count, 1, "project 1 stocks have manipulations");
+		  is($project1->stocks->ordered_by_id->first->sample_manipulations->first->stocks_created->ordered_by_id->first->stable_id, $project2->stocks->ordered_by_id->first->stable_id, "project 1's stock creates project 2's stock");
+		  is($project2->stocks->ordered_by_id->first->sample_manipulations->first->stocks_used->ordered_by_id->first->stable_id, $project1->stocks->ordered_by_id->first->stable_id, "and the same the other way round");
 
 		  is($project1->stocks->count, 6, "project 1 still only has 6 stocks");
 
@@ -135,8 +135,8 @@ $schema->txn_do_deferred(
 
 		  # second stock in project2 has no species assays but still should have a species
 		  # via project1
-		  my ($p1s1, $p1s2) = $project1->stocks->all;
-		  my ($p2s1, $p2s2) = $project2->stocks->all;
+		  my ($p1s1, $p1s2) = $project1->stocks->ordered_by_id->all;
+		  my ($p2s1, $p2s2) = $project2->stocks->ordered_by_id->all;
 		  is($p2s2->species_identification_assays->count, 0, "project2 stock2 no species assays");
 		  my ($p2s2_species, @qualifiers) = $p2s2->best_species($project2);
 		  is($p2s2_species && $p2s2_species->name, $p1s2->best_species->name, "project2 stock2 species derived from project1 stock2");

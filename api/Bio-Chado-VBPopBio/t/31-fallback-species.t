@@ -17,7 +17,7 @@ $schema->txn_do_deferred(
 
 		  ok($project, "parsed OK");
 
-		  my @samples = $project->stocks->all;
+		  my @samples = $project->stocks->ordered_by_id->all;
 
 		  is(scalar @samples, 2, "got two samples");
 

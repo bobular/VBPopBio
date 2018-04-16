@@ -433,6 +433,15 @@ sub find_and_delete_existing {
   return undef;
 }
 
+=head2 ordered_by_id
+
+modifies resultset to make sure it is ordered
+(replaces resultset_attributes order_by id)
+
+=cut
+
+sub ordered_by_id { shift->search({}, { order_by => 'stock_id' }) }
+
 =head1 TO DO
 
 Definitely need some more date-aware search functions.
