@@ -25,7 +25,7 @@ use JSON;
 use Getopt::Long;
 
 my $jobs = 4;
-my $num_chunks = 25;
+my $num_chunks = 12;
 my $records_per_file = 200000;
 my $max_phenotypes_to_check = 500;
 
@@ -55,9 +55,11 @@ my %project2size;
 my @IRprojects; # stable
 my @nonIRprojects; # ids
 
+my $total_projects = $projects->count;
+my $done_projects = 0;
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
-  warn "scanning $stable_id for IR phenotypes\n";
+  warn sprintf "scanning %10s for IR phenotypes (%3d / %3d)\n", $stable_id, $done_projects++, $total_projects;
   my $n_samples = $project->stocks->count;
   my $n_assays = $project->experiments->count;
 
@@ -82,6 +84,8 @@ while (my $project = $projects->next) {
     push @nonIRprojects, $stable_id;
   }
 }
+
+warn "\ndone scan - writing commands\n";
 
 my @commands;
 push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-IRall-main", join(',',@IRprojects), $records_per_file, $prefix;

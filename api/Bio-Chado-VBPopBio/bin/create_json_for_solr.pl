@@ -39,7 +39,7 @@ my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
 my $limit;
-my $project_stable_id;
+my $wanted_project_ids;
 my $inverted_IR_regexp = qr/^(LT|LC)/;
 my $loggable_IR_regexp = qr/^(LT|LC)/;
 my $chunk_size = 200000;
@@ -49,12 +49,12 @@ GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
 	   "dry-run|dryrun"=>\$dry_run,
 	   "limit=s"=>\$limit, # for debugging/development
-	   "projects=s"=>\$project_stable_id, # project(s) for debugging, can be comma-separated
+	   "projects=s"=>\$wanted_project_ids, # project(s) for debugging, can be comma-separated
 	   "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
 	  );
 
 
-warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if (defined $limit && $project_stable_id);
+warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if (defined $limit && $wanted_project_ids);
 
 my ($output_prefix) = @ARGV;
 
@@ -90,15 +90,16 @@ my $needcomma = 0;
 #
 # restrict to one or several projects
 #
-if (defined $project_stable_id) {
+my %wanted_projects;
+if (defined $wanted_project_ids) {
   # need to collect the raw database IDs for the $projects->search below
   my @project_db_ids;
-  foreach my $vbp (split /\W+/, $project_stable_id) {
+  foreach my $vbp (split /\W+/, $wanted_project_ids) {
     my $project = $projects->find_by_stable_id($vbp);
-    push @project_db_ids, $project->project_id; 
+    push @project_db_ids, $project->project_id;
+    $wanted_projects{$vbp} = 1;
   }
-  $projects = $projects->search({ "me.project_id" => { in => \@project_db_ids }});
-  $stocks = $projects->stocks;
+  $stocks = $projects->search({ "me.project_id" => { in => \@project_db_ids }})->stocks;
 }
 
 
@@ -245,7 +246,7 @@ while (my $project = $projects->next) {
 						$_->url || () } @publications ],
 		    );
 
-  print_document($output_prefix, $document) if (!defined $project_stable_id || $project_stable_id eq $stable_id);
+  print_document($output_prefix, $document) if (!defined $wanted_project_ids || $wanted_projects{$stable_id});
 
   $project2title{$stable_id} = $document->{label};
   $project2authors{$stable_id} = $document->{authors};
@@ -301,6 +302,10 @@ while (my $stock = $stocks->next) {
   %assay_date_fields = assay_date_fields($fc) if defined $fc;
 
   my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
+  if (defined $sample_size && !looks_like_number($sample_size)) {
+    log_message("$stable_id sample has non-numeric sample_size '$sample_size'");
+    undef $sample_size;
+  }
 
   my $sample_type = $stock->type->name;
 
