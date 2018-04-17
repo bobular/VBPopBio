@@ -303,7 +303,7 @@ while (my $stock = $stocks->next) {
 
   my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
   if (defined $sample_size && !looks_like_number($sample_size)) {
-    log_message("$stable_id sample has non-numeric sample_size '$sample_size'");
+    log_message("$stable_id (@projects) sample has non-numeric sample_size '$sample_size'");
     undef $sample_size;
   }
 
