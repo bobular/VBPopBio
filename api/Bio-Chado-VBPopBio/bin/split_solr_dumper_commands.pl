@@ -28,6 +28,7 @@ my $jobs = 4;
 my $num_chunks = 12;
 my $records_per_file = 200000;
 my $max_phenotypes_to_check = 500;
+# TO DO add --no-ac option
 
 GetOptions("jobs=i"=>\$jobs,
 	   "num-chunks=i"=>\$num_chunks,
@@ -90,6 +91,11 @@ warn "\ndone scan - writing commands\n";
 my @commands;
 push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-IRall-main", join(',',@IRprojects), $records_per_file, $prefix;
 
+#autocomplete
+push @commands, sprintf "bin/create_json_for_solr_ac.pl --projects %s --chunksize %d %s-IRall-ac", join(',',@IRprojects), $records_per_file*10, $prefix;
+
+
+
 # assign projects to chunks in round-robin, biggest first
 my @projects = sort { $project2size{$b} <=> $project2size{$a} } @nonIRprojects;
 
@@ -102,7 +108,10 @@ while (@projects) {
 }
 
 for (my $i=0; $i<@chunks; $i++) {
+  # main
   push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-nonIR%02d-main", join(',',@{$chunks[$i]}), $records_per_file, $prefix, $i+1;
+  # autocomplete
+  push @commands, sprintf "bin/create_json_for_solr_ac.pl --projects %s --chunksize %d %s-nonIR%02d-ac", join(',',@{$chunks[$i]}), $records_per_file*10, $prefix, $i+1;
 }
 
 print map { "$_\n" } @commands;
