@@ -30,7 +30,7 @@ my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
 my $limit;
-my $project_stable_id;
+my $wanted_project_ids;
 my $chunk_size = 2000000;
 
 GetOptions(
@@ -38,7 +38,7 @@ GetOptions(
     "dbuser=s"       => \$dbuser,
     "dry-run|dryrun" => \$dry_run,
     "limit=i"        => \$limit,                # for debugging/development
-    "project=s"      => \$project_stable_id,    # just one project for debugging
+    "projects=s"      => \$wanted_project_ids,    # just one project for debugging
     "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
 );
 
@@ -55,20 +55,26 @@ my $schema =
 $schema->storage->_use_join_optimizer(0);
 my $stocks   = $schema->stocks;
 my $projects = $schema->projects;
-my $assays   = $schema->assays;
 
 my $json = JSON->new->pretty;    # useful for debugging
 my $gh   = Geohash->new();
 my $done;
 
 #
-# debug only
+# restrict to one or several projects
 #
-if ($project_stable_id) {
-    my $project = $projects->find_by_stable_id($project_stable_id);
-    $stocks = $project->stocks;
-    $assays = $project->experiments;
+my %wanted_projects;
+if (defined $wanted_project_ids) {
+  # need to collect the raw database IDs for the $projects->search below
+  my @project_db_ids;
+  foreach my $vbp (split /\W+/, $wanted_project_ids) {
+    my $project = $projects->find_by_stable_id($vbp);
+    push @project_db_ids, $project->project_id;
+    $wanted_projects{$vbp} = 1;
+  }
+  $stocks = $projects->search({ "me.project_id" => { in => \@project_db_ids }})->stocks;
 }
+
 
 # 'bioassay' MIRO:20000058
 # because unfortunately we have used MIRO:20000100 (PCR amplification of specific alleles)
@@ -131,8 +137,18 @@ my $iso8601 = DateTime::Format::ISO8601->new;
 my $start_date_type = $schema->types->start_date;
 my $date_type       = $schema->types->date;
 
+# cache ALL project metadata (even if only processing one or few projects)
 my %project2authors;
 my %project2title;
+while (my $project = $projects->next) {
+  my $project_id = $project->stable_id;
+  # do this once per project only, for speed.
+  $project2title{$project_id} = $project->name;
+
+  # do this once per project only, for speed.
+  $project2authors{$project_id} = [ (map { sanitise_contact($_->description) } $project->contacts),
+				    (map { $_->authors } $project->publications) ];
+}
 
 
 ### SAMPLES ###
@@ -327,10 +343,6 @@ while ( my $stock = $stocks->next ) {
 	# project_authors_txt and project_titles_txt
 	my $j=0;
 
-	# do this once per project only, for speed.
-	$project2title{$project_id} = $project->name;
-
-
 	my $documentProjectTitles = {
 				     doc => {
 					     id          => $stable_id . "_proj_" . $i . "_title",
@@ -347,10 +359,6 @@ while ( my $stock = $stocks->next ) {
 				    };
 
 	print_document($output_prefix, $documentProjectTitles);
-
-	# do this once per project only, for speed.
-	$project2authors{$project_id} //= [ (map { sanitise_contact($_->description) } $project->contacts),
-					    (map { $_->authors } $project->publications) ];
 
 	foreach my $author ( @{$project2authors{$project_id}} ) {
 	  my $documentProjectAuthors = {
