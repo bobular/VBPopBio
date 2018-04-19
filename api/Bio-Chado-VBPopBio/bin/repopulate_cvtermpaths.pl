@@ -22,7 +22,12 @@ my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit
 #
 # BASIC PLAN
 #
+#
+#
 # foreach $cv (given via name in args)
+#
+#   clear cvtermpath entries linked to $cv
+#
 #   foreach $cvterm ($cv->cvterms->all)
 #     $cvterm->populate_cvtermpath_parents_if_needed()
 #
