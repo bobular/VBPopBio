@@ -302,9 +302,14 @@ while (my $stock = $stocks->next) {
   %assay_date_fields = assay_date_fields($fc) if defined $fc;
 
   my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
-  if (defined $sample_size && !looks_like_number($sample_size)) {
-    log_message("$stable_id (@projects) sample has non-numeric sample_size '$sample_size'");
-    undef $sample_size;
+  if (defined $sample_size) {
+    if (!looks_like_number($sample_size)) {
+      log_message("$stable_id (@projects) sample has non-numeric sample_size '$sample_size'");
+      undef $sample_size;
+    } elsif ($sample_size =~ /\d+\.\d+/) {
+      log_message("$stable_id (@projects) sample has non-integer sample_size '$sample_size' - using int(x)");
+      $sample_size = int($sample_size);
+    }
   }
 
   my $sample_type = $stock->type->name;
