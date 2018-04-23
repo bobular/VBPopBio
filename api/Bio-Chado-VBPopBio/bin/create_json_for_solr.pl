@@ -43,6 +43,7 @@ my $wanted_project_ids;
 my $inverted_IR_regexp = qr/^(LT|LC)/;
 my $loggable_IR_regexp = qr/^(LT|LC)/;
 my $chunk_size = 200000;
+my $latlong_decimals;
 # (spline transformation decision is hardcoded) #
 
 GetOptions("dbname=s"=>\$dbname,
@@ -51,10 +52,15 @@ GetOptions("dbname=s"=>\$dbname,
 	   "limit=s"=>\$limit, # for debugging/development
 	   "projects=s"=>\$wanted_project_ids, # project(s) for debugging, can be comma-separated
 	   "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
+	   # latlong_decimals does a truncation of the GPS coordinates
+	   # use ONLY with $wanted_project_ids
+	   "latlong_decimals|decimals|decimalplaces=i"=>\$latlong_decimals,
 	  );
 
 
 warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if (defined $limit && $wanted_project_ids);
+
+die "can't use --latlong_decimals without --projects option\n" if (defined $latlong_decimals && !$wanted_project_ids);
 
 my ($output_prefix) = @ARGV;
 
@@ -1239,6 +1245,14 @@ sub geo_coords_fields {
     log_message("!! some unexpected problem with latlog arg '$latlong' to geo_coords_fields - look for latlong_error_s field in Solr docs");
     return (latlong_error_s => $latlong);
   }
+
+  # temporary coordinate rounding until done in API
+  if (defined $latlong_decimals) {
+    $lat = sprintf "%.${latlong_decimals}f", $lat;
+    $long = sprintf "%.${latlong_decimals}f", $long;
+    $latlong = "$lat,$long";
+  }
+
   my $geohash = $gh->encode($lat, $long, 7);
 
   return (geo_coords => $latlong,
