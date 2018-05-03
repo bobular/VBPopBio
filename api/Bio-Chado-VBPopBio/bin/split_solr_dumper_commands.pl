@@ -114,4 +114,11 @@ for (my $i=0; $i<@chunks; $i++) {
   push @commands, sprintf "bin/create_json_for_solr_ac.pl --projects %s --chunksize %d %s-nonIR%02d-ac", join(',',@{$chunks[$i]}), $records_per_file*10, $prefix, $i+1;
 }
 
+# save the commands to a file for later debugging
+open(COMMS, ">$prefix.commands") || die;
+print COMMS map { "$_\n" } @commands;
+close(COMMS);
+
+
+# and print to STDOUT for chaining with gnu parallel
 print map { "$_\n" } @commands;
