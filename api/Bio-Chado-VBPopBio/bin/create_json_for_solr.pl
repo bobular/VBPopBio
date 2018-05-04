@@ -5,12 +5,13 @@
 #
 # will write files to output-prefix-01.json.gz  output-prefix-02.json.gz etc
 #
-#
+# writes an error log to output-prefix.log
 #
 # option:
 #   -limit P,Q,R,S,T,U    # for debugging - limit output to P projects, R samples, R IR phenotypes and S genotypes, T bloodmeal pheno's, U infection pheno's
 #   -limit N              # same as above, same limit for all document types
 #
+#   -project VBP0000123   # or comma-delimited list of VBPs - will only process these project(s)
 #
 #
 
@@ -23,6 +24,7 @@ use Bio::Chado::VBPopBio;
 use JSON;
 use DateTime::Format::ISO8601;
 use DateTime;
+use DateTime::EpiWeek;
 use Geohash;
 use Clone qw(clone);
 use Tie::IxHash;
@@ -37,24 +39,35 @@ my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
 my $limit;
-my $project_stable_id;
+my $wanted_project_ids;
 my $inverted_IR_regexp = qr/^(LT|LC)/;
 my $loggable_IR_regexp = qr/^(LT|LC)/;
 my $chunk_size = 200000;
+my $latlong_decimals;
 # (spline transformation decision is hardcoded) #
 
 GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
 	   "dry-run|dryrun"=>\$dry_run,
 	   "limit=s"=>\$limit, # for debugging/development
-	   "project=s"=>\$project_stable_id, # just one project for debugging
+	   "projects=s"=>\$wanted_project_ids, # project(s) for debugging, can be comma-separated
 	   "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
+	   # latlong_decimals does a truncation of the GPS coordinates
+	   # use ONLY with $wanted_project_ids
+	   "latlong_decimals|decimals|decimalplaces=i"=>\$latlong_decimals,
 	  );
 
 
-warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if (defined $limit && $project_stable_id);
+warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if (defined $limit && $wanted_project_ids);
+
+die "can't use --latlong_decimals without --projects option\n" if (defined $latlong_decimals && !$wanted_project_ids);
 
 my ($output_prefix) = @ARGV;
+
+die "must provide output prefix commandline arg\n" unless ($output_prefix);
+
+my $log_filename = "$output_prefix.log";
+my $log_size = 0;
 
 my ($document_counter, $chunk_counter, $chunk_fh) = (0, 0);
 
@@ -81,11 +94,18 @@ my $done;
 my $needcomma = 0;
 
 #
-# debug only
+# restrict to one or several projects
 #
-if (defined $project_stable_id) {
-  my $project = $projects->find_by_stable_id($project_stable_id);
-  $stocks = $project->stocks;
+my %wanted_projects;
+if (defined $wanted_project_ids) {
+  # need to collect the raw database IDs for the $projects->search below
+  my @project_db_ids;
+  foreach my $vbp (split /\W+/, $wanted_project_ids) {
+    my $project = $projects->find_by_stable_id($vbp);
+    push @project_db_ids, $project->project_id;
+    $wanted_projects{$vbp} = 1;
+  }
+  $stocks = $projects->search({ "me.project_id" => { in => \@project_db_ids }})->stocks;
 }
 
 
@@ -173,6 +193,10 @@ my $parent_term_of_present_absent = $schema->cvterms->find_by_accession({ term_s
 my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDO',
 								      term_accession_number => 'IDO:0000486' });
 
+my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
+								      term_accession_number => '0000123' });
+die "critical 'sequence variant position' term not in Chado\n" unless (defined $sequence_variant_position);
+
 my $sar_term = $schema->types->species_assay_result;
 
 my $iso8601 = DateTime::Format::ISO8601->new;
@@ -228,7 +252,7 @@ while (my $project = $projects->next) {
 						$_->url || () } @publications ],
 		    );
 
-  print_document($output_prefix, $document) if (!defined $project_stable_id || $project_stable_id eq $stable_id);
+  print_document($output_prefix, $document) if (!defined $wanted_project_ids || $wanted_projects{$stable_id});
 
   $project2title{$stable_id} = $document->{label};
   $project2authors{$stable_id} = $document->{authors};
@@ -284,11 +308,20 @@ while (my $stock = $stocks->next) {
   %assay_date_fields = assay_date_fields($fc) if defined $fc;
 
   my ($sample_size) = map { $_->value } $stock->multiprops($sample_size_term);
+  if (defined $sample_size) {
+    if (!looks_like_number($sample_size)) {
+      log_message("$stable_id (@projects) sample has non-numeric sample_size '$sample_size'");
+      undef $sample_size;
+    } elsif ($sample_size =~ /\d+\.\d+/) {
+      log_message("$stable_id (@projects) sample has non-integer sample_size '$sample_size' - using int(x)");
+      $sample_size = int($sample_size);
+    }
+  }
 
   my $sample_type = $stock->type->name;
 
   my $has_abundance_data = defined $sample_size &&
-    defined $assay_date_fields{collection_duration_days_i} &&
+    $assay_date_fields{collection_duration_days_i} &&
       $sample_type eq 'pool';
 
   my $document = ohr(
@@ -360,7 +393,11 @@ while (my $stock = $stocks->next) {
 
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
-		     has_abundance_data_b => $has_abundance_data ? 'true' : 'false',
+		     ($has_abundance_data ?
+		      (has_abundance_data_b => 'true')
+		      :
+		      (has_abundance_data_b => 'false')
+		     ),
 		     );
 
   fallback_value($document->{collection_protocols}, 'no data');
@@ -432,6 +469,11 @@ while (my $stock = $stocks->next) {
       $doc->{bundle} = 'pop_sample_phenotype';
       $doc->{bundle_name} = 'Sample phenotype';
 
+      $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
+      $doc->{accession} = $assay_stable_id;
+      $doc->{assay_id_s} = $assay_stable_id;
+      $doc->{sample_name_s} = $document->{label};
+
       delete $doc->{phenotypes};
       delete $doc->{phenotypes_cvterms};
 
@@ -450,10 +492,7 @@ while (my $stock = $stocks->next) {
 		my $phenotype_stable_ish_id = $assay_stable_id.".".$phenotype->id;
 		# alter fields
 		$doc->{id} = $phenotype_stable_ish_id;
-		$doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
 		$doc->{label} = $phenotype->name;
-		$doc->{accession} = $assay_stable_id;
-		$doc->{assay_id_s} = $assay_stable_id;
 		$doc->{description} = "IR phenotype '".$phenotype->name."' for $stable_id";
 		# NEW fields
 
@@ -483,13 +522,17 @@ while (my $stock = $stocks->next) {
 		    $doc->{phenotype_value_type_cvterms} = [ flattened_parents($value_type) ];
 
 		  } else {
-		    warn "no value type for phenotype of $assay_stable_id\n";
+		    log_message("$assay_stable_id (@projects) has no value type for phenotype ".$phenotype->name." - skipping");
+		    next;
 		  }
 
 		  # to do: insecticide + concentrations + duration
 		  # die "to do...";
 
-		  die "assay $assay_stable_id had fatal issues: $errors\n" if ($errors);
+		  if ($errors) {
+		    log_message("$assay_stable_id (@projects) phenotype ".$phenotype->name." had fatal errors: $errors - skipping");
+		    next;
+		  }
 
 		  if (defined $insecticide) {
 		    $doc->{insecticide_s} = $insecticide->name;
@@ -502,11 +545,12 @@ while (my $stock = $stocks->next) {
 		    } elsif (not grep { $_->id == $dose_response_test_term->id ||
 					  $dose_response_test_term->has_child($_) } @protocol_types) {
 		      # this warning only for non-DR tests
-		      warn "no/incomplete/corrupted concentration data for $assay_stable_id in @projects\n";
+		      log_message("$assay_stable_id (@projects) has no/incomplete/corrupted concentration data for phenotype ".$phenotype->name." - keeping");
 		    }
 
 		  } else {
-		    warn "no insecticide for $assay_stable_id !!!\n";
+		    log_message("$assay_stable_id (@projects) - no insecticide for phenotype ".$phenotype->name." - skipping");
+		    next;
 		  }
 
 		  if (defined $duration && defined $duration_unit) {
@@ -564,6 +608,8 @@ while (my $stock = $stocks->next) {
 	  $doc->{bundle_name} = 'Sample phenotype';
 	  $doc->{label} = $phenotype->name;
 	  $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
+	  $doc->{assay_id_s} = $assay_stable_id;
+	  $doc->{sample_name_s} = $document->{label};
 
 	  delete $doc->{phenotypes};
 	  delete $doc->{phenotypes_cvterms};
@@ -594,7 +640,8 @@ while (my $stock = $stocks->next) {
 	      $doc->{phenotype_value_unit_s} = $unit_term->name;
 	      $doc->{phenotype_value_unit_cvterms} =  [ flattened_parents($unit_term) ];
 	    } else {
-	      die "unitless blood meal index value"
+	      log_message("$assay_stable_id (@projects) - unitless blood meal index value for phenotype ".$phenotype->name." - skipping");
+	      next;
 	    }
 	  }
 
@@ -617,6 +664,8 @@ while (my $stock = $stocks->next) {
 	  $doc->{bundle_name} = 'Sample phenotype';
 	  $doc->{label} = $phenotype->name;
 	  $doc->{url} = '/popbio/assay/?id='.$assay_stable_id; # this is closer to the phenotype than the sample page
+	  $doc->{assay_id_s} = $assay_stable_id;
+	  $doc->{sample_name_s} = $document->{label};
 
 	  delete $doc->{phenotypes};
 	  delete $doc->{phenotypes_cvterms};
@@ -647,7 +696,8 @@ while (my $stock = $stocks->next) {
 	      $doc->{phenotype_value_unit_s} = $unit_term->name;
 	      $doc->{phenotype_value_type_cvterms} = [ flattened_parents($unit_term) ];
 	    } else {
-	      die "unitless infection prevalence value"
+	      log_message("$assay_stable_id (@projects) - unitless infection prevalence value for phenotype ".$phenotype->name." - skipping");
+	      next;
 	    }
 	  }
 
@@ -656,7 +706,7 @@ while (my $stock = $stocks->next) {
 	  }
 
 	} else {
-	  warn "Unknown or unexpected phenotype from $assay_stable_id in @projects\n";
+	  log_message("$assay_stable_id (@projects) has unexpected phenotype ".$phenotype->name." - skipped");
 	}
       }
     }
@@ -674,7 +724,7 @@ while (my $stock = $stocks->next) {
     foreach my $genotype ($genotype_assay->genotypes) {
       my ($genotype_name, $genotype_value, $genotype_subtype, $genotype_unit); # these vars are "undefined" to start with
       my $genotype_type = $genotype->type; # cvterm/ontology term object
-
+      my $locus_term;
 
       # check if this genotype's type is the same as 'chromosomal inversion' or a child of it.
       if ($genotype_type->id == $chromosomal_inversion_term->id ||
@@ -709,8 +759,23 @@ while (my $stock = $stocks->next) {
 					     $prop_terms[0]->id == $variant_frequency_term->id);
 	  $genotype_unit = $prop_terms[-1];
 	}
-	die "mutated protein genotype has no units" unless defined $genotype_unit;
+
+	unless (defined $genotype_unit) {
+	  log_message("$assay_stable_id (@projects) mutated protein genotype ".$genotype->name." has no units - skipping");
+	  next;
+	}
+
 	$genotype_subtype = 'mutated protein';
+
+	# determine which locus the allele is for
+	# preload parent relationships
+	$genotype_type->recursive_parents;
+	my $genotype_parents = $genotype_type->direct_parents;
+	while (my $term = $genotype_parents->next) {
+	  if ($sequence_variant_position->has_child($term)) {
+	    $locus_term = $term;
+	  }
+	}
       }
       if (defined $genotype_name && defined $genotype_value && defined $genotype_subtype) {
 
@@ -724,6 +789,7 @@ while (my $stock = $stocks->next) {
 	# always change these fields
 	$doc->{bundle}      = 'pop_sample_genotype';
 	$doc->{bundle_name} = 'Sample genotype';
+	$doc->{sample_name_s} = $document->{label};
 
 	delete $doc->{genotypes};
 	delete $doc->{genotypes_cvterms};
@@ -764,6 +830,10 @@ while (my $stock = $stocks->next) {
 	    $doc->{genotype_mutated_protein_value_f} = $genotype_value;
 	    $doc->{genotype_mutated_protein_unit_s} = $genotype_unit->name;
 	    $doc->{genotype_mutated_protein_unit_cvterms} = [ flattened_parents($genotype_unit) ];
+	    if (defined $locus_term) {
+	      $doc->{locus_name_s} = $locus_term->name;
+	      $doc->{locus_name_cvterms} = [ flattened_parents($locus_term) ];
+	    }
 	  }
 	}
 
@@ -863,7 +933,9 @@ if (defined $chunk_fh) {
   close($chunk_fh);
 }
 
-
+if ($log_size) {
+  warn "$log_size errors or warnings reported in $log_filename\n";
+}
 
 # returns just the 'proper' cvterms for all multiprops
 # of the argument
@@ -948,10 +1020,29 @@ sub assay_date_fields {
 
   # first deal with the single date for Solr back-compatibility
   # use the first date or start_date
+  my $single_date_from_chado;
   if ($dates[0]) {
-    $result{collection_date} = iso8601_date($dates[0]->value);
+    $single_date_from_chado = $dates[0]->value;
   } elsif ($start_dates[0]) {
-    $result{collection_date} = iso8601_date($start_dates[0]->value);
+    $single_date_from_chado = $start_dates[0]->value;
+  }
+
+  # fixed granularity, single-valued date fields for timeline plot zooming
+  # we currently consider the START DATE ONLY - but subject to change...
+  if ($single_date_from_chado) {
+    $result{collection_date} = iso8601_date($single_date_from_chado);
+
+    $result{collection_year_s} = substr($single_date_from_chado, 0, 4);
+    $result{collection_date_resolution_s} = 'year';
+    if (length($single_date_from_chado) >= 7) {
+      $result{collection_month_s} = substr($single_date_from_chado, 0, 7);
+      $result{collection_date_resolution_s} = 'month';
+      if (length($single_date_from_chado) >= 10) {
+	$result{collection_epiweek_s} = epiweek($single_date_from_chado);
+	$result{collection_day_s} = $single_date_from_chado;
+	$result{collection_date_resolution_s} = 'day';
+      }
+    }
   }
 
   # now deal with the potentially multi-valued dates and date ranges
@@ -960,7 +1051,10 @@ sub assay_date_fields {
     push @{$result{collection_season}}, season($date);
   }
 
-  die "unequal number of start and end dates for ".$assay->stable_id."\n" unless (@start_dates == @end_dates);
+  unless (@start_dates == @end_dates) {
+    log_message($assay->stable_id." has unequal number of start and end dates - records will have no date fields");
+    return ();
+  }
   for (my $i=0; $i<@start_dates; $i++) {
     my $start_date = $start_dates[$i]->value;
     my $end_date = $end_dates[$i]->value;
@@ -1054,6 +1148,13 @@ sub iso8601_date {
   }
 }
 
+sub epiweek {
+  my $string = shift;
+  my $datetime = $iso8601->parse_datetime($string);
+  return sprintf "%d-W%02d", $datetime->epiweek;
+}
+
+
 #DEPRECATED
 # returns an array of cvterms
 # definitely want has child only (not IS also) because
@@ -1140,8 +1241,17 @@ sub quick_project_stable_id {
 sub geo_coords_fields {
   my $latlong = shift;
   my ($lat, $long) = split /,/, $latlong;
-  die "some unexpected problem with latlog arg to geo_coords_fields\n"
-    unless (defined $lat && defined $long);
+  unless (defined $lat && defined $long) {
+    log_message("!! some unexpected problem with latlog arg '$latlong' to geo_coords_fields - look for latlong_error_s field in Solr docs");
+    return (latlong_error_s => $latlong);
+  }
+
+  # temporary coordinate rounding until done in API
+  if (defined $latlong_decimals) {
+    $lat = sprintf "%.${latlong_decimals}f", $lat;
+    $long = sprintf "%.${latlong_decimals}f", $long;
+    $latlong = "$lat,$long";
+  }
 
   my $geohash = $gh->encode($lat, $long, 7);
 
@@ -1301,4 +1411,19 @@ sub print_document {
     undef $chunk_fh;
   }
 
+}
+
+#
+# log_message
+#
+# write $message to the global logfile and increment a counter
+#
+
+
+sub log_message {
+  my ($message) = @_;
+  open LOG, ">>$log_filename" || die "can't write to $log_filename\n";
+  print LOG "$message\n";
+  close(LOG);
+  $log_size++;
 }

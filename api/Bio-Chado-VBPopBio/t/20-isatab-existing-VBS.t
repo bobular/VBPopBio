@@ -18,8 +18,8 @@ $schema->txn_do_deferred(
 		  my $project1_lone_data = $project1->as_data_structure;
 		  my $project2 = $projects->create_from_isatab({ directory=>'../../test-data/Test-ISA-Tab-pre-existing-VBS-ids/' });
 
-		  my $stock1 = $project1->stocks->first;
-		  my $stock2 = $project2->stocks->first;
+		  my $stock1 = $project1->stocks->ordered_by_id->first;
+		  my $stock2 = $project2->stocks->ordered_by_id->first;
 
 		  my $project1_data_orig = $project1->as_data_structure;
 

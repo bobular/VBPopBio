@@ -243,6 +243,15 @@ sub looks_like_stable_id {
   return $id =~ /^VBA\d{7}$/;
 }
 
+=head2 ordered_by_id
+
+modifies resultset to make sure it is ordered
+(replaces resultset_attributes order_by id)
+
+=cut
+
+sub ordered_by_id { shift->search({}, { order_by => 'nd_experiment_id' }) }
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

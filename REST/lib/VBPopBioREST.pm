@@ -150,7 +150,7 @@ get qr{/(?:stocks|samples)(/head)?} => sub {
 								 offset => $o,
 								 page => 1,
 								},
-							       );
+							       )->ordered_by_id;
 			   my $depth = $head ? 0 : undef;
 			   return {
 				   records => [ map { $_->as_data_structure($depth) } $results->all ],
@@ -208,7 +208,7 @@ get qr{/project/(\w+)/(?:stocks|samples)(/head)?} => sub {
 								  offset => $o,
 								  page => 1,
 								 },
-								);
+								)->ordered_by_id;
 
 			   return {
 				   records => [ map { $_->as_data_structure($head ? 0 : undef, $project) } $stocks->all ],
@@ -234,7 +234,7 @@ get qr{/assay/(\w+)/(?:stocks|samples)(/head)?} => sub {
 								offset => $o,
 								page => 1,
 							       },
-							      );
+							      )->ordered_by_id;
 
 			   return {
 				   records => [ map { $_->as_data_structure($head ? 0 : undef) } $stocks->all ],
@@ -260,7 +260,7 @@ get qr{/assay/(\w+)/projects(/head)?} => sub {
 								    offset => $o,
 								    page => 1,
 								   },
-								  );
+								  )->ordered_by_id;
 
 			   return {
 				   records => [ map { $_->as_data_structure($head ? 0 : undef) } $projects->all ],
@@ -285,7 +285,7 @@ get qr{/(?:stock|sample)/(\w+)/projects(/head)?} => sub {
 								    offset => $o,
 								    page => 1,
 								   },
-								  );
+								  )->ordered_by_id;
 
 			   return {
 				   records => [ map { $_->as_data_structure($head ? 0 : undef) } $projects->all ],

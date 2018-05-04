@@ -6,7 +6,7 @@ __PACKAGE__->subclass({
 		       stocks => 'Bio::Chado::VBPopBio::Result::Stock',
 #		       organismprops => 'Bio::Chado::VBPopBio::Result::Organismprop',
 });
-__PACKAGE__->resultset_attributes({ order_by => 'organism_id' });
+#__PACKAGE__->resultset_attributes({ order_by => 'organism_id' });
 
 =head1 NAME
 

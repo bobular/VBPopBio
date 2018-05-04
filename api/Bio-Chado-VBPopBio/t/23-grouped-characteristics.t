@@ -16,7 +16,7 @@ $schema->txn_do_deferred(
 
 		  isnt($project, undef, "project shouldn't be undef");
 
-		  my @samples = $project->stocks->all;
+		  my @samples = $project->stocks->ordered_by_id->all;
 		  my $sample = shift @samples;
 
 		  isnt($sample, undef, "first sample shouldn't be undef");

@@ -19,7 +19,7 @@ __PACKAGE__->subclass({ nd_experiment_stocks => 'Bio::Chado::VBPopBio::Result::L
 		      });
 
 __PACKAGE__->typecast_column('type_id');
-__PACKAGE__->resultset_attributes({ order_by => 'nd_experiment_id' });
+#__PACKAGE__->resultset_attributes({ order_by => 'nd_experiment_id' });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';

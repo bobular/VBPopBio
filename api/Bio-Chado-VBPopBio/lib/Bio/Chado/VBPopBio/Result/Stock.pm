@@ -10,7 +10,7 @@ __PACKAGE__->subclass({
 		       organism => 'Bio::Chado::VBPopBio::Result::Organism',
 		       type => 'Bio::Chado::VBPopBio::Result::Cvterm',
 		      });
-__PACKAGE__->resultset_attributes({ order_by => 'stock_id' });
+#__PACKAGE__->resultset_attributes({ order_by => 'stock_id' });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use Carp;

@@ -30,7 +30,7 @@ my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
 my $limit;
-my $project_stable_id;
+my $wanted_project_ids;
 my $chunk_size = 2000000;
 
 GetOptions(
@@ -38,11 +38,13 @@ GetOptions(
     "dbuser=s"       => \$dbuser,
     "dry-run|dryrun" => \$dry_run,
     "limit=i"        => \$limit,                # for debugging/development
-    "project=s"      => \$project_stable_id,    # just one project for debugging
+    "projects=s"      => \$wanted_project_ids,    # just one project for debugging
     "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
 );
 
 my ($output_prefix) = @ARGV;
+die "must provide output prefix commandline arg\n" unless ($output_prefix);
+
 my ($document_counter, $chunk_counter, $needcomma, $chunk_fh) = (0, 0, 0);
 
 my $dsn = "dbi:Pg:dbname=$dbname";
@@ -53,20 +55,26 @@ my $schema =
 $schema->storage->_use_join_optimizer(0);
 my $stocks   = $schema->stocks;
 my $projects = $schema->projects;
-my $assays   = $schema->assays;
 
 my $json = JSON->new->pretty;    # useful for debugging
 my $gh   = Geohash->new();
 my $done;
 
 #
-# debug only
+# restrict to one or several projects
 #
-if ($project_stable_id) {
-    my $project = $projects->find_by_stable_id($project_stable_id);
-    $stocks = $project->stocks;
-    $assays = $project->experiments;
+my %wanted_projects;
+if (defined $wanted_project_ids) {
+  # need to collect the raw database IDs for the $projects->search below
+  my @project_db_ids;
+  foreach my $vbp (split /\W+/, $wanted_project_ids) {
+    my $project = $projects->find_by_stable_id($vbp);
+    push @project_db_ids, $project->project_id;
+    $wanted_projects{$vbp} = 1;
+  }
+  $stocks = $projects->search({ "me.project_id" => { in => \@project_db_ids }})->stocks;
 }
+
 
 # 'bioassay' MIRO:20000058
 # because unfortunately we have used MIRO:20000100 (PCR amplification of specific alleles)
@@ -120,13 +128,27 @@ my $mutated_protein_term = $schema->cvterms->find_by_accession({ term_source_ref
 my $wild_type_allele_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
 								 term_accession_number => '0000001' });
 
+my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
+								      term_accession_number => '0000123' });
+die "critical 'sequence variant position' term not in Chado\n" unless (defined $sequence_variant_position);
+
 my $iso8601 = DateTime::Format::ISO8601->new;
 
 my $start_date_type = $schema->types->start_date;
 my $date_type       = $schema->types->date;
 
+# cache ALL project metadata (even if only processing one or few projects)
 my %project2authors;
 my %project2title;
+while (my $project = $projects->next) {
+  my $project_id = $project->stable_id;
+  # do this once per project only, for speed.
+  $project2title{$project_id} = $project->name;
+
+  # do this once per project only, for speed.
+  $project2authors{$project_id} = [ (map { sanitise_contact($_->description) } $project->contacts),
+				    (map { $_->authors } $project->publications) ];
+}
 
 
 ### SAMPLES ###
@@ -282,7 +304,7 @@ while ( my $stock = $stocks->next ) {
                 stable_id   => $stable_id,
                 bundle      => 'pop_sample',
 		(defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
-                type        => 'Pubmed references',
+                type        => 'PubMed',
                 field       => 'pubmed',
                 geo_coords  => $latlong,
                 date        => $date,
@@ -306,7 +328,7 @@ while ( my $stock = $stocks->next ) {
                 stable_id   => $stable_id,
                 bundle      => 'pop_sample',
 		(defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
-                type        => 'Projects',
+                type        => 'Project',
                 geo_coords  => $latlong,
                 date        => $date,
                 textsuggest => $project_id,
@@ -321,17 +343,13 @@ while ( my $stock = $stocks->next ) {
 	# project_authors_txt and project_titles_txt
 	my $j=0;
 
-	# do this once per project only, for speed.
-	$project2title{$project_id} = $project->name;
-
-
 	my $documentProjectTitles = {
 				     doc => {
 					     id          => $stable_id . "_proj_" . $i . "_title",
 					     stable_id   => $stable_id,
 					     bundle      => 'pop_sample',
 					     (defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
-					     type        => 'Project titles',
+					     type        => 'Project title',
 					     geo_coords  => $latlong,
 					     date        => $date,
 					     textsuggest => $project2title{$project_id},
@@ -342,10 +360,6 @@ while ( my $stock = $stocks->next ) {
 
 	print_document($output_prefix, $documentProjectTitles);
 
-	# do this once per project only, for speed.
-	$project2authors{$project_id} //= [ (map { sanitise_contact($_->description) } $project->contacts),
-					    (map { $_->authors } $project->publications) ];
-
 	foreach my $author ( @{$project2authors{$project_id}} ) {
 	  my $documentProjectAuthors = {
             doc => {
@@ -353,7 +367,7 @@ while ( my $stock = $stocks->next ) {
                 stable_id   => $stable_id,
                 bundle      => 'pop_sample',
 		(defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
-                type        => 'Authors',
+                type        => 'Author',
                 geo_coords  => $latlong,
                 date        => $date,
                 textsuggest => $author,
@@ -443,7 +457,7 @@ while ( my $stock = $stocks->next ) {
                 stable_id  => $stable_id,
                 bundle     => 'pop_sample',
 		(defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
-                type       => 'Collection protocols',
+                type       => 'Collection protocol',
                 geo_coords => $latlong,
                 date       => $date,
                 ( $i == 0 )
@@ -479,7 +493,7 @@ while ( my $stock = $stocks->next ) {
                 stable_id  => $stable_id,
                 bundle     => 'pop_sample',
 		(defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
-                type       => 'Protocols',
+                type       => 'Protocol',
                 geo_coords => $latlong,
                 date       => $date,
                 ( $i == 0 )
@@ -641,7 +655,7 @@ while ( my $stock = $stocks->next ) {
                                 stable_id => $stablish_phenotype_id,
                                 bundle    => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
-                                type             => 'Pubmed references',
+                                type             => 'PubMed',
                                 field            => 'pubmed',
                                 geo_coords       => $latlong,
                                 date             => $date,
@@ -664,7 +678,7 @@ while ( my $stock = $stocks->next ) {
                                 stable_id => $stablish_phenotype_id,
                                 bundle    => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
-                                type             => 'Projects',
+                                type             => 'Project',
                                 geo_coords       => $latlong,
                                 date             => $date,
                                 textsuggest => $project_id,
@@ -680,7 +694,7 @@ while ( my $stock = $stocks->next ) {
 							     id          => $stablish_phenotype_id . "_proj_" . $i . "_title",
 							     stable_id   => $stablish_phenotype_id,
 							     bundle      => 'pop_sample_phenotype',
-							     type        => 'Project titles',
+							     type        => 'Project title',
 							     geo_coords  => $latlong,
 							     date        => $date,
 							     textsuggest => $project2title{$project_id},
@@ -700,7 +714,7 @@ while ( my $stock = $stocks->next ) {
 								id          => $stablish_phenotype_id . "_proj_" . $i . "_auth_" . $j,
 								stable_id   => $stablish_phenotype_id,
 								bundle      => 'pop_sample_phenotype',
-								type        => 'Authors',
+								type        => 'Author',
 								geo_coords  => $latlong,
 								date        => $date,
 								textsuggest => $author,
@@ -789,7 +803,7 @@ while ( my $stock = $stocks->next ) {
                                 stable_id        => $stablish_phenotype_id,
                                 bundle           => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
-                                type             => 'Collection protocols',
+                                type             => 'Collection protocol',
                                 geo_coords       => $latlong,
                                 date             => $date,
                                 ( $i == 0 )
@@ -823,7 +837,7 @@ while ( my $stock = $stocks->next ) {
                                 stable_id        => $stablish_phenotype_id,
                                 bundle           => 'pop_sample_phenotype',
                                 phenotype_type_s => 'insecticide resistance',
-                                type             => 'Protocols',
+                                type             => 'Protocol',
                                 geo_coords       => $latlong,
                                 date             => $date,
                                 ( $i == 0 )
@@ -870,7 +884,7 @@ while ( my $stock = $stocks->next ) {
                                     bundle    => 'pop_sample_phenotype',
                                     phenotype_type_s =>
                                       'insecticide resistance',
-                                    type       => 'Insecticides',
+                                    type       => 'Insecticide',
                                     geo_coords => $latlong,
                                     date       => $date,
                                     ( $i == 0 )
@@ -911,6 +925,15 @@ while ( my $stock = $stocks->next ) {
 	# if it's the right kind of genotype
 	if ($mutated_protein_term->has_child($genotype_type) || $wild_type_allele_term->has_child($genotype_type)) {
 
+	  my $locus_term;
+	  $genotype_type->recursive_parents;
+	  my $genotype_parents = $genotype_type->direct_parents;
+	  while (my $term = $genotype_parents->next) {
+	    if ($sequence_variant_position->has_child($term)) {
+	      $locus_term = $term;
+	    }
+	  }
+
 	  my @taxons = flattened_parents($stock_best_species);
 
 	  my $i = 0;
@@ -918,26 +941,6 @@ while ( my $stock = $stocks->next ) {
 
 	    my $is_synonym;
 	    ( $taxon, $is_synonym ) = synonym_check($taxon);
-
-
-	    # Allele
-	    my $documentAllele = {
-				 doc => {
-					 id               => $stablish_genotype_id . "_allele",
-					 stable_id        => $stablish_genotype_id,
-					 type             => 'Allele',
-					 field            => 'genotype_name_s',
-					 bundle           => 'pop_sample_genotype',
-					 genotype_type_s => 'mutated protein',
-					 geo_coords       => $latlong,
-					 date             => $date,
-					 textsuggest      => $genotype_type->name,
-					 is_synonym       => 'false',
-					}
-				};
-	    print_document($output_prefix, $documentAllele);
-
-
 
 	    # Taxonomy
 	    my $documentTaxons = {
@@ -964,6 +967,50 @@ while ( my $stock = $stocks->next ) {
 				 };
 	    print_document($output_prefix, $documentTaxons);
 	    $i++;
+	  }
+
+	  # Allele
+	  my $documentAllele = {
+				doc => {
+					id               => $stablish_genotype_id . "_allele",
+					stable_id        => $stablish_genotype_id,
+					type             => 'Allele',
+					field            => 'genotype_name_s',
+					bundle           => 'pop_sample_genotype',
+					genotype_type_s => 'mutated protein',
+					geo_coords       => $latlong,
+					date             => $date,
+					textsuggest      => $genotype_type->name,
+					is_synonym       => 'false',
+				       }
+			       };
+	  print_document($output_prefix, $documentAllele);
+
+
+	  # Locus
+	  if ($locus_term) {
+	    my @term_values = flattened_parents($locus_term);
+	    my $z = 1;
+	    foreach my $term_value (@term_values) {
+	      my $is_synonym;
+	      ( $term_value, $is_synonym ) = synonym_check($term_value);
+
+	      my $documentLocus = {
+				    doc => {
+					    id               => $stablish_genotype_id . "_locus".$z++,
+					    stable_id        => $stablish_genotype_id,
+					    type             => 'Locus',
+					    field            => 'locus_name_s',
+					    bundle           => 'pop_sample_genotype',
+					    genotype_type_s => 'mutated protein',
+					    geo_coords       => $latlong,
+					    date             => $date,
+					    textsuggest      => $term_value,
+					    is_synonym       => $is_synonym,
+					   }
+				   };
+	      print_document($output_prefix, $documentLocus);
+	    }
 	  }
 
 	  # Description
@@ -1039,7 +1086,7 @@ while ( my $stock = $stocks->next ) {
 					     stable_id => $stablish_genotype_id,
 					     bundle    => 'pop_sample_genotype',
 					     genotype_type_s => 'mutated protein',
-					     type             => 'Pubmed references',
+					     type             => 'PubMed',
 					     field            => 'pubmed',
 					     geo_coords       => $latlong,
 					     date             => $date,
@@ -1062,7 +1109,7 @@ while ( my $stock = $stocks->next ) {
 					    stable_id => $stablish_genotype_id,
 					    bundle    => 'pop_sample_genotype',
 					    genotype_type_s => 'mutated protein',
-					    type             => 'Projects',
+					    type             => 'Project',
 					    geo_coords       => $latlong,
 					    date             => $date,
 					    textsuggest => $project_id,
@@ -1078,7 +1125,7 @@ while ( my $stock = $stocks->next ) {
 						 id          => $stablish_genotype_id . "_proj_" . $i . "_title",
 						 stable_id   => $stablish_genotype_id,
 						 bundle      => 'pop_sample_genotype',
-						 type        => 'Project titles',
+						 type        => 'Project title',
 						 geo_coords  => $latlong,
 						 date        => $date,
 						 textsuggest => $project2title{$project_id},
@@ -1098,7 +1145,7 @@ while ( my $stock = $stocks->next ) {
 						    id          => $stablish_genotype_id . "_proj_" . $i . "_auth_" . $j,
 						    stable_id   => $stablish_genotype_id,
 						    bundle      => 'pop_sample_genotype',
-						    type        => 'Authors',
+						    type        => 'Author',
 						    geo_coords  => $latlong,
 						    date        => $date,
 						    textsuggest => $author,
@@ -1187,7 +1234,7 @@ while ( my $stock = $stocks->next ) {
 					       stable_id        => $stablish_genotype_id,
 					       bundle           => 'pop_sample_genotype',
 					       genotype_type_s => 'mutated protein',
-					       type             => 'Collection protocols',
+					       type             => 'Collection protocol',
 					       geo_coords       => $latlong,
 					       date             => $date,
 					       ( $i == 0 )
@@ -1222,7 +1269,7 @@ while ( my $stock = $stocks->next ) {
 					     stable_id        => $stablish_genotype_id,
 					     bundle           => 'pop_sample_genotype',
 					     genotype_type_s => 'mutated protein',
-					     type             => 'Protocols',
+					     type             => 'Protocol',
 					     geo_coords       => $latlong,
 					     date             => $date,
 					     ( $i == 0 )
