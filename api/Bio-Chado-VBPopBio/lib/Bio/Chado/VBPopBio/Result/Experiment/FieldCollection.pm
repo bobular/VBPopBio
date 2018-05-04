@@ -5,6 +5,8 @@ use base 'Bio::Chado::VBPopBio::Result::Experiment';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass/);
 __PACKAGE__->subclass({ }); # must call this routine even if not setting up relationships.
 
+use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
+
 =head1 NAME
 
 Bio::Chado::VBPopBio::Result::Experiment::FieldCollection
@@ -109,6 +111,58 @@ sub as_cytoscape_graph {
 
   return $graph;
 }
+
+
+=head2 as_isatab
+
+handles the nd_geolocation data export
+
+=cut
+
+sub as_isatab {
+  my ($self, $study, $assay_filename) = @_;
+
+  my $isa = $self->SUPER::as_isatab($study, $assay_filename);
+
+  my $assay_characteristics = $isa->{characteristics};
+
+  my $latitude_heading = 'Collection site latitude (VBcv:0000817)';
+  my $longitude_heading = 'Collection site longitude (VBcv:0000816)';
+  my $altitude_heading = 'Collection site altitude (VBcv:0000832)';
+
+  my $geolocation = $self->geolocation;
+  $assay_characteristics->{$latitude_heading}{value} = $geolocation->latitude;
+  $assay_characteristics->{$longitude_heading}{value} = $geolocation->longitude;
+  $assay_characteristics->{$altitude_heading}{value} = $geolocation->altitude;
+
+  my ($geo_comments, $geo_characteristics) = Multiprops->to_isatab($geolocation);
+  # fix the names and capitalisation
+  # e.g. "Characteristics [city (VBcv:0000844)]" to "Characteristics [Collection site city (VBcv:0000844)]"
+  foreach my $old_key (keys %$geo_characteristics) {
+    my $new_key = $old_key;
+    $new_key = "collection site $new_key" unless ($new_key =~ /collection site/i);
+    $new_key = ucfirst($new_key);
+    $geo_characteristics->{$new_key} = delete $geo_characteristics->{$old_key};
+  }
+
+  # now copy over into the assay's characteristics
+  grep { $assay_characteristics->{$_} = $geo_characteristics->{$_} } keys %$geo_characteristics;
+
+  if ($geo_comments && keys %$geo_comments) {
+    my $schema = $self->result_source->schema;
+    $schema->defer_exception_once("geolocation has comments fields that aren't handled yet");
+  }
+
+  # fallback for non-ontology site names
+  my $collection_site_heading = 'Collection site (VBcv:0000831)';
+  unless ($assay_characteristics->{$collection_site_heading}{value}) {
+    $assay_characteristics->{$collection_site_heading}{value} = $geolocation->description;
+  }
+
+  return $isa;
+}
+
+
 
 =head1 AUTHOR
 

@@ -66,6 +66,19 @@ sub result_summary {
   return 'basic sample manipulation';
 }
 
+
+=head2 has_isatab_sheet
+
+returns true if the assay should be represented in ISA-Tab
+
+=cut
+
+sub has_isatab_sheet {
+  my $self = shift;
+  return 0;
+}
+
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>

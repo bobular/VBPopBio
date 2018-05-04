@@ -1,0 +1,5 @@
+Sample Name	Assay Name	Description	Protocol REF	Performer	Date	Characteristics [species assay result (VBcv:0000961)]	Term Source REF	Term Accession Number
+IRBS3	IRBSID3		species_identification			Anopheles gambiae	MIRO	40003829
+IRBS4	IRBSID4		species_identification			Anopheles gambiae	MIRO	40003829
+IRBS5	IRBSID5		species_identification			Anopheles gambiae	MIRO	40003829
+IRBS6	IRBSID6		species_identification			Anopheles gambiae	MIRO	40003829

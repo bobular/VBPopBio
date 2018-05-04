@@ -5,6 +5,8 @@ use base 'Bio::Chado::VBPopBio::Result::Experiment';
 __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass/);
 __PACKAGE__->subclass({ }); # must call this routine even if not setting up relationships.
 
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
+
 =head1 NAME
 
 Bio::Chado::VBPopBio::Result::Experiment::PhenotypeAssay
@@ -126,6 +128,35 @@ sub as_cytoscape_graph {
 
   return $graph;
 }
+
+
+=head2 as_isatab
+
+handles the p_phenotype file export
+
+=cut
+
+sub as_isatab {
+  my ($self, $study, $assay_filename) = @_;
+
+  my $isa = $self->SUPER::as_isatab($study, $assay_filename);
+
+  my $phenotypes_filename = $assay_filename;
+  $phenotypes_filename =~ s/^a_/p_/;
+
+  foreach my $phenotype ($self->phenotypes) {
+    $isa->{phenotypes} //= ordered_hashref;
+
+    my $phenotype_name = $phenotype->name;
+    $isa->{phenotypes}{$phenotype_name} = $phenotype->as_isatab();
+
+    $isa->{raw_data_files}{$phenotypes_filename} //= {};
+  }
+
+  return $isa;
+
+}
+
 
 =head1 AUTHOR
 

@@ -9,6 +9,7 @@ __PACKAGE__->subclass({
 		      });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 =head1 NAME
 
@@ -94,6 +95,26 @@ sub as_data_structure {
 	  props => [ map { $_->as_data_structure } $self->multiprops ],
 	  type => $self->type->as_data_structure,
 	 };
+}
+
+
+=head2 as_isatab
+
+=cut
+
+sub as_isatab {
+  my ($self) = @_;
+
+  my $isa = ordered_hashref;
+  $isa->{description} = $self->description;
+  my $type = $self->type;
+  my $type_dbxref = $type->dbxref;
+  $isa->{type}{value} = $type->name;
+  $isa->{type}{term_source_ref} = $type_dbxref->db->name;
+  $isa->{type}{term_accession_number} = $type_dbxref->accession;
+  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
+  return $isa;
 }
 
 

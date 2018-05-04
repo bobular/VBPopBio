@@ -21,6 +21,7 @@ __PACKAGE__->subclass({
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use aliased 'Bio::Chado::VBPopBio::Util::Extra';
 use aliased 'Bio::Chado::VBPopBio::Util::Date';
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 =head1 NAME
 
@@ -814,6 +815,182 @@ sub as_data_structure {
 	  props => [ map { $_->as_data_structure } $self->multiprops ],
 	  ($depth > 0) ? (stocks => [ map { $_->as_data_structure($depth-1, $self) } $self->stocks->ordered_by_id ]) : (),
 	 };
+}
+
+
+=head2 write_to_isatab
+
+
+
+=cut
+
+sub write_to_isatab {
+  my ($self, $options) = @_;
+  my $output_directory = $options->{directory} || die "must provide { directory => 'output_directory' } to write_to_isatab\n";
+
+  my $isatab = $self->as_isatab();
+
+  my $writer = Bio::Parser::ISATab->new(directory=>$output_directory);
+  $writer->write($isatab);
+
+  #
+  # deeply examine $isatab for all assay 'raw_data_files'
+  # and search for $isa_data->{assays}{$assay_name}{genotypes}
+  # or $isa_data->{assays}{$assay_name}{phenotypes}
+  # and for each raw_data_filename, make a copy of the data for $writer->write_study_or_assay()
+  #
+  my %filename2assays2genotypes;
+  my %filename2assays2phenotypes;
+
+  foreach my $study_assay (@{$isatab->{studies}[0]{study_assays}}) {
+    foreach my $sample (keys %{$study_assay->{samples}}) {
+      foreach my $assay (keys %{$study_assay->{samples}{$sample}{assays}}) {
+	my $assay_isa = $study_assay->{samples}{$sample}{assays}{$assay};
+	foreach my $g_or_p_filename ($assay_isa->{raw_data_files} ? keys($assay_isa->{raw_data_files}) : ()) {
+	  if ($assay_isa->{genotypes}) {
+	    $filename2assays2genotypes{$g_or_p_filename}{assays}{$assay}{genotypes} = $assay_isa->{genotypes};
+	  }
+	  if ($assay_isa->{phenotypes}) {
+	    $filename2assays2phenotypes{$g_or_p_filename}{assays}{$assay}{phenotypes} = $assay_isa->{phenotypes};
+	  }
+	}
+      }
+    }
+  }
+  foreach my $g_filename (keys %filename2assays2genotypes) {
+    $writer->write_study_or_assay($g_filename, $filename2assays2genotypes{$g_filename},
+				  {
+				   'Type' => 'attribute',
+				   'Genotype Name' => 'reusable node',
+				  });
+  }
+  foreach my $p_filename (keys %filename2assays2phenotypes) {
+    $writer->write_study_or_assay($p_filename, $filename2assays2phenotypes{$p_filename},
+				  ordered_hashref(
+				   'Phenotype Name' => 'reusable node',
+				   'Observable' => 'attribute',
+				   'Attribute' => 'attribute',
+				   'Value' => 'attribute',
+				  ));
+  }
+}
+
+
+=head2 as_isatab
+
+transform project into isatab data structure
+
+will descend into samples, assays etc.
+
+=cut
+
+
+sub as_isatab {
+  my $self = shift;
+
+  my $isa = { studies => [ {} ] };
+  my $study = $isa->{studies}[0];
+
+  $study->{study_title} = $self->name;
+  $study->{study_description} = $self->description;
+  my $external_id = $study->{study_identifier} = $self->external_id;
+  $study->{study_submission_date} = $self->submission_date;
+  $study->{study_public_release_date} = $self->public_release_date;
+  $study->{study_file_name} = 's_samples.txt';
+
+  # start with the contacts because these throw the first error in the loader if not present
+  foreach my $contact ($self->contacts) {
+    # reverse the packing into Chado in ResultSet::Contact::find_or_create_from_isatab()
+    my $description = $contact->description;
+    my ($name, $place) = $description =~ /(.+?)(?: \((.+?)\))?$/;
+    my ($first_name, $initials, $surname) = split " ", $name, 3;
+    while (!$surname) {
+      $surname = $initials;
+      $initials = $first_name;
+      $first_name = '';
+    }
+    if (!$first_name && $initials) {
+      $first_name = $initials;
+      $initials = '';
+    }
+
+    push @{$study->{study_contacts}}, {
+				       study_person_email => $contact->name,
+				       study_person_first_name => $first_name // '',
+				       study_person_mid_initials => [ $initials // () ],
+				       study_person_last_name => $surname,
+				       study_person_address => $place // '',
+		       };
+
+  }
+
+
+  # process the samples
+  my $project_id = $self->stable_id;
+
+  my $samples = $self->stocks;
+  my $samples_data = $study->{sources}{$external_id}{samples} = ordered_hashref();
+  while (my $sample = $samples->next) {
+    my $projects = $sample->projects;
+    my $samples_main_project = $projects->first;
+    my $samples_main_project_id = $samples_main_project->stable_id;
+
+    if ($samples_main_project_id eq $project_id) {
+      my $sample_name = $sample->name;
+      $samples_data->{$sample_name} = $sample->as_isatab($study);
+      while (my $dependent_project = $projects->next) {
+	my $schema = $self->result_source->schema;
+	my $dependent_project_id = $dependent_project->stable_id;
+	$schema->defer_exception_once("This project contains samples used in another dependent project $dependent_project_id. You must dump and delete that project first before dumping and deleting this one.");
+      }
+    } else {
+      # this sample belongs to another project
+      # so we dump it very simply
+      my $sample_id = $sample->stable_id;
+      $samples_data->{$sample_id} = $sample->as_isatab($study, $sample_id, $project_id);
+    }
+  }
+
+  # all props are study designs
+  foreach my $prop ($self->multiprops) {
+    my ($sd, $design_type) = $prop->cvterms;
+    my $dbxref = $design_type->dbxref;
+    push @{$study->{study_designs}},
+      {
+       study_design_type => $design_type->name,
+       study_design_type_term_source_ref => $dbxref->db->name,
+       study_design_type_term_accession_number => $dbxref->accession,
+      };
+
+  }
+
+  # publications (could move this code into Result/Publication.pm)
+  foreach my $pub ($self->publications) {
+    my $status = $pub->status;
+    my $status_dbxref = $status ? $status->dbxref : undef;
+    my $url = $pub->url;
+    push @{$study->{study_publications}},
+      {
+       study_publication_doi => $pub->doi,
+       study_pubmed_id => $pub->pubmed_id,
+       study_publication_status => $status ? $status->name : '',
+       study_publication_status_term_source_ref => $status_dbxref ? $status_dbxref->db->name : '',
+       study_publication_status_term_accession_number => $status_dbxref ? $status_dbxref->accession : '',
+       study_publication_title => $pub->title,
+       study_publication_author_list => join('; ', $pub->authors),
+       $url ? (comments => { URL => $url }) : (),
+      };
+
+  }
+
+
+  # need to convert fallback_species_accession comments
+  my $fsa = $self->fallback_species_accession;
+  if (defined $fsa) {
+    $study->{comments}{'fallback species accession'} = $fsa;
+  }
+
+  return $isa;
 }
 
 =head2 as_cytoscape_graph

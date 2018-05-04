@@ -6,6 +6,7 @@ __PACKAGE__->load_components(qw/+Bio::Chado::VBPopBio::Util::Subclass/);
 __PACKAGE__->subclass({ }); # must call this routine even if not setting up relationships.
 
 use aliased 'Bio::Chado::VBPopBio::Util::Extra';
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 =head1 NAME
 
@@ -207,6 +208,40 @@ sub as_cytoscape_graph {
 
   return $graph;
 }
+
+
+=head2 as_isatab
+
+handles the g_genotype file export
+
+=cut
+
+sub as_isatab {
+  my ($self, $study, $assay_filename) = @_;
+
+  my $isa = $self->SUPER::as_isatab($study, $assay_filename);
+
+  my $genotypes_filename = $assay_filename;
+  $genotypes_filename =~ s/^a_/g_/;
+
+  my $vcf_file = $self->vcf_file;
+  if ($vcf_file) {
+    $isa->{raw_data_files}{$vcf_file} = {};
+  }
+
+  foreach my $genotype ($self->genotypes) {
+    $isa->{genotypes} //= ordered_hashref;
+
+    my $genotype_name = $genotype->name;
+    $isa->{genotypes}{$genotype_name} = $genotype->as_isatab();
+
+    $isa->{raw_data_files}{$genotypes_filename} //= {};
+  }
+
+  return $isa;
+
+}
+
 
 
 =head1 AUTHOR

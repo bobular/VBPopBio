@@ -969,7 +969,6 @@ while ( my $stock = $stocks->next ) {
 	    $i++;
 	  }
 
-
 	  # Allele
 	  my $documentAllele = {
 				doc => {
@@ -1013,7 +1012,6 @@ while ( my $stock = $stocks->next ) {
 	      print_document($output_prefix, $documentLocus);
 	    }
 	  }
-
 
 	  # Description
 	  my $documentDescription = {

@@ -25,7 +25,7 @@ use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 use aliased 'Bio::Chado::VBPopBio::Util::Extra';
 use aliased 'Bio::Chado::VBPopBio::Util::Date';
-use Tie::Hash::Indexed;
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 use Date::Simple;
 use Date::Range;
@@ -262,19 +262,19 @@ sub annotate_from_isatab {
     $self->description($assay_data->{description});
   }
 
-  Multiprops->add_multiprops_from_isatab_characteristics
-    (
-     row => $self,
-     prop_relation_name => 'nd_experimentprops',
-     characteristics => $assay_data->{characteristics},
-    ) if ($assay_data->{characteristics});
-
   Multiprops->add_multiprops_from_isatab_comments
     (
      row => $self,
      prop_relation_name => 'nd_experimentprops',
      comments => $assay_data->{comments},
     ) if ($assay_data->{comments});
+
+  Multiprops->add_multiprops_from_isatab_characteristics
+    (
+     row => $self,
+     prop_relation_name => 'nd_experimentprops',
+     characteristics => $assay_data->{characteristics},
+    ) if ($assay_data->{characteristics});
 
 }
 
@@ -399,30 +399,6 @@ sub add_to_protocols_from_isatab {
 	  $schema->defer_exception_once("Can't find assay (protocol $protocol_ref) performer by email '$performer_email' in Study Contacts section");
 	}
       }
-      if (my $dates = $protocol_data->{date}) {
-	foreach my $date (split /;\s*/, $dates) {
-	  my ($start_date, $end_date) = split qr{/}, $date;
-	  if ($start_date && $end_date) {
-	    my $valid_start = Date->simple_validate_date($start_date, $self);
-	    my $valid_end = Date->simple_validate_date($end_date, $self);
-	    if ($valid_start && $valid_end) {
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->start_date], value=>$valid_start), 'allow_dupes');
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->end_date], value=>$valid_end), 'allow_dupes');
-	    } else {
-	      $schema->defer_exception_once("Cannot parse start/end date '$date' for assay (protocol $protocol_ref).");
-	    }
-	  } elsif ($start_date) {
-	    my $valid_date = Date->simple_validate_date($start_date, $self);
-	    if ($valid_date) {
-	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->date], value=>$valid_date), 'allow_dupes');
-	    } else {
-	      $schema->defer_exception_once("Cannot parse date '$date' for assay (protocol $protocol_ref).");
-	    }
-	  } else {
-	    $schema->defer_exception_once("Some problem with date string '$date' in assay (protocol $protocol_ref).")
-	  }
-	}
-      }
 
       if ($protocol_data->{parameter_values}) {
 
@@ -509,6 +485,30 @@ sub add_to_protocols_from_isatab {
 	}
       }
 
+      if (my $dates = $protocol_data->{date}) {
+	foreach my $date (split /;\s*/, $dates) {
+	  my ($start_date, $end_date) = split qr{/}, $date;
+	  if ($start_date && $end_date) {
+	    my $valid_start = Date->simple_validate_date($start_date, $self);
+	    my $valid_end = Date->simple_validate_date($end_date, $self);
+	    if ($valid_start && $valid_end) {
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->start_date], value=>$valid_start), 'allow_dupes');
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->end_date], value=>$valid_end), 'allow_dupes');
+	    } else {
+	      $schema->defer_exception_once("Cannot parse start/end date '$date' for assay (protocol $protocol_ref).");
+	    }
+	  } elsif ($start_date) {
+	    my $valid_date = Date->simple_validate_date($start_date, $self);
+	    if ($valid_date) {
+	      $self->add_multiprop(Multiprop->new(cvterms=>[$types->date], value=>$valid_date), 'allow_dupes');
+	    } else {
+	      $schema->defer_exception_once("Cannot parse date '$date' for assay (protocol $protocol_ref).");
+	    }
+	  } else {
+	    $schema->defer_exception_once("Some problem with date string '$date' in assay (protocol $protocol_ref).")
+	  }
+	}
+      }
 
       push @protocols, $protocol;
     }
@@ -847,6 +847,127 @@ sub as_data_structure {
 	 };
 }
 
+=head2 as_isatab
+
+returns the data needed for ISA-Tab export
+
+=cut
+
+sub as_isatab {
+  my ($self, $study, $assay_filename) = @_;
+  my $isa = ordered_hashref;
+  $isa->{protocols} = ordered_hashref;
+
+  my $contacts = $self->contacts;
+  my $protocols = $self->nd_protocols;
+  while (my $protocol = $protocols->next) {
+    my ($prefix_ignored, $protocol_key) = split /:/, $protocol->name;
+    unless (defined $protocol_key) {
+      my $schema = $self->result_source->schema;
+      $schema->defer_exception_once("Cannot get Protocol REF from protocol name: ".$protocol->name);
+    }
+
+    my $protocol_isa = $isa->{protocols}{$protocol_key} = {};
+
+    my $protocol_type = $protocol->type;
+
+    my $already_added_to_investigation_sheet =
+      grep { $_->{study_protocol_name} eq $protocol_key }
+	@{$study->{study_protocols}};
+    unless ($already_added_to_investigation_sheet) {
+
+      # protocol components
+      # these seem to be the only thing stored in protocol multiprops
+      my @components;
+      foreach my $mprop ($protocol->multiprops) {
+	my ($component_name, $component_type, $component_tsr, $component_tan);
+
+	my @cvterms = $mprop->cvterms;
+	if ($mprop->value) {
+	  ($component_name, $component_type) = split /: /, $mprop->value, 2;
+	} elsif (@cvterms == 2) {
+	  my $type = pop @cvterms;
+	  my $throwaway = $type->recursive_parents; # to fill the cvtermpath cache
+	  $component_name = $type->direct_parents->first->name; # this doesn't actually get read back into Chado - it's just to make the isa-tab pretty
+	  $component_type = $type->name;
+	  my $dbxref = $type->dbxref;
+	  $component_tsr = $dbxref->db->name;
+	  $component_tan = $dbxref->accession;
+	} else {
+	  my $schema = $self->result_source->schema;
+	  $schema->defer_exception_once("to_isatab problem with protocol ".$protocol->name." component ".$mprop->as_string);
+	}
+
+	push @components,
+	  {
+	   study_protocol_component_name => $component_name,
+	   study_protocol_component_type => $component_type,
+	   study_protocol_component_type_term_source_ref => $component_tsr,
+	   study_protocol_component_type_term_accession_number => $component_tan,
+	  };
+      }
+
+      push @{$study->{study_protocols}},
+	{
+	 study_protocol_name => $protocol_key,
+	 study_protocol_type => $protocol_type->name,
+	 study_protocol_type_term_source_ref => $protocol_type->dbxref->db->name,
+	 study_protocol_type_term_accession_number => $protocol_type->dbxref->accession,
+	 study_protocol_description => $protocol->description,
+	 study_protocol_uri => $protocol->uri,
+	 study_protocol_components => \@components,
+	};
+    }
+
+    # we bind the contacts with each protocol
+    # hoping the order remains the same
+    my $contact = $contacts->next;
+    if ($contact) {
+      $protocol_isa->{performer} = $contact->name; # the name field contains the email address that we need
+    }
+  }
+
+
+  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
+  $isa->{description} = $self->description;
+
+  ##################
+  # sort out dates #
+  ##################
+  # move any dates from $isa->{characteristics} into $isa->{protocols}{xxx}{Date}
+  # but which protocol do we use?
+  # I guess the first one
+  my ($first_protocol_ref) = keys %{$isa->{protocols}};
+  my $protocol_isa = $isa->{protocols}{$first_protocol_ref};
+
+  # first get the start/end pairs
+  my (@starts, @ends, @dates);
+  foreach my $heading (keys %{$isa->{characteristics}}) {
+    my $value = $isa->{characteristics}{$heading}{value};
+    if ($heading =~ /^start.date/) {
+      push @starts, split /;/, $value;
+      delete $isa->{characteristics}{$heading};
+    } elsif ($heading =~ /^end.date/) {
+      push @ends, split /;/, $value;
+      delete $isa->{characteristics}{$heading};
+    } elsif ($heading =~ /^date/) {
+      push @dates, split /;/, $value;
+      delete $isa->{characteristics}{$heading};
+    }
+  }
+  # merge the start/end pairs into @dates
+  while (@starts) {
+    push @dates, join '/', shift @starts, shift @ends;
+  }
+  # put these dates back in ISA-Tab's single Date column
+  $protocol_isa->{date} = join ';', sort @dates;
+
+  return $isa;
+}
+
+
+
 =head2 basic_info (private/protected)
 
 returns hash of key/value pairs for Experiment base class
@@ -868,22 +989,6 @@ sub basic_info {
 	 );
 }
 
-
-=head2 ordered_hashref
-
-Wrapper for Tie::Hash::Indexed - returns a hashref which has already been tied to Tie::Hash::Indexed
-
-no args.
-
-usage: $foo->{bar} = ordered_hashref();  $foo->{bar}{hello} = 123;
-
-=cut
-
-sub ordered_hashref {
-  my $ref = {};
-  tie %{$ref}, 'Tie::Hash::Indexed';
-  return $ref;
-}
 
 
 =head2 as_cytoscape_graph
@@ -989,6 +1094,35 @@ sub duration_in_days {
     return $days;
   }
 }
+
+
+=head2 has_isatab_sheet 
+
+returns true if the assay should be represented in ISA-Tab
+
+currently only false for sample manipulation assays
+
+=cut
+
+sub has_isatab_sheet {
+  my $self = shift;
+  return 1;
+}
+
+
+=head isatab_measurement_type
+
+returns the text needed for the "Study Assay Measurement Type" row in i_investigation.txt
+
+(overridden in species_identification_assays)
+
+=cut
+
+sub isatab_measurement_type {
+  my $self = shift;
+  return $self->type->name;
+}
+
 
 
 =head1 AUTHOR

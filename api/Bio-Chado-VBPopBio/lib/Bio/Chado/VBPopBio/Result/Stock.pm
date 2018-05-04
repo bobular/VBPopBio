@@ -15,6 +15,7 @@ __PACKAGE__->subclass({
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
 use Carp;
 use POSIX;
+use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
 
 =head1 NAME
 
@@ -432,6 +433,90 @@ sub as_data_structure {
 
 
 	 };
+}
+
+=head2 as_isatab
+
+generates isatab datastructure for writing to files with Bio::Parser::ISATab
+
+=cut
+
+sub as_isatab {
+  my ($self, $study, $sample_id, $project_id) = @_;
+  my $isa = { };
+
+  my $material_type = $self->type;
+  my $mt_dbxref = $material_type->dbxref;
+  $isa->{material_type}{value} = $material_type->name;
+  $isa->{material_type}{term_source_ref} = $mt_dbxref->db->name;
+  $isa->{material_type}{term_accession_number} = $mt_dbxref->accession;
+
+  my $sample_key; # needed for attaching assays below
+
+  if ($sample_id && $project_id) { # passed as args when re-using a sample from another project
+    $sample_key = $sample_id;
+  } else {
+    # this sample belongs to the project being dumped and needs all the columns
+    $isa->{description} = $self->description;
+    ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+    $sample_key = $self->name;
+  }
+
+  my $sample_manipulations = $self->sample_manipulations;
+  my $manipulation = $sample_manipulations->first;
+  if ($sample_manipulations->next) {
+    my $schema = $self->result_source->schema;
+    $schema->defer_exception("Wasn't expecting multiple sample_manipulations for $sample_key - perhaps its 'derived from' other samples in other projects that should be deleted first before dumping this one");
+  }
+  if ($manipulation) {
+    my $sample_used = $manipulation->stocks_used->first;
+    my $sample_created = $manipulation->stocks_created->first;
+
+    if ($sample_created->id == $self->id) {
+      $isa->{comments}{'derived from'} = $sample_used->stable_id;
+    } elsif ($sample_used->id == $self->id) {
+      my $schema = $self->result_source->schema;
+      my $other_project_id = $sample_created->projects->first->stable_id;
+      $schema->defer_exception("$sample_key is used by a 'derived from' sample manipulation from another project $other_project_id. You must dump and delete that project first before dumping and deleting this one.");
+    } else {
+      my $schema = $self->result_source->schema;
+      schema->defer_exception("unexpected sample manipulation situation for $sample_key");
+    }
+  }
+
+  foreach my $assay ($self->nd_experiments) {
+    next unless ($assay->has_isatab_sheet);
+
+    # don't dump the assay if it doesn't primarily belong to this project
+    next if (defined $project_id && $assay->projects->first->stable_id ne $project_id);
+
+    my $study_assay_measurement_type = $assay->isatab_measurement_type;
+
+    # every assay with a different protocol (or combination of protocols) will
+    # be put in a different study_assay
+    my $protocols_fingerprint = join ' ', $study_assay_measurement_type, sort map { my ($a,$b)=split /:/,$_->name; $b; } $assay->protocols;
+    $protocols_fingerprint =~ s/\W+/_/g;
+    $protocols_fingerprint =~ s/_$//;
+
+    my $num_existing_assays = @{$study->{study_assays} // []};
+    my $assay_filename = "a_$protocols_fingerprint.txt";
+    my $isa_assay_root =
+      $study->{study_assay_fingerprint_lookup}{$protocols_fingerprint} //=
+	$study->{study_assays}[$num_existing_assays] =
+	  {
+	   study_assay_measurement_type => $study_assay_measurement_type,
+	   study_assay_file_name => $assay_filename,
+	  };
+
+    my $assay_name = $assay->external_id;
+    $isa_assay_root->{samples}{$sample_key}{assays}{$assay_name} = $assay->as_isatab($study, $assay_filename);
+
+#    my $study_assay_file_name = '???';
+#    $study->{study_assay_lookup}{$assay_type} //= 123;
+  }
+
+
+  return $isa;
 }
 
 
