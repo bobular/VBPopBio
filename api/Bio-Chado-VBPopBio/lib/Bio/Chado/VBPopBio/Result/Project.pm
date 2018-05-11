@@ -848,9 +848,11 @@ sub write_to_isatab {
 	my $assay_isa = $study_assay->{samples}{$sample}{assays}{$assay};
 	foreach my $g_or_p_filename ($assay_isa->{raw_data_files} ? keys($assay_isa->{raw_data_files}) : ()) {
 	  if ($assay_isa->{genotypes}) {
+	    $filename2assays2genotypes{$g_or_p_filename}{assays} //= ordered_hashref();
 	    $filename2assays2genotypes{$g_or_p_filename}{assays}{$assay}{genotypes} = $assay_isa->{genotypes};
 	  }
 	  if ($assay_isa->{phenotypes}) {
+	    $filename2assays2phenotypes{$g_or_p_filename}{assays} //= ordered_hashref();
 	    $filename2assays2phenotypes{$g_or_p_filename}{assays}{$assay}{phenotypes} = $assay_isa->{phenotypes};
 	  }
 	}
@@ -859,10 +861,10 @@ sub write_to_isatab {
   }
   foreach my $g_filename (keys %filename2assays2genotypes) {
     $writer->write_study_or_assay($g_filename, $filename2assays2genotypes{$g_filename},
-				  {
-				   'Type' => 'attribute',
+				  ordered_hashref(
 				   'Genotype Name' => 'reusable node',
-				  });
+				   'Type' => 'attribute',
+				  ));
   }
   foreach my $p_filename (keys %filename2assays2phenotypes) {
     $writer->write_study_or_assay($p_filename, $filename2assays2phenotypes{$p_filename},
@@ -928,10 +930,10 @@ sub as_isatab {
   # process the samples
   my $project_id = $self->stable_id;
 
-  my $samples = $self->stocks;
+  my $samples = $self->stocks->ordered_by_id;
   my $samples_data = $study->{sources}{$external_id}{samples} = ordered_hashref();
   while (my $sample = $samples->next) {
-    my $projects = $sample->projects;
+    my $projects = $sample->projects->ordered_by_id;
     my $samples_main_project = $projects->first;
     my $samples_main_project_id = $samples_main_project->stable_id;
 

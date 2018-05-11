@@ -30,7 +30,7 @@ sub result_summary {
     my $method = 'unknown method';
     my @protocols = $self->protocols->all;
     if (@protocols) {
-      $method = join ', ', map { $_->type->name } @protocols;
+      $method = join ', ', sort map { $_->type->name } @protocols;
     }
     return '<span class="species_name">'.$best_species->name."</span> ($method)";
   } elsif ($self->search_related('nd_experimentprops', { 'type_id' => $self->result_source->schema->types->deprecated->id })->next) {

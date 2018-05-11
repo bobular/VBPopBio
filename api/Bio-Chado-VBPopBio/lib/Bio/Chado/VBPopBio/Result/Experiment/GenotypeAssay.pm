@@ -32,7 +32,7 @@ sub result_summary {
   my $method = 'unknown method';
   my @protocols = $self->protocols->all;
   if (@protocols) {
-    $method = join ', ', map { $_->type->name } @protocols;
+    $method = join ', ', sort map { $_->type->name } @protocols;
   }
 
   my $text = "no genotypes";

@@ -7,6 +7,11 @@
 #
 # usage: CHADO_DB_NAME=my_chado_instance bin/delete_project.pl --project VBPnnnnnnn --dry-run --output_dir isatab_dir
 #
+# or with gnu parallel:
+#
+# sort project-ids-VB-2018-04.txt | parallel --jobs 8 --results ISA-Tab-test-dumps-post-merge bin/delete_project.pl --max 5000 --project {} --verify --ignore-geo-name --output ISA-Tab-test-dumps-post-merge/isa-tabs/{}
+#
+#
 # options:
 #   --dry-run              : rolls back transaction and doesn't insert into db permanently
 #   --project              : the project stable ID to dump
@@ -93,7 +98,7 @@ $schema->txn_do_deferred
 #
 # 1. empty strings or undefs and making Test::Deep allow either
 #
-# 2. props arrays and replacing them with set comparisons (ignore order)
+# 2. props (protocols and contacts) arrays and replacing them with set comparisons (ignore order)
 #
 # edits data IN PLACE - returns the reference passed to it
 #
@@ -108,7 +113,7 @@ sub preprocess_data {
       foreach my $key (keys %{$node}) {
 	if (!defined $node->{$key} || $node->{$key} eq '') {
 	  $node->{$key} = any(undef, '');
-	} elsif ($key eq 'props') {
+	} elsif ($key =~ /^(props|protocols|contacts)$/) {
 	  $node->{$key} = set(@{$node->{$key}});
 	} elsif ($key eq 'geolocation' && $ignore_geo_name) {
 	  $node->{geolocation}{name} = ignore(); # because we dump the correct term names, but load the user-provided ones

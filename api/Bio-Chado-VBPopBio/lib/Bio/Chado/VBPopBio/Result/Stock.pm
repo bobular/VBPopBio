@@ -163,7 +163,7 @@ See field_collections, phenotype_assays for usage.
 
 sub experiments_by_type {
   my ($self, $type) = @_;
-  return $self->experiments->search({ 'nd_experiment.type_id' => $type->cvterm_id });
+  return $self->experiments->search({ 'nd_experiment.type_id' => $type->cvterm_id })->ordered_by_id;
 }
 
 =head2 experiments_by_link_type
@@ -484,7 +484,7 @@ sub as_isatab {
     }
   }
 
-  foreach my $assay ($self->nd_experiments) {
+  foreach my $assay ($self->nd_experiments->ordered_by_id) {
     next unless ($assay->has_isatab_sheet);
 
     # don't dump the assay if it doesn't primarily belong to this project
@@ -506,9 +506,11 @@ sub as_isatab {
 	  {
 	   study_assay_measurement_type => $study_assay_measurement_type,
 	   study_assay_file_name => $assay_filename,
+	   samples => ordered_hashref(),
 	  };
 
     my $assay_name = $assay->external_id;
+    $isa_assay_root->{samples}{$sample_key}{assays} //= ordered_hashref();
     $isa_assay_root->{samples}{$sample_key}{assays}{$assay_name} = $assay->as_isatab($study, $assay_filename);
 
 #    my $study_assay_file_name = '???';
