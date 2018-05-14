@@ -130,6 +130,18 @@ sub create_from_isatab {
   }
 
   #
+  # add the tags
+  #
+  if ($study->{comments}{tags}) {
+    # do some basic format checks - make sure it's comma delimited alphanumeric and dash-containing tags
+    if ($study->{comments}{tags} =~ /^([\w-]+(?:,\s*[\w-]+)?)*$/) {
+      $project->tags($study->{comments}{tags});
+    } else {
+      $schema->defer_exception("Malformed study tags: >$study->{comments}{tags}< in investigation sheet");
+    }
+  }
+
+  #
   # add study design multiprops
   #
   my $sd = $types->study_design;

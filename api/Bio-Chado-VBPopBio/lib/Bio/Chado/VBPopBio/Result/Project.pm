@@ -566,6 +566,25 @@ sub fallback_species_accession {
     );
 }
 
+=head2 tags
+
+Getter-setter for project tags.
+Provide comma-separated (with optional whitespace after the commas) tags
+Will return an array of tags in array context.
+
+=cut
+
+sub tags {
+  my ($self, $comma_delimited_tags) = @_;
+  my $result = Extra->attribute
+    ( value => $comma_delimited_tags,
+      prop_type => $self->result_source->schema->types->fallback_species_accession,
+      prop_relation_name => 'projectprops',
+      row => $self,
+    );
+  return wantarray() ? split /,\s*/, $result : $result;
+}
+
 
 =head2 delete
 
