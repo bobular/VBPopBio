@@ -14,6 +14,10 @@
 #
 # the --records argument is passed through to create_json_for_solr.pl
 #
+#    --ir-only    # only do the IR data
+#    --no-main    # only do the autocomplete dump
+#    --no-ac      # only do the main dump
+#
 
 
 use strict;
@@ -28,12 +32,18 @@ my $jobs = 4;
 my $num_chunks = 12;
 my $records_per_file = 200000;
 my $max_phenotypes_to_check = 500;
-# TO DO add --no-ac option
+my $ir_only;
+my $process_main = 1;
+my $process_ac = 1;
 
 GetOptions("jobs=i"=>\$jobs,
 	   "num-chunks=i"=>\$num_chunks,
 	   "records_per_file=i"=>\$records_per_file,
-	   "max_phenotypes_to_check=i"=>\$max_phenotypes_to_check);
+	   "max_phenotypes_to_check=i"=>\$max_phenotypes_to_check,
+	   "only_ir|only-ir|ir_only|ir-only"=>\$ir_only,
+	   "main!"=>\$process_main,
+	   "ac!"=>\$process_ac,
+	  );
 
 my ($prefix) = @ARGV;
 
@@ -81,7 +91,7 @@ while (my $project = $projects->next) {
   }
   if ($is_IR) {
     push @IRprojects, $stable_id;
-  } else {
+  } elsif (!$ir_only) {
     push @nonIRprojects, $stable_id;
   }
 }
@@ -89,10 +99,10 @@ while (my $project = $projects->next) {
 warn "\ndone scan - writing commands\n";
 
 my @commands;
-push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-IRall-main", join(',',@IRprojects), $records_per_file, $prefix;
+push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-IRall-main", join(',',@IRprojects), $records_per_file, $prefix if $process_main;
 
 #autocomplete
-push @commands, sprintf "bin/create_json_for_solr_ac.pl --projects %s --chunksize %d %s-IRall-ac", join(',',@IRprojects), $records_per_file*10, $prefix;
+push @commands, sprintf "bin/create_json_for_solr_ac.pl --projects %s --chunksize %d %s-IRall-ac", join(',',@IRprojects), $records_per_file*10, $prefix if $process_ac;
 
 
 
@@ -109,9 +119,9 @@ while (@projects) {
 
 for (my $i=0; $i<@chunks; $i++) {
   # main
-  push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-nonIR%02d-main", join(',',@{$chunks[$i]}), $records_per_file, $prefix, $i+1;
+  push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-nonIR%02d-main", join(',',@{$chunks[$i]}), $records_per_file, $prefix, $i+1 if $process_main;
   # autocomplete
-  push @commands, sprintf "bin/create_json_for_solr_ac.pl --projects %s --chunksize %d %s-nonIR%02d-ac", join(',',@{$chunks[$i]}), $records_per_file*10, $prefix, $i+1;
+  push @commands, sprintf "bin/create_json_for_solr_ac.pl --projects %s --chunksize %d %s-nonIR%02d-ac", join(',',@{$chunks[$i]}), $records_per_file*10, $prefix, $i+1 if $process_ac;
 }
 
 # save the commands to a file for later debugging
