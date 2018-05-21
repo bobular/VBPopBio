@@ -571,6 +571,7 @@ sub fallback_species_accession {
 Getter-setter for project tags.
 Provide comma-separated (with optional whitespace after the commas) tags
 Will return an array of tags in array context.
+If no tags, empty array in array context or undefined value in scalar.
 
 =cut
 
@@ -578,12 +579,80 @@ sub tags {
   my ($self, $comma_delimited_tags) = @_;
   my $result = Extra->attribute
     ( value => $comma_delimited_tags,
-      prop_type => $self->result_source->schema->types->fallback_species_accession,
+      prop_type => $self->result_source->schema->types->project_tags,
       prop_relation_name => 'projectprops',
       row => $self,
     );
-  return wantarray() ? split /,\s*/, $result : $result;
+  if (defined $result) {
+    return wantarray() ? split /,\s*/, $result : $result;
+  } else {
+    return ();
+  }
 }
+
+=head2 add_tag
+
+Adds a single tag, if not already present.
+
+Returns list or comma-separated string of tags on success, undefined otherwise.
+
+=cut
+
+sub add_tag {
+  my ($self, $tag) = @_;
+  # check $tag argument is well formed
+  if (defined $tag && $tag =~ /^[\w-]+$/) {
+
+    my @tags = $self->tags;
+    # check if it's already there
+    my %seen;
+    grep { $seen{$_}=1 } @tags;
+    # if not, add it
+    if (defined $tag && !$seen{$tag}) {
+      push @tags, $tag;
+      return $self->tags(join(',', @tags));
+    }
+  }
+  return undef;
+}
+
+=head2 remove_tag
+
+Removes a single tag, if present.
+
+If that is the last tag, then it removes the prop altogether and returns undefined.
+
+Returns list or comma-separated string of tags on success, undefined otherwise.
+
+=cut
+
+sub remove_tag {
+  my ($self, $tag) = @_;
+  # check $tag argument is well formed
+  if (defined $tag && $tag =~ /^[\w-]+$/) {
+
+    my @tags = $self->tags;
+    my @newtags = grep { $_ ne $tag } @tags;
+    # check if one was removed
+    if (@tags != @newtags) {
+      if (@newtags) {
+	return $self->tags(join(',', @newtags));
+      } else {
+	# no tags left, delete the prop
+	Extra->attribute
+	  ( prop_type => $self->result_source->schema->types->project_tags,
+	    prop_relation_name => 'projectprops',
+	    row => $self,
+	    delete => 1,
+	  );
+      }
+    }
+  }
+  return undef;
+}
+
+
+
 
 
 =head2 delete

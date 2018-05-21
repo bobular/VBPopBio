@@ -669,6 +669,21 @@ sub collection_duration_in_days {
 memoize('collection_duration_in_days');
 
 
+=head2 project_tags
+
+=cut
+
+sub project_tags {
+  my $self = shift;
+  my $term = $self->schema->cvterms->create_with({ name => 'project tags',
+						   cv => 'VBcv',
+						   db => 'VBcv',
+						 });
+  $term->definition('Free-text labels that can be assigned optionally to projects.');
+  $term->update;
+  return $term;
+}
+memoize('project_tags');
 
 #
 # this is a subsection - please add new terms above the previous head1

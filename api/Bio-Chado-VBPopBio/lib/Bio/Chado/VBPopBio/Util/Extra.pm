@@ -45,6 +45,8 @@ hash args: row => DBIx::Class Row or Result object
            prop_type => Cvterm object
            value => optional value for 'set' version
 
+optional:  delete => 'true'  (removes the prop, do not provide a value!)
+
 returns: the string value if present, otherwise undefined
 
 =cut
@@ -60,6 +62,7 @@ sub attribute {
   my $prop_relation_name = delete $args{prop_relation_name};
   my $prop_type = delete $args{prop_type};
   my $result = delete $args{value};
+  my $delete_prop = delete $args{delete};
 
   %args and confess "invalid option(s): ".join(', ', sort keys %args);
 
@@ -81,6 +84,7 @@ sub attribute {
     # next line is 3x faster than $propsearch->count == 1
     if ((my $prop = $propsearch->next) && !$propsearch->next) {
       $result = $prop->value;
+      $prop->delete if ($delete_prop);
     }
   }
   return $result;
