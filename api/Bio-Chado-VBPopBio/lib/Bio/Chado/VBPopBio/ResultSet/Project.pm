@@ -386,6 +386,22 @@ modifies resultset to make sure it is ordered
 
 sub ordered_by_id { shift->search({}, { order_by => 'project_id' }) }
 
+=head2 search_by_tag
+
+  $ir_projects = $projects->search_by_tag('ir');
+
+Returns a resultset of projects
+
+=cut
+
+sub search_by_tag {
+  my ($self, $tag) = @_;
+  my $tag_type_id = $self->result_source->schema->types->project_tags->id;
+  return $self->search({ value => { like => "%$tag%" },
+		         'projectprops.type_id' => $tag_type_id
+		       }, { join => 'projectprops' });
+}
+
 
 =head1 AUTHOR
 

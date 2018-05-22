@@ -1,4 +1,4 @@
-use Test::More tests => 18;
+use Test::More tests => 21;
 
 use strict;
 use JSON;
@@ -51,7 +51,7 @@ $schema->txn_do_deferred(
 		  is(scalar @tags0, 0, "Same zero result from project->tags");
 
 		  # just check we can add some back again
-		  my $res8 = $project->tags("a,b,c,d,e,f,g,h");
+		  my $res8 = $project->tags("a,b,c,d,e,f,g,simple");
 		  isnt($res8, undef, "return value OK after adding 8 tags");
 		  my @tags8 = $project->tags;
 		  is(scalar @tags8, 8, "and got 8 from project->tags");
@@ -65,6 +65,21 @@ $schema->txn_do_deferred(
 		  # it should have three tags!
 		  my @tags3 = $project->tags;
 		  is(scalar @tags3, 3, "Project-Tags ISA-Tab yielded three tags");
+
+		  #
+		  # now test the retrieval of projects by tags
+		  #
+
+		  my $projects_simple = $projects->search_by_tag('simple');
+		  is($projects_simple->count, 2, "found 2 projects for tag 'simple'");
+		  like($projects_simple->first->tags, qr/\bsimple\b/, "first project has simple tag");
+
+		  # print out all projectprop values
+		  # warn map { "$_\n" } $projects->search_related("projectprops")->get_column('value')->all;
+
+		  # try to retrieve projects by a projectprop value that is not actually a tag
+		  my $projects_none = $projects->search_by_tag('2009');
+		  is($projects_none->count, 0, "shouldn't be any projects tagged '2009'");
 
 		  # we were just pretending!
 		  $schema->defer_exception("This is the only exception we should see.");
