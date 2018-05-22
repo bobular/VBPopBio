@@ -105,8 +105,6 @@ get qr{/project/(\w+)/has_geodata} => sub {
 
 
 # Projects
-# not cached any more - at least while in development
-# and until we can selectively flush parts of the cache
 get qr{/projects/head} => sub {
     my $head = '/head'; # enforce this - or we kill the server
     my $l = params->{l} || 20;
@@ -134,6 +132,34 @@ get qr{/projects/head} => sub {
 				  };
 			 });
   };
+
+# Projects by tag
+#
+# only returns "head" information
+#
+get qr{/tag/([\w-]+)/projects} => sub {
+    my ($tag) = splat;
+    my $l = params->{l} || 20;
+    my $o = params->{o} || 0;
+
+    memcached_get_or_set("tag-$tag-projects-$o-$l", sub {
+
+			   my $results = schema->projects->search_by_tag($tag)->search(
+								  { },
+								  {
+								   rows => $l,
+								   offset => $o,
+								   page => 1,
+								  },
+								 );
+			   my $depth = 0; # just the shallow information
+			   return {
+				   records => [ map { $_->as_data_structure($depth) } $results->all ],
+				   records_info($o, $l, $results)
+				  };
+			 });
+  };
+
 
 # Stocks
 get qr{/(?:stocks|samples)(/head)?} => sub {
