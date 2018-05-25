@@ -93,7 +93,7 @@ $schema->txn_do_deferred
 	      $ENV{CHADO_DB_NAME}, $num_projects_before, $ENV{USER}, scalar(localtime);
 
 	  print $sfile "#Sample Name\tVB PopBio Stable ID\tVCF file(s)\tSpecies\tComments...\n";
-	  foreach my $stock ($project->stocks) {
+	  foreach my $stock ($project->stocks->ordered_by_id) {
 	    my $species = $stock->best_species();
 	    print $sfile join("\t",
 			    $stock->external_id,
