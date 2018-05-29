@@ -140,6 +140,8 @@ my $date_type       = $schema->types->date;
 # cache ALL project metadata (even if only processing one or few projects)
 my %project2authors;
 my %project2title;
+my %project2tags;
+
 while (my $project = $projects->next) {
   my $project_id = $project->stable_id;
   # do this once per project only, for speed.
@@ -148,6 +150,8 @@ while (my $project = $projects->next) {
   # do this once per project only, for speed.
   $project2authors{$project_id} = [ (map { sanitise_contact($_->description) } $project->contacts),
 				    (map { $_->authors } $project->publications) ];
+
+  $project2tags{$project_id} = [ $project->tags ];
 }
 
 
@@ -377,6 +381,26 @@ while ( my $stock = $stocks->next ) {
           };
 
 	  print_document($output_prefix, $documentProjectAuthors);
+	  $j++;
+	}
+
+	foreach my $tag ( @{$project2tags{$project_id}} ) {
+	  my $documentProjectTags = {
+            doc => {
+                id          => $stable_id . "_proj_" . $i . "_tag_" . $j,
+                stable_id   => $stable_id,
+                bundle      => 'pop_sample',
+		(defined $has_abundance_data ? (has_abundance_data_b => 'true') : ()),
+                type        => 'Tag',
+                geo_coords  => $latlong,
+                date        => $date,
+                textsuggest => $tag,
+                field       => 'project_tags_ss',
+                is_synonym  => 'false',
+            }
+          };
+
+	  print_document($output_prefix, $documentProjectTags);
 	  $j++;
 	}
 
@@ -725,6 +749,26 @@ while ( my $stock = $stocks->next ) {
 							       }
 						       };
 			  print_document($output_prefix, $documentProjectAuthors);
+			  $j++;
+			}
+
+			foreach my $tag ( @{$project2tags{$project_id}} ) {
+			  my $documentProjectTags = {
+							doc => {
+								id          => $stablish_phenotype_id . "_proj_" . $i . "_tag_" . $j,
+								stable_id   => $stablish_phenotype_id,
+								bundle      => 'pop_sample_phenotype',
+								type        => 'Tag',
+								geo_coords  => $latlong,
+								date        => $date,
+								textsuggest => $tag,
+								field       => 'project_tags_ss',
+								is_synonym  => 'false',
+								phenotype_type_s => 'insecticide resistance',
+
+							       }
+						       };
+			  print_document($output_prefix, $documentProjectTags);
 			  $j++;
 			}
 
@@ -1156,6 +1200,26 @@ while ( my $stock = $stocks->next ) {
 						   }
 					   };
 	      print_document($output_prefix, $documentProjectAuthors);
+	      $j++;
+	    }
+
+	    foreach my $tag ( @{$project2tags{$project_id}} ) {
+	      my $documentProjectTags = {
+					    doc => {
+						    id          => $stablish_genotype_id . "_proj_" . $i . "_tag_" . $j,
+						    stable_id   => $stablish_genotype_id,
+						    bundle      => 'pop_sample_genotype',
+						    type        => 'Tag',
+						    geo_coords  => $latlong,
+						    date        => $date,
+						    textsuggest => $tag,
+						    field       => 'project_tags_ss',
+						    is_synonym  => 'false',
+						    genotype_type_s => 'mutated protein',
+
+						   }
+					   };
+	      print_document($output_prefix, $documentProjectTags);
 	      $j++;
 	    }
 
