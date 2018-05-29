@@ -215,7 +215,7 @@ my %project2title;
 my %project2authors;
 my %project2pubmed; # PMIDs
 my %project2citations; # PMID or DOI or URL
-
+my %project2tags;
 
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
@@ -250,6 +250,7 @@ while (my $project = $projects->next) {
 		    exp_citations_ss => [ map { $_->pubmed_id ? "PMID:".$_->pubmed_id : (),
 						$_->doi ? "DOI:".$_->doi : (),
 						$_->url || () } @publications ],
+		    project_tags_ss => [ $project->tags ],
 		    );
 
   print_document($output_prefix, $document) if (!defined $wanted_project_ids || $wanted_projects{$stable_id});
@@ -258,6 +259,7 @@ while (my $project = $projects->next) {
   $project2authors{$stable_id} = $document->{authors};
   $project2pubmed{$stable_id} = $document->{pubmed};
   $project2citations{$stable_id} = $document->{exp_citations_ss};
+  $project2tags{$stable_id} = $document->{project_tags_ss};
 
   last if (defined $limit && ++$done >= $limit_projects);
 }
@@ -385,6 +387,8 @@ while (my $stock = $stocks->next) {
 
 		    project_titles_txt => [ map { $project2title{$_} } @projects ],
 		    project_authors_txt => [ map { @{$project2authors{$_}} } @projects ],
+
+		    project_tags_ss => [ List::MoreUtils::uniq(map { @{$project2tags{$_}} } @projects) ],
 
 		    protocols => [ List::MoreUtils::uniq(map { $_->name } @other_protocols_types) ],
 		    protocols_cvterms => [ List::MoreUtils::uniq(map { flattened_parents($_) } @other_protocols_types) ],
