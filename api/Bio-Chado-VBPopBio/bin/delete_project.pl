@@ -13,9 +13,10 @@
 #
 #
 # options:
-#   --dry-run              : rolls back transaction and doesn't insert into db permanently
+#   --dry-run              : rolls back transaction and doesn't delete from db permanently
 #   --project              : the project stable ID to dump
 #   --output_dir           : where to dump the ISA-Tab (defaults to PROJECTID-ISA-Tab-YYYY-MM-DD-HHMM)
+#   --dump-only            : don't delete at all (much quicker)
 #   --verify               : check that the dumped project can be reloaded losslessly
 #                            (implies dry-run - so does not delete - use this for archiving)
 #   --max_samples          : skip the whole process (no dump, no deletion) if more than this number of samples
@@ -44,12 +45,13 @@ my $project_id;
 my ($verify, $ignore_geo_name);
 my $output_dir;
 my $max_samples;
-
+my $dump_only;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
+	   "dump_only|dump-only"=>\$dump_only,
 	   "json=s"=>\$json_file,
 	   "project=s"=>\$project_id,
-	   "output_dir=s"=>\$output_dir,
+	   "output_dir|output-dir=s"=>\$output_dir,
 	   "verify"=>\$verify,
 	   "ignore-geo-name"=>\$ignore_geo_name,
 	   "max_samples=i"=>\$max_samples,
@@ -60,6 +62,7 @@ $dry_run = 1 if ($verify);
 my ($isatab_dir) = @ARGV;
 
 die "must give --project VBPnnnnnnn arg\n" unless ($project_id);
+die "can't combine --verify and --dump-only\n" if ($dump_only && $verify);
 
 $output_dir //= sprintf "%s-ISA-Tab-%s", $project_id, strftime '%Y-%m-%d-%H%M', localtime;
 
@@ -78,13 +81,15 @@ $schema->txn_do_deferred
       } else {
 	my $project_data = $project->as_data_structure;
 	$project->write_to_isatab({ directory=>$output_dir });
-	$project->delete;
-	if ($verify) {
-	  my $reloaded = $projects->create_from_isatab({ directory=>$output_dir });
-	  my $reloaded_data = $reloaded->as_data_structure;
-	  my ($result, $diagnostics) = cmp_details($reloaded_data, preprocess_data($project_data));
-	  unless ($result) {
-	    $schema->defer_exception("ERROR! Project reloaded from ISA-Tab has differences:\n".deep_diag($diagnostics));
+	if (not $dump_only) {
+	  $project->delete;
+	  if ($verify) {
+	    my $reloaded = $projects->create_from_isatab({ directory=>$output_dir });
+	    my $reloaded_data = $reloaded->as_data_structure;
+	    my ($result, $diagnostics) = cmp_details($reloaded_data, preprocess_data($project_data));
+	    unless ($result) {
+	      $schema->defer_exception("ERROR! Project reloaded from ISA-Tab has differences:\n".deep_diag($diagnostics));
+	    }
 	  }
 	}
       }
