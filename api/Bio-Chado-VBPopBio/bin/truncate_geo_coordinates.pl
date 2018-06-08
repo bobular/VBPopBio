@@ -49,6 +49,7 @@ my $project = $schema->projects->find_by_stable_id($project_id);
 
 die "not a valid project ID '$project_id'\n" unless ($project);
 
+warn "processing ".$project->name."...\n";
 
 # should speed things up
 $schema->storage->_use_join_optimizer(0);
