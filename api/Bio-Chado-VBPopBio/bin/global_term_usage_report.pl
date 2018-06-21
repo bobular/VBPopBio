@@ -14,8 +14,8 @@ use Bio::Chado::VBPopBio;
 use JSON;
 use Getopt::Long;
 
-# GetOptions();
-
+my $fill_cvtermpath;
+GetOptions("prefill_cvtermpath|fill_cvtermpath"=>\$fill_cvtermpath);
 
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
@@ -30,6 +30,10 @@ my $cvterms_rs = $cvterms->result_source;
 
 # ignore cvtermpaths, cvtermprops and cvterm_relationship_*
 my @cvterm_relationships = grep !/^(cvterm)/, $cvterms_rs->relationships;
+
+# remember all unique cvterms for cvtermpath prefilling
+my %seen_cvterm_ids;
+
 
 print join("\t", 'Term accession prefix', 'Term accession', 'Term name', 'Number of uses in this context',  'Object type', 'Object column')."\n";
 
@@ -61,6 +65,7 @@ foreach my $relationship (@cvterm_relationships) {
     # with another step - as there will never be very many
     foreach my $cvterm_id ($search->get_column($object_column)->all) {
       if (defined $cvterm_id) {
+	$seen_cvterm_ids{$cvterm_id}++;
 	my $cvterm = $cvterms->find($cvterm_id);
 	my $dbxref = $cvterm->dbxref;
 	my $accession = $dbxref->as_string;
@@ -71,5 +76,13 @@ foreach my $relationship (@cvterm_relationships) {
 
       }
     }
+  }
+}
+
+if ($fill_cvtermpath) {
+  warn "prefilling cvtermpaths...\n";
+  foreach my $cvterm_id (keys %seen_cvterm_ids) {
+    my $cvterm = $cvterms->find($cvterm_id);
+    $cvterm->recursive_parents();
   }
 }
