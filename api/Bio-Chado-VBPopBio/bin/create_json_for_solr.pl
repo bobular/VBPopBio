@@ -191,7 +191,7 @@ my $parent_term_of_present_absent = $schema->cvterms->find_by_accession({ term_s
 									  term_accession_number => '0000070' });
 
 my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDO',
-								      term_accession_number => 'IDO:0000486' });
+								      term_accession_number => '0000486' });
 
 my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
 								      term_accession_number => '0000123' });
