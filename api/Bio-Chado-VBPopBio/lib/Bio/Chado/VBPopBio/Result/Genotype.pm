@@ -72,11 +72,12 @@ get a arrayref of multiprops
 =cut
 
 sub multiprops {
-  my ($self) = @_;
+  my ($self, $filter) = @_;
 
   return Multiprops->get_multiprops
     ( row => $self,
       prop_relation_name => 'genotypeprops',
+      filter => $filter,
     );
 }
 
