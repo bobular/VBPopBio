@@ -62,16 +62,54 @@ my $ac_config =
   {
    pop_sample =>
    {
-    species_cvterms =>   { type => "Taxonomy",      multi => 1 },
-    description =>       { type => "Description",   multi => 0 },
-    label =>             { type => "Title",         multi => 0 },
-    sample_id_s =>       { type => "Sample ID",     multi => 0 },
-
+    species_cvterms =>              { type => "Taxonomy", cvterms => 1 },
+    description =>                  { type => "Description" },
+    label =>                        { type => "Title" },
+    sample_id_s =>                  { type => "Sample ID" },
+    pubmed =>                       { type => "PubMed", multi => 1 },
+    projects =>                     { type => "Project", multi => 1 },
+    project_titles_txt =>           { type => "Project title", multi => 1 },
+    project_authors_txt =>          { type => "Author", multi => 1 },
+    sample_type =>                  { type => "Sample type" },
+    geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
+    collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
+    protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+   },
+   pop_sample_phenotype => 
+   {
+    species_cvterms =>              { type => "Taxonomy", cvterms => 1 },
+    description =>                  { type => "Description" },
+    label =>                        { type => "Title" },
+    assay_id_s =>                   { type => "Assay ID" },
+    pubmed =>                       { type => "PubMed", multi => 1 },
+    projects =>                     { type => "Project", multi => 1 },
+    project_titles_txt =>           { type => "Project title", multi => 1 },
+    project_authors_txt =>          { type => "Author", multi => 1 },
+    sample_type =>                  { type => "Sample type" },
+    geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
+    collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
+    protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    # phenotype specific:
+    insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
    },
    pop_sample_genotype =>
    {
+    species_cvterms =>              { type => "Taxonomy", cvterms => 1 },
+    description =>                  { type => "Description" },
+    label =>                        { type => "Title" },
+    assay_id_s =>                   { type => "Assay ID" },
+    pubmed =>                       { type => "PubMed", multi => 1 },
+    projects =>                     { type => "Project", multi => 1 },
+    project_titles_txt =>           { type => "Project title", multi => 1 },
+    project_authors_txt =>          { type => "Author", multi => 1 },
+    sample_type =>                  { type => "Sample type" },
+    geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
+    collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
+    protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    # genotype specific:
+    genotype_name_s =>              { type => "Allele" },  # this could be tricky if we add microsats
+    locus_name_s =>                 { type => "Locus" },
    }
-
 
   };
 
@@ -388,11 +426,7 @@ while (my $stock = $stocks->next) {
 
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
-		     ($has_abundance_data ?
-		      (has_abundance_data_b => 'true')
-		      :
-		      (has_abundance_data_b => 'false')
-		     ),
+		     has_abundance_data_b => $has_abundance_data ? 1 : 0,
 		     );
 
   fallback_value($document->{collection_protocols}, 'no data');
@@ -633,7 +667,7 @@ while (my $stock = $stocks->next) {
 	    }
 	  }
 
-	  print_document($output_prefix, $doc, $ac_config);
+	  print_document($output_prefix, $doc); # NO autocomplete ATM
 
 	  ### infection phenotype ###
 	} elsif (defined $observable && $observable->id == $arthropod_infection_status_term->id &&
@@ -800,6 +834,8 @@ while (my $stock = $stocks->next) {
 	  $doc->{sample_size_i} = $assay_sample_size;
 	}
 
+
+	my $ac = undef;
 	given($genotype_subtype) {
 	  when('chromosomal inversion') {
 	    $doc->{genotype_inverted_allele_count_i} = $genotype_value;
@@ -815,10 +851,11 @@ while (my $stock = $stocks->next) {
 	      $doc->{locus_name_s} = $locus_term->name;
 	      $doc->{locus_name_cvterms} = [ flattened_parents($locus_term) ];
 	    }
+	    $ac = $ac_config; # autocomplete ON for this subtype
 	  }
 	}
 
-	print_document($output_prefix, $doc, $ac_config);
+	print_document($output_prefix, $doc, $ac);
       }
     }
   }
@@ -1391,6 +1428,8 @@ sub print_document {
   #
   my $bundle = $document->{bundle};
   my $has_abundance_data = $document->{has_abundance_data_b};
+  my $phenotype_type = $document->{phenotype_type_s};
+  my $genotype_type = $document->{genotype_type_s};
 
   if ($ac_config && $bundle && $ac_config->{$bundle}) {
     my $config = $ac_config->{$bundle};
@@ -1398,36 +1437,42 @@ sub print_document {
     foreach my $field (keys %{$document}) {
       if (exists $config->{$field}) {
 	my $type = $config->{$field}{type};
-	if ($config->{$field}{multi}) {
-	  my $last_was_term;
+	my $typedot = $type; $typedot =~ s/\s/./g;
+
+	my @common_fields =
+	  (
+	   type => $type,
+	   bundle => $bundle,
+	   field => $field,
+	   ( $has_abundance_data ? (has_abundance_data_b => 1) : () ),
+	   ( defined $phenotype_type ? (phenotype_type_s => $phenotype_type) : () ),
+	   ( defined $genotype_type ? (genotype_type_s => $genotype_type) : () ),
+	   geo_coords => $document->{geo_coords}, # used for "local suggestions"
+	  );
+
+	if ($config->{$field}{multi} || $config->{$field}{cvterms}) {
+	  my $last_was_accession;
 	  for (my $i=0; $i<@{$document->{$field}}; $i++) {
 	    my $text = $document->{$field}[$i];
-	    my $is_term = $text =~ /^\w+:\d+$/; # is this an ontology term accession? e.g. VBsp:0012345
+	    my $is_accession = $text =~ /^\w+:\d+$/; # is this an ontology term accession? e.g. VBsp:0012345
 	    my $ac_document =
 	      ohr(
-		  id => "$document->{id}.$type.$i",
+		  id => "$document->{id}.$typedot.$i",
 		  textsuggest => $text,
-		  type => $type,
-		  bundle => $bundle,
-		  field => $field,
-		  has_abundance_data_b => $has_abundance_data,
-		  geo_coords => $document->{geo_coords}, # used for "local suggestions"
-		  textboost => $i == 0 ? 100 : 20,
-		  is_synonym => $i>0 && !$is_term && !$last_was_term ? 'true' : 'false',
+		  @common_fields,
+		  textboost => $config->{$field}{cvterms} && $i == 0 ? 100 : 20,
+		  is_synonym => $config->{$field}{cvterms} && $i>0 &&
+		                !$is_accession && !$last_was_accession ? 'true' : 'false'
 		 );
-	    $last_was_term = $is_term;
+	    $last_was_accession = $is_accession;
 	    print_ac_document($prefix, $ac_document);
 	  }
 	} else {
 	  my $ac_document =
 	    ohr(
-		id => "$document->{id}.$type",
+		id => "$document->{id}.$typedot",
 		textsuggest => $document->{$field},
-		type => $type,
-		bundle => $bundle,
-		field => $field,
-		has_abundance_data_b => $has_abundance_data,
-		geo_coords => $document->{geo_coords}, # used for "local suggestions"
+		@common_fields
 	       );
 	  print_ac_document($prefix, $ac_document);
 	}
