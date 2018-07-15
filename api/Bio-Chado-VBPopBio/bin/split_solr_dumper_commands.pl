@@ -93,7 +93,7 @@ while (my $project = $projects->next) {
 warn "\ndone scan - writing commands\n";
 
 my @commands;
-push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-IRall-main", join(',',@IRprojects), $records_per_file, $prefix;
+push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-IRall", join(',',@IRprojects), $records_per_file, $prefix;
 
 # assign projects to chunks in round-robin, biggest first
 my @projects = sort { $project2size{$b} <=> $project2size{$a} } @nonIRprojects;
@@ -108,7 +108,7 @@ while (@projects) {
 
 for (my $i=0; $i<@chunks; $i++) {
   # main
-  push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-nonIR%02d-main", join(',',@{$chunks[$i]}), $records_per_file, $prefix, $i+1;
+  push @commands, sprintf "bin/create_json_for_solr.pl --projects %s --chunksize %d %s-nonIR%02d", join(',',@{$chunks[$i]}), $records_per_file, $prefix, $i+1;
 }
 
 # save the commands to a file for later debugging

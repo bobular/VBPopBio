@@ -1404,7 +1404,7 @@ sub print_document {
 
   if (!defined $chunk_fh) { # start a new chunk
     $chunk_counter++;
-    $chunk_fh = new IO::Compress::Gzip sprintf("$prefix-%02d.json.gz", $chunk_counter);
+    $chunk_fh = new IO::Compress::Gzip sprintf("$prefix-main-%02d.json.gz", $chunk_counter);
     die unless (defined $chunk_fh);
     print $chunk_fh "[\n";
     $needcomma = 0;
