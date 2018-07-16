@@ -3,15 +3,16 @@
 #
 # usage: bin/create_json_for_solr.pl output-prefix
 #
-# will write files to output-prefix-01.json.gz  output-prefix-02.json.gz etc
+# will write files to output-prefix-01.json.gz output-prefix-02.json.gz AND output-prefix-ac-01.json.gz etc
+#
+# it will do both the main index and autocomplete
+#
 #
 # writes an error log to output-prefix.log
 #
 # option:
-#   -limit P,Q,R,S,T,U    # for debugging - limit output to P projects, R samples, R IR phenotypes and S genotypes, T bloodmeal pheno's, U infection pheno's
-#   -limit N              # same as above, same limit for all document types
-#
-#   -project VBP0000123   # or comma-delimited list of VBPs - will only process these project(s)
+#   --chunk-size          # how many docs per main output file chunk (autocomplete will have 5x this)
+#   --project VBP0000123   # or comma-delimited list of VBPs - will only process these project(s)
 #
 #
 
@@ -38,48 +39,86 @@ use IO::Compress::Gzip;
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
-my $limit;
 my $wanted_project_ids;
 my $inverted_IR_regexp = qr/^(LT|LC)/;
 my $loggable_IR_regexp = qr/^(LT|LC)/;
 my $chunk_size = 200000;
-my $latlong_decimals;
-# (spline transformation decision is hardcoded) #
 
 GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
 	   "dry-run|dryrun"=>\$dry_run,
-	   "limit=s"=>\$limit, # for debugging/development
 	   "projects=s"=>\$wanted_project_ids, # project(s) for debugging, can be comma-separated
 	   "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
-	   # latlong_decimals does a truncation of the GPS coordinates
-	   # use ONLY with $wanted_project_ids
-	   "latlong_decimals|decimals|decimalplaces=i"=>\$latlong_decimals,
 	  );
 
 
-warn "project and limit options are not usually compatible - limit may never be reached for all Solr document types" if (defined $limit && $wanted_project_ids);
-
-die "can't use --latlong_decimals without --projects option\n" if (defined $latlong_decimals && !$wanted_project_ids);
-
 my ($output_prefix) = @ARGV;
+my $ac_chunk_size = $chunk_size * 20;
 
 die "must provide output prefix commandline arg\n" unless ($output_prefix);
+
+# configuration for autocomplete
+my $ac_config =
+  {
+   pop_sample =>
+   {
+    species_cvterms =>              { type => "Taxonomy", cvterms => 1 },
+    description =>                  { type => "Description" },
+    label =>                        { type => "Title" },
+    sample_id_s =>                  { type => "Sample ID" },
+    pubmed =>                       { type => "PubMed", multi => 1 },
+    projects =>                     { type => "Project", multi => 1 },
+    project_titles_txt =>           { type => "Project title", multi => 1 },
+    project_authors_txt =>          { type => "Author", multi => 1 },
+    sample_type =>                  { type => "Sample type" },
+    geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
+    collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
+    protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+   },
+   pop_sample_phenotype => 
+   {
+    species_cvterms =>              { type => "Taxonomy", cvterms => 1 },
+    description =>                  { type => "Description" },
+    label =>                        { type => "Title" },
+    assay_id_s =>                   { type => "Assay ID" },
+    pubmed =>                       { type => "PubMed", multi => 1 },
+    projects =>                     { type => "Project", multi => 1 },
+    project_titles_txt =>           { type => "Project title", multi => 1 },
+    project_authors_txt =>          { type => "Author", multi => 1 },
+    sample_type =>                  { type => "Sample type" },
+    geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
+    collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
+    protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    # phenotype specific:
+    insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
+   },
+   pop_sample_genotype =>
+   {
+    species_cvterms =>              { type => "Taxonomy", cvterms => 1 },
+    description =>                  { type => "Description" },
+    label =>                        { type => "Title" },
+    assay_id_s =>                   { type => "Assay ID" },
+    pubmed =>                       { type => "PubMed", multi => 1 },
+    projects =>                     { type => "Project", multi => 1 },
+    project_titles_txt =>           { type => "Project title", multi => 1 },
+    project_authors_txt =>          { type => "Author", multi => 1 },
+    sample_type =>                  { type => "Sample type" },
+    geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
+    collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
+    protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    # genotype specific:
+    genotype_name_s =>              { type => "Allele" },  # this could be tricky if we add microsats
+    locus_name_s =>                 { type => "Locus" },
+   }
+
+  };
+
 
 my $log_filename = "$output_prefix.log";
 my $log_size = 0;
 
-my ($document_counter, $chunk_counter, $chunk_fh) = (0, 0);
-
-my ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes, $limit_bm_phenotypes, $limit_infection_phenotypes);
-if (defined $limit) {
-  my @limits = split /\D+/, $limit;
-  if (@limits == 6) {
-    ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes, $limit_bm_phenotypes, $limit_infection_phenotypes) = @limits;
-  } else {
-    ($limit_projects, $limit_samples, $limit_ir_phenotypes, $limit_genotypes, $limit_bm_phenotypes, $limit_infection_phenotypes) = ($limits[0], $limits[0], $limits[0], $limits[0], $limits[0], $limits[0]);
-  }
-}
+my ($document_counter, $ac_document_counter, $chunk_counter, $ac_chunk_counter) = (0, 0, 0, 0);
+my ($chunk_fh, $ac_chunk_fh);
 
 my $dsn = "dbi:Pg:dbname=$dbname";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $dbuser, undef, { AutoCommit => 1 });
@@ -91,7 +130,7 @@ my $projects = $schema->projects;
 my $json = JSON->new->pretty; # useful for debugging
 my $gh = Geohash->new();
 my $done;
-my $needcomma = 0;
+my ($needcomma, $ac_needcomma) = (0, 0);
 
 #
 # restrict to one or several projects
@@ -208,8 +247,6 @@ my $start_date_type = $schema->types->start_date;
 my $end_date_type = $schema->types->end_date;
 my $date_type = $schema->types->date;
 
-#print "iterating through projects... @andy: @done: remove this later @remove\n"; @needlater?
-
 # remember some project info for sample docs
 my %project2title;
 my %project2authors;
@@ -252,14 +289,12 @@ while (my $project = $projects->next) {
 						$_->url || () } @publications ],
 		    );
 
-  print_document($output_prefix, $document) if (!defined $wanted_project_ids || $wanted_projects{$stable_id});
+  print_document($output_prefix, $document, $ac_config) if (!defined $wanted_project_ids || $wanted_projects{$stable_id});
 
   $project2title{$stable_id} = $document->{label};
   $project2authors{$stable_id} = $document->{authors};
   $project2pubmed{$stable_id} = $document->{pubmed};
   $project2citations{$stable_id} = $document->{exp_citations_ss};
-
-  last if (defined $limit && ++$done >= $limit_projects);
 }
 
 #
@@ -269,8 +304,6 @@ while (my $project = $projects->next) {
 my %phenotype_signature2values; # measurement_type/assay/insecticide/concentration/c_units/duration/d_units/species => [ vals, ... ]
 my %phenotype_id2value; # phenotype_stable_ish_id => un-normalised value
 my %phenotype_id2signature; # phenotype_stable_ish_id => signature
-
-# @done: make the limit stop the whole script once all: done_samples, done_ir_phenotypes, done_genotypes (in future) are finished) // @bob:showed me @andy:shown by bob // @2015-08-15 
 
 ### SAMPLES ###
 my $done_samples = 0;
@@ -393,11 +426,7 @@ while (my $stock = $stocks->next) {
 
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
-		     ($has_abundance_data ?
-		      (has_abundance_data_b => 'true')
-		      :
-		      (has_abundance_data_b => 'false')
-		     ),
+		     has_abundance_data_b => $has_abundance_data ? 1 : 0,
 		     );
 
   fallback_value($document->{collection_protocols}, 'no data');
@@ -405,39 +434,36 @@ while (my $stock = $stocks->next) {
   fallback_value($document->{collection_protocols_cvterms}, 'no data');
   fallback_value($document->{protocols_cvterms}, 'no data');
 
-  if (!defined $limit || ++$done_samples <= $limit_samples){
+  # split the species for zero abundance data
+  # but only where there's one assay and many results VB-6319
+  # but TO DO - write zero samples to a separate Solr output file
+  if ($has_abundance_data && $sample_size == 0 && @species_assays==1) {
+    my $doc_id = $document->{id};
+    my $s=1;
 
-    # split the species for zero abundance data
-    # but only where there's one assay and many results VB-6319
-    # but TO DO - write zero samples to a separate Solr output file
-    if ($has_abundance_data && $sample_size == 0 && @species_assays==1) {
-      my $doc_id = $document->{id};
-      my $s=1;
+    # take each species identification assay, and result from each one separately
+    foreach my $species_assay (@species_assays) {
+      foreach my $sar_multiprop ($species_assay->multiprops($sar_term)) {
+	my $species = $sar_multiprop->cvterms->[-1]; # second/last term in chain
 
-      # take each species identification assay, and result from each one separately
-      foreach my $species_assay (@species_assays) {
-	foreach my $sar_multiprop ($species_assay->multiprops($sar_term)) {
-	  my $species = $sar_multiprop->cvterms->[-1]; # second/last term in chain
-
-	  $document->{id} = $doc_id.'.s'.$s++;
-	  if (defined $species) {
-	    $document->{description} = "Confirmed absence of ".$species->name;
-	    $document->{species} = [ $species->name ];
-	    $document->{species_cvterms} = [ flattened_parents($species) ];
-	  } else {
-	    $document->{description} = "Confirmed absence of unknown species";
-	    $document->{species} = [ 'Unknown' ];
-	    $document->{species_cvterms} = [ ];
-	  }
-
-	  # print the split zero abundance sample
-	  print_document($output_prefix, $document);
+	$document->{id} = $doc_id.'.s'.$s++;
+	if (defined $species) {
+	  $document->{description} = "Confirmed absence of ".$species->name;
+	  $document->{species} = [ $species->name ];
+	  $document->{species_cvterms} = [ flattened_parents($species) ];
+	} else {
+	  $document->{description} = "Confirmed absence of unknown species";
+	  $document->{species} = [ 'Unknown' ];
+	  $document->{species_cvterms} = [ ];
 	}
+
+	# print the split zero abundance sample
+	print_document($output_prefix, $document, $ac_config);
       }
-    } else {
-      # print the sample as normal
-      print_document($output_prefix, $document);
     }
+  } else {
+    # print the sample as normal
+    print_document($output_prefix, $document, $ac_config);
   }
 
   # now handle phenotypes
@@ -445,8 +471,6 @@ while (my $stock = $stocks->next) {
   # reuse the sample document data structure
   # to avoid having to do a lot of cvterms fields over and over again
   foreach my $phenotype_assay (@phenotype_assays) {
-    last if (defined $limit && $done_ir_phenotypes >= $limit_ir_phenotypes);
-
     my $assay_stable_id = $phenotype_assay->stable_id;
 
 
@@ -568,9 +592,7 @@ while (my $stock = $stocks->next) {
 		  # phenotype_cvterms (singular)
 		  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
 
-		  if (!defined $limit || ++$done_ir_phenotypes<=$limit_ir_phenotypes) {
-		    print_document($output_prefix, $doc);
-		  }
+		  print_document($output_prefix, $doc, $ac_config);
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
 		  my $phenotype_signature =
@@ -645,11 +667,7 @@ while (my $stock = $stocks->next) {
 	    }
 	  }
 
-
-
-	  if (!defined $limit || ++$done_bm_phenotypes<=$limit_bm_phenotypes) {
-	    print_document($output_prefix, $doc);
-	  }
+	  print_document($output_prefix, $doc); # NO autocomplete ATM
 
 	  ### infection phenotype ###
 	} elsif (defined $observable && $observable->id == $arthropod_infection_status_term->id &&
@@ -701,9 +719,7 @@ while (my $stock = $stocks->next) {
 	    }
 	  }
 
-	  if (!defined $limit || ++$done_infection_phenotypes<=$limit_infection_phenotypes) {
-	    print_document($output_prefix, $doc);
-	  }
+          print_document($output_prefix, $doc, $ac_config);
 
 	} else {
 	  log_message("$assay_stable_id (@projects) has unexpected phenotype ".$phenotype->name." - skipped");
@@ -714,7 +730,6 @@ while (my $stock = $stocks->next) {
 
   # same for genotypes
   foreach my $genotype_assay (@genotype_assays) {
-    last if (defined $limit && $done_genotypes >= $limit_genotypes);
     my $assay_stable_id = $genotype_assay->stable_id;
     my @protocol_types = map { $_->type } $genotype_assay->protocols->all;
 
@@ -819,6 +834,8 @@ while (my $stock = $stocks->next) {
 	  $doc->{sample_size_i} = $assay_sample_size;
 	}
 
+
+	my $ac = undef;
 	given($genotype_subtype) {
 	  when('chromosomal inversion') {
 	    $doc->{genotype_inverted_allele_count_i} = $genotype_value;
@@ -834,22 +851,14 @@ while (my $stock = $stocks->next) {
 	      $doc->{locus_name_s} = $locus_term->name;
 	      $doc->{locus_name_cvterms} = [ flattened_parents($locus_term) ];
 	    }
+	    $ac = $ac_config; # autocomplete ON for this subtype
 	  }
 	}
 
-	# Printing out a doc
-	if (!defined $limit || ++$done_genotypes<=$limit_genotypes) {
-	  # print out the genotype doc (cloned from $document)
-	  print_document($output_prefix, $doc);
-	}
+	print_document($output_prefix, $doc, $ac);
       }
     }
   }
-
-  last if (defined $limit &&
-	   $done_samples >= $limit_samples &&
-	   $done_ir_phenotypes >= $limit_ir_phenotypes &&
-	   $done_genotypes >= $limit_genotypes);
 }
 
 
@@ -926,11 +935,16 @@ foreach my $phenotype_stable_ish_id (keys %phenotype_id2signature) {
 
 
 #
-# close the final chunk of output if necessary
+# close the final chunks of output if necessary
 #
 if (defined $chunk_fh) {
   print $chunk_fh "]\n";
   close($chunk_fh);
+}
+
+if (defined $ac_chunk_fh) {
+  print $ac_chunk_fh "]\n";
+  close($ac_chunk_fh);
 }
 
 if ($log_size) {
@@ -1246,13 +1260,6 @@ sub geo_coords_fields {
     return (latlong_error_s => $latlong);
   }
 
-  # temporary coordinate rounding until done in API
-  if (defined $latlong_decimals) {
-    $lat = sprintf "%.${latlong_decimals}f", $lat;
-    $long = sprintf "%.${latlong_decimals}f", $long;
-    $latlong = "$lat,$long";
-  }
-
   my $geohash = $gh->encode($lat, $long, 7);
 
   return (geo_coords => $latlong,
@@ -1380,19 +1387,24 @@ sub fallback_value {
 }
 
 #
-# print JSON document to chunked output files
+# print JSON documents for main and autocomplete to chunked output files
 #
 
 #
-# use global variables $document_counter, $chunk_counter, $chunk_size, $chunk_fh, $needcomma
+# uses global variables $document_counter, $chunk_counter, $chunk_size, $chunk_fh, $needcomma
+# (and the ac_* equivalents)
 #
 
 sub print_document {
-  my ($prefix, $document) = @_;
+  my ($prefix, $document, $ac_config) = @_;
+
+  #
+  # main document first
+  #
 
   if (!defined $chunk_fh) { # start a new chunk
     $chunk_counter++;
-    $chunk_fh = new IO::Compress::Gzip sprintf("$prefix-%02d.json.gz", $chunk_counter);
+    $chunk_fh = new IO::Compress::Gzip sprintf("$prefix-main-%02d.json.gz", $chunk_counter);
     die unless (defined $chunk_fh);
     print $chunk_fh "[\n";
     $needcomma = 0;
@@ -1411,6 +1423,92 @@ sub print_document {
     undef $chunk_fh;
   }
 
+  #
+  # autocomplete next
+  #
+  my $bundle = $document->{bundle};
+  my $has_abundance_data = $document->{has_abundance_data_b};
+  my $phenotype_type = $document->{phenotype_type_s};
+  my $genotype_type = $document->{genotype_type_s};
+
+  if ($ac_config && $bundle && $ac_config->{$bundle}) {
+    my $config = $ac_config->{$bundle};
+    # process $document to find fields to add for a/c
+    foreach my $field (keys %{$document}) {
+      if (exists $config->{$field}) {
+	my $type = $config->{$field}{type};
+	my $typedot = $type; $typedot =~ s/\s/./g;
+
+	my @common_fields =
+	  (
+	   type => $type,
+	   bundle => $bundle,
+	   field => $field,
+	   ( $has_abundance_data ? (has_abundance_data_b => 1) : () ),
+	   ( defined $phenotype_type ? (phenotype_type_s => $phenotype_type) : () ),
+	   ( defined $genotype_type ? (genotype_type_s => $genotype_type) : () ),
+	   geo_coords => $document->{geo_coords}, # used for "local suggestions"
+	  );
+
+	if ($config->{$field}{multi} || $config->{$field}{cvterms}) {
+	  my $last_was_accession;
+	  for (my $i=0; $i<@{$document->{$field}}; $i++) {
+	    my $text = $document->{$field}[$i];
+	    my $is_accession = $text =~ /^\w+:\d+$/; # is this an ontology term accession? e.g. VBsp:0012345
+	    my $ac_document =
+	      ohr(
+		  id => "$document->{id}.$typedot.$i",
+		  textsuggest => $text,
+		  @common_fields,
+		  textboost => $config->{$field}{cvterms} && $i == 0 ? 100 : 20,
+		  is_synonym => $config->{$field}{cvterms} && $i>0 &&
+		                !$is_accession && !$last_was_accession ? 'true' : 'false'
+		 );
+	    $last_was_accession = $is_accession;
+	    print_ac_document($prefix, $ac_document);
+	  }
+	} else {
+	  my $ac_document =
+	    ohr(
+		id => "$document->{id}.$typedot",
+		textsuggest => $document->{$field},
+		@common_fields
+	       );
+	  print_ac_document($prefix, $ac_document);
+	}
+      }
+    }
+  }
+}
+
+
+#
+# the following is a bit cut and paste-y
+# could do all the document and chunk counts hashed on $prefix
+# and then just use print_document for both?
+#
+sub print_ac_document {
+  my ($prefix, $ac_document) = @_;
+
+  if (!defined $ac_chunk_fh) {	# start a new chunk
+    $ac_chunk_counter++;
+    $ac_chunk_fh = new IO::Compress::Gzip sprintf("$prefix-ac-%02d.json.gz", $ac_chunk_counter);
+    die unless (defined $ac_chunk_fh);
+    print $ac_chunk_fh "[\n";
+    $ac_needcomma = 0;
+  }
+
+  my $ac_json_text = $json->encode($ac_document);
+  chomp($ac_json_text);
+  print $ac_chunk_fh ",\n" if ($ac_needcomma++);
+  print $ac_chunk_fh qq!$ac_json_text\n!;
+  $ac_document_counter++;
+
+  if ($ac_document_counter % $ac_chunk_size == 0) { # close the current chunk
+    print $ac_chunk_fh "]\n";
+    close($ac_chunk_fh);
+    undef $ac_chunk_fh;
+  }
 }
 
 #
