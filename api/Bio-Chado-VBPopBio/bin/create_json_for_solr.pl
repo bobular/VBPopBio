@@ -53,7 +53,7 @@ GetOptions("dbname=s"=>\$dbname,
 
 
 my ($output_prefix) = @ARGV;
-my $ac_chunk_size = $chunk_size * 5;
+my $ac_chunk_size = $chunk_size * 20;
 
 die "must provide output prefix commandline arg\n" unless ($output_prefix);
 
