@@ -89,8 +89,11 @@ my $ac_config =
     geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
-    # phenotype specific:
+    # IR view
     insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
+    # pathogen view
+    infection_source_cvterms =>     { type => "Pathogen", cvterms => 1 },
+    infection_status_s =>           { type => "Infection status" },
    },
    pop_sample_genotype =>
    {
