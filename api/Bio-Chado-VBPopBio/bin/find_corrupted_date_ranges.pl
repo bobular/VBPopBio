@@ -70,8 +70,9 @@ $schema->txn_do_deferred
 	if (defined $start_date_prop && defined $end_date_prop) {
 	  my $end_date = $end_date_prop->value;
 	  my $start_date = $start_date_prop->value;
-	  if ($end_date lt $start_date) {
-	    print "$project_id problem with $start_date / $end_date\n";
+	  if (length($end_date) < 4 || length($start_date) < 4) {
+	    my $collection_id = $collection->stable_id;
+	    print "$project_id $collection_id problem with '$start_date' / '$end_date'\n";
 	  }
 
 	}
