@@ -109,8 +109,6 @@ hash args: row => DBIx::Class Row or Result object
 sub delete_multiprop {
   my ($class, %args) = @_;
 
-  return undef;
-
   # check for required args
   $args{$_} or confess "must provide $_ arg"
     for qw/row prop_relation_name multiprop/;
@@ -121,46 +119,42 @@ sub delete_multiprop {
 
   %args and confess "invalid option(s): ".join(', ', sort keys %args);
 
-  # perform the (expensive!) check for existing multiprops
-  my $input_json = undef;
-  foreach my $existing_multiprop ($row->multiprops) {
-    $input_json //= $multiprop->as_json; # only make $input_json if there are existing multiprops
-    return $existing_multiprop if ($existing_multiprop->as_json eq $input_json);
+  # get the positive-ranked props and order them by rank
+  my $props = $row->$prop_relation_name->search({}, { where => { rank => { '>' => 0 } },
+						      order_by => 'rank',
+						      prefetch => { type => { 'dbxref' => 'db' } },
+						    });
+
+  # split the props into prop_groups (copied from get_multiprops)
+  my @prop_groups;
+  my $index = 0;
+  while (my $prop = $props->next) {
+    push @{$prop_groups[$index]}, $prop;
+    $index++ unless (defined $prop->value && $prop->value eq $MAGIC_VALUE);
   }
 
-  # find the highest rank of existing props
-  my $max_rank = $row->$prop_relation_name->get_column('rank')->max;
+  # step through the prop groups looking to see if they match the $multiprop to be deleted
+  my @query_cvterms = $multiprop->cvterms;
+  my $query_value = $multiprop->value;
 
-  # ignore negative ranks and default to zero
-  $max_rank = 0 unless (defined $max_rank && $max_rank > 0);
+ PROPGROUP: foreach my $prop_group (@prop_groups) {
+    # number of cvterms must be the same
+    next PROPGROUP unless (@query_cvterms == @$prop_group);
+    # now step through checking the cvterms are the same
+    for (my $i=0; $i<@query_cvterms; $i++) {
+      next PROPGROUP unless ($prop_group->[$i]->type->id == $query_cvterms[$i]->id);
+    }
+    # now check final prop's value if it has one.
+    my $final_value = $prop_group->[-1]->value;
+    next PROPGROUP if (defined $final_value && $final_value ne $query_value);
 
-  # assign next available rank for the first cvterm of the new multiprop
-  my $rank = $max_rank + 1;
-
-  defined $multiprop->rank and confess "predefined rank not yet handled in add_multiprop";
-
-  # set the rank on the passed object in case the caller wants to
-  $multiprop->rank($rank);
-
-  my $last_prop; # keep track so we can add the value if needed
-  foreach my $cvterm ($multiprop->cvterms) {
-    $last_prop = $row->create_related($prop_relation_name,
-					      { type => $cvterm,
-						rank => $rank++,
-						value => $MAGIC_VALUE # subject to change below
-					      });
+    # if we reached here, this propgroup must be first identical instance to delete
+    map { $_->delete } @$prop_group;
+    # don't check any more
+    return $multiprop;
   }
 
-  # if value is undef, then we will terminate the chain with NULL in database
-  # if it's a comma then that means the chain continues (comma == MAGIC VALUE)
-  # if it's a non-comma value that also terminates the chain
-  my $value = $multiprop->value;
-  confess "magic value '$MAGIC_VALUE' is not allowed as a multiprop value"
-    if (defined $value && $value eq $MAGIC_VALUE);
-  $last_prop->value($value);
-  $last_prop->update();
-
-  return $multiprop;
+  return undef;
 }
 
 

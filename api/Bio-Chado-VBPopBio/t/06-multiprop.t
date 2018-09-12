@@ -1,4 +1,4 @@
-use Test::More tests => 18;
+use Test::More tests => 22;
 
 # the next 4 lines were already tested in 01-api.t
 use Bio::Chado::VBPopBio;
@@ -105,8 +105,8 @@ $schema->txn_do(
 					  )->cvterm;
 
 		  # and another valued multiprop
-		  my $hair_color = Multiprop->new(cvterms=> [ $hair_color, $red, $length, $cm ], value=>25);
-		  my $multiprop3 = $stock->add_multiprop($hair_color);
+		  my $hair_color25 = Multiprop->new(cvterms=> [ $hair_color, $red, $length, $cm ], value=>25);
+		  my $multiprop3 = $stock->add_multiprop($hair_color25);
 
 		  @multiprops = $stock->multiprops;
 		  is(scalar @multiprops, 3, "Has three Multiprops");
@@ -118,10 +118,10 @@ $schema->txn_do(
 		  is($multiprops[2]->rank, 7, "Third Multiprop, rank is 7");
 
 		  # check that adding the same multiprop again doesn't do anything
-		  $hair_color->forget_rank;
-		  my $multiprop4 = $stock->add_multiprop($hair_color);
+		  $hair_color25->forget_rank;
+		  my $multiprop4 = $stock->add_multiprop($hair_color25);
 		  @multiprops = $stock->multiprops;
-		  is(scalar @multiprops, 3, "Still has three Multiprops after loading hair_color again");
+		  is(scalar @multiprops, 3, "Still has three Multiprops after loading hair_color25 again");
 
 		  $truncated_wing->forget_rank;
 		  my $multiprop5 = $stock->add_multiprop($truncated_wing);
@@ -131,12 +131,25 @@ $schema->txn_do(
 
 		  # now test removing them
 
-#		  $stock->delete_multiprop($multiprop2);
+		  $stock->delete_multiprop($multiprop2);
 
 		  @multiprops = $stock->multiprops;
 		  is(scalar @multiprops, 2, "Has two Multiprops after removing middle one");
 		  is($multiprops[0]->value, 100, "First Multiprop value is still 100 post-delete");
 		  is($multiprops[1]->value, 25, "Second Multiprop value is 25 post-delete");
+
+		  $stock->delete_multiprop($hair_color25);
+		  @multiprops = $stock->multiprops;
+		  is(scalar @multiprops, 1, "Has one Multiprop after removing red hair length 25");
+		  is($multiprops[0]->value, 100, "First Multiprop value is still 100 post-delete");
+
+
+		  # now add a multiprop back
+		  my $hair_color50 = Multiprop->new(cvterms=> [ $hair_color, $red, $length, $cm ], value=>50);
+		  my $res50 = $stock->add_multiprop($hair_color50);
+		  @multiprops = $stock->multiprops;
+		  is(scalar @multiprops, 2, "Has two Multiprops after adding hair color 50");
+		  is($multiprops[1]->value, 50, "Second Multiprop value is 50");
 
 
 		  # warn $json->encode($stock->as_data_structure);
