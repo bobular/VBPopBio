@@ -1,4 +1,4 @@
-use Test::More tests => 22;
+use Test::More tests => 24;
 
 # the next 4 lines were already tested in 01-api.t
 use Bio::Chado::VBPopBio;
@@ -131,6 +131,13 @@ $schema->txn_do(
 
 		  # now test removing them
 
+		  my $hair_color50 = Multiprop->new(cvterms=> [ $hair_color, $red, $length, $cm ], value=>50);
+
+		  # see if deleting one that isn't there works
+		  my $result = $stock->delete_multiprop($hair_color50);
+		  is($result, undef, "return val was undef after 'deleteing' hair_color50");
+		  is(scalar($stock->multiprops), 3, "still has three mprops");
+
 		  $stock->delete_multiprop($multiprop2);
 
 		  @multiprops = $stock->multiprops;
@@ -145,7 +152,6 @@ $schema->txn_do(
 
 
 		  # now add a multiprop back
-		  my $hair_color50 = Multiprop->new(cvterms=> [ $hair_color, $red, $length, $cm ], value=>50);
 		  my $res50 = $stock->add_multiprop($hair_color50);
 		  @multiprops = $stock->multiprops;
 		  is(scalar @multiprops, 2, "Has two Multiprops after adding hair color 50");
