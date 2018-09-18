@@ -95,6 +95,69 @@ sub add_multiprop {
   return $multiprop;
 }
 
+=head2 delete_multiprop
+
+If it successfully deletes an exact copy of the multiprop passed to it, then
+it will return the multiprop object, otherwise undef.,
+
+hash args: row => DBIx::Class Row or Result object
+           prop_relation_name => DBIx props table relation name, e.g. 'stockprops'
+           multiprop => Multiprop object
+
+=cut
+
+sub delete_multiprop {
+  my ($class, %args) = @_;
+
+  # check for required args
+  $args{$_} or confess "must provide $_ arg"
+    for qw/row prop_relation_name multiprop/;
+
+  my $row = delete $args{row};
+  my $multiprop = delete $args{multiprop};
+  my $prop_relation_name = delete $args{prop_relation_name};
+
+  %args and confess "invalid option(s): ".join(', ', sort keys %args);
+
+  # get the positive-ranked props and order them by rank
+  my $props = $row->$prop_relation_name->search({}, { where => { rank => { '>' => 0 } },
+						      order_by => 'rank',
+						      prefetch => { type => { 'dbxref' => 'db' } },
+						    });
+
+  # split the props into prop_groups (copied from get_multiprops)
+  my @prop_groups;
+  my $index = 0;
+  while (my $prop = $props->next) {
+    push @{$prop_groups[$index]}, $prop;
+    $index++ unless (defined $prop->value && $prop->value eq $MAGIC_VALUE);
+  }
+
+  # step through the prop groups looking to see if they match the $multiprop to be deleted
+  my @query_cvterms = $multiprop->cvterms;
+  my $query_value = $multiprop->value;
+
+ PROPGROUP: foreach my $prop_group (@prop_groups) {
+    # number of cvterms must be the same
+    next PROPGROUP unless (@query_cvterms == @$prop_group);
+    # now step through checking the cvterms are the same
+    for (my $i=0; $i<@query_cvterms; $i++) {
+      next PROPGROUP unless ($prop_group->[$i]->type->id == $query_cvterms[$i]->id);
+    }
+    # now check final prop's value if it has one.
+    my $final_value = $prop_group->[-1]->value;
+    next PROPGROUP if (defined $final_value && $final_value ne $query_value);
+
+    # if we reached here, this propgroup must be first identical instance to delete
+    map { $_->delete } @$prop_group;
+    # don't check any more
+    return $multiprop;
+  }
+
+  return undef;
+}
+
+
 =head2 get_multiprops
 
 Retrieve props and process them into multiprops

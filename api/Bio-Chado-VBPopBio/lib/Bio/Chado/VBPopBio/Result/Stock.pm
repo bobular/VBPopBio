@@ -363,6 +363,27 @@ sub add_multiprop {
     );
 }
 
+=head2 delete_multiprop
+
+Usage: my $success = $stock->delete_multiprop($multiprop)
+
+returns true (the multiprop object) if an exact copy of the multiprop is found and deleted,
+or false (undef) otherwise
+
+=cut
+
+sub delete_multiprop {
+  my ($self, $multiprop) = @_;
+
+  return Multiprops->delete_multiprop
+    ( multiprop => $multiprop,
+      row => $self,
+      prop_relation_name => 'stockprops',
+    );
+}
+
+
+
 =head2 multiprops
 
 return an array of multiprops

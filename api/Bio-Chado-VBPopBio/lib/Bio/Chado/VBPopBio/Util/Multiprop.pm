@@ -54,6 +54,7 @@ has 'rank' => (
 		is => 'rw',
 		isa => 'Int',
 		required => 0,
+	        clearer => 'forget_rank',
 	       );
 
 
@@ -61,13 +62,16 @@ has 'rank' => (
 
 returns a data structure suitable for JSONification
 
+values are forced into strings (which is fine because they are stored as strings in the database)
+
 =cut
 
 sub as_data_structure {
   my $self = shift;
+  my $value = $self->value;
   return { cvterms => [ map { $_->as_data_structure } $self->cvterms ],
-	   defined $self->value ? (value => $self->value) : (),
-	   # rank => $self->rank,  # don't waste bandwidth until needed
+	   defined $value ? (value => "$value") : (),
+	   # rank => $self->rank,  # don't waste bandwidth until needed - and this will mess up uniqueness test in Multiprops.pm
 	 };
 }
 
