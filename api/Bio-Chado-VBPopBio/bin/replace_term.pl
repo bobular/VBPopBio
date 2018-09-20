@@ -37,14 +37,14 @@ my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
 my $cvterms = $schema->cvterms;
 
-my ($old_term_source, $old_term_accession) = split /:/, $old_accession;
+my ($old_term_source, $old_term_accession) = split /:/, $old_accession, 2;
 my $old_cvterm = $cvterms->find_by_accession({ term_source_ref => $old_term_source,
 					       term_accession_number => $old_term_accession
 					     });
 die "can't find cvterm for $old_accession\n" unless ($old_cvterm);
 
 
-my ($new_term_source, $new_term_accession) = split /:/, $new_accession;
+my ($new_term_source, $new_term_accession) = split /:/, $new_accession, 2;
 my $new_cvterm = $cvterms->find_by_accession({ term_source_ref => $new_term_source,
 					       term_accession_number => $new_term_accession
 					     });
@@ -78,9 +78,9 @@ foreach my $relationship ($new_cvterm->result_source->relationships) {
 
 
 
-#print "Proceed? ";
-#my $answer = <STDIN>;
-#exit unless ($answer =~ /^y/i);
+print "Proceed? ";
+my $answer = <STDIN>;
+exit unless ($answer =~ /^y/i);
 
 printf "REPLACING...\n";
 
