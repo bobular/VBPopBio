@@ -39,7 +39,7 @@ sub project_external_ID {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:project external ID',
+						    term_accession_number=>'0001052',
 						   });
 }
 memoize('project_external_ID');
@@ -54,7 +54,7 @@ sub sample_external_ID {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:sample external ID',
+						    term_accession_number=>'0001053',
 						   });
 }
 memoize('sample_external_ID');
@@ -71,8 +71,8 @@ while the code will talk about experiments (i.e. nd_experiments)
 sub experiment_external_ID {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
-						    term_source_ref=>'null', # this is correct, but unintentionally "null"
-						    term_accession_number=>'autocreated:assay external ID',
+						    term_source_ref=>'VBcv', # this is correct, but unintentionally "null"
+						    term_accession_number=>'0001054',
 						   });
 }
 memoize('experiment_external_ID');
@@ -164,7 +164,7 @@ sub last_modified_date {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:last modified date'
+						    term_accession_number=>'0001055'
 						   });
 }
 memoize('last_modified_date');
@@ -179,7 +179,7 @@ sub creation_date {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:creation date'
+						    term_accession_number=>'0001056'
 						   });
 }
 memoize('creation_date');
@@ -187,7 +187,7 @@ memoize('creation_date');
 
 =head2 placeholder
 
-any old term
+any old term to use during rolled back failed transactions, it won't get stored in the database
 
 =cut
 
@@ -262,7 +262,7 @@ sub sample_manipulation {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:sample manipulation'
+						    term_accession_number=>'0001057'
 						   });
 }
 memoize('sample_manipulation');
@@ -288,8 +288,8 @@ Used to link stocks to projects directly in Chado.  This is a bit of a hack!
 sub project_stock_link {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
-						    term_source_ref=>'TEMPcv',
-						    term_accession_number=>'project_stock_link'
+						    term_source_ref=>'VBcv',
+						    term_accession_number=>'0001059'
 						   });
 }
 memoize('project_stock_link');
@@ -304,7 +304,7 @@ sub description {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:description'
+						    term_accession_number=>'0001060'
 						   });
 }
 memoize('description');
@@ -317,7 +317,7 @@ sub uri {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:URI'
+						    term_accession_number=>'0001062'
 						   });
 }
 memoize('uri');
@@ -332,7 +332,7 @@ sub comment {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:comment'
+						    term_accession_number=>'0001063'
 						   });
 }
 memoize('comment');
@@ -357,13 +357,15 @@ VBcv:person
 
 'A cvterm used internally within VectorBase in the Chado contact table.'
 
+Note: this term is never exposed to the public.  See ResultSet/Contact.pm for more.
+
 =cut
 
 sub person {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:person'
+						    term_accession_number=>'0000968' # Performer
 						   });
 }
 memoize('person');
@@ -380,7 +382,7 @@ sub assay_creates_sample {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:assay creates sample'
+						    term_accession_number=>'0001064'
 						   });
 }
 memoize('assay_creates_sample');
@@ -397,7 +399,7 @@ sub assay_uses_sample {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:assay uses sample'
+						    term_accession_number=>'0001065'
 						   });
 }
 memoize('assay_uses_sample');
@@ -427,7 +429,7 @@ sub vcf_file {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:VCF file'
+						    term_accession_number=>'0001066'
 						   });
 }
 memoize('vcf_file');
@@ -458,7 +460,7 @@ sub vis_configs {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:visualisation configs'
+						    term_accession_number=>'0001067'
 						   });
 }
 memoize('vis_configs');
@@ -476,10 +478,11 @@ sub relationships_to_follow {
   my $self = shift;
   my $term = $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:relationships to follow'
+						    term_accession_number=>'0001068'
 						   });
-  $term->definition('is_a,part_of,located_in,has_quality');
-  $term->update;
+  # uncomment this to make a temporary change
+  # $term->definition('is_a,part_of,located_in,has_quality');
+  # $term->update;
   return $term;
 }
 memoize('relationships_to_follow');
@@ -494,10 +497,10 @@ sub unambiguous {
   my $self = shift;
   my $term = $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:unambiguous'
+						    term_accession_number=>'0001069'
 						   });
-  $term->definition('One or more species determination assays confirmed each other and the most specific species is reported.');
-  $term->update;
+  # $term->definition('One or more species determination assays confirmed each other and the most specific species is reported.');
+  # $term->update;
   return $term;
 }
 memoize('unambiguous');
@@ -510,10 +513,10 @@ sub ambiguous {
   my $self = shift;
   my $term = $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:ambiguous'
+						    term_accession_number=>'0001070'
 						   });
-  $term->definition('Two or more species determination assays contradicted each other and the most appropriate higher level (more general) taxonomic term is reported.');
-  $term->update;
+  # $term->definition('Two or more species determination assays contradicted each other and the most appropriate higher level (more general) taxonomic term is reported.');
+  # $term->update;
   return $term;
 }
 memoize('ambiguous');
@@ -526,15 +529,17 @@ sub derived {
   my $self = shift;
   my $term = $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:derived'
+						    term_accession_number=>'0001071'
 						   });
-  $term->definition('The sample has had no species determination assays performed directly on it, so the species assignment has been made from the sample it was derived from.');
-  $term->update;
+  # $term->definition('The sample has had no species determination assays performed directly on it, so the species assignment has been made from the sample it was derived from.');
+  # $term->update;
   return $term;
 }
 memoize('derived');
 
 =head2 unknown
+
+unknown blood meal source result
 
 =cut
 
@@ -558,10 +563,10 @@ sub project_default {
   my $self = shift;
   my $term = $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:project default'
+						    term_accession_number=>'0001072'
 						   });
-  $term->definition('No species determination assays were successfully performed, however submitters and curators have agreed on a project-wide fallback species or taxonomy term which is valid in these cases.');
-  $term->update;
+  # $term->definition('No species determination assays were successfully performed, however submitters and curators have agreed on a project-wide fallback species or taxonomy term which is valid in these cases.');
+  # $term->update;
   return $term;
 }
 memoize('project_default');
@@ -575,10 +580,10 @@ sub metaproject {
   my $self = shift;
   my $term = $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:meta-project'
+						    term_accession_number=>'0001073'
 						   });
-  $term->definition('A project that consists of samples and assays entirely from pre-existing "primary" projects.');
-  $term->update;
+  # $term->definition('A project that consists of samples and assays entirely from pre-existing "primary" projects.');
+  # $term->update;
   return $term;
 }
 memoize('metaproject');
@@ -622,11 +627,11 @@ memoize('in_preparation');
 sub deprecated {
   my $self = shift;
   my $term = $self->schema->cvterms->find_by_accession({
-						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:deprecated'
-						   });
-  $term->definition('A flag for legacy species determination assays that should no longer be used when calculating the "best fit" species from a number of species assays');
-  $term->update;
+							term_source_ref=>'VBcv',
+							term_accession_number=>'0001074'
+						       });
+  # $term->definition('A flag for legacy species determination assays that should no longer be used when calculating the "best fit" species from a number of species assays');
+  # $term->update;
   return $term;
 }
 memoize('deprecated');
@@ -644,7 +649,7 @@ sub fallback_species_accession {
   my $self = shift;
   return $self->schema->cvterms->find_by_accession({
 						    term_source_ref=>'VBcv',
-						    term_accession_number=>'autocreated:fallback species accession'
+						    term_accession_number=>'0001075'
 						   });
 }
 memoize('fallback_species_accession');
