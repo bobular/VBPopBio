@@ -78,6 +78,9 @@ sub find_or_create_from_isatab {
   unless ($contact->description) {
     my $type = $schema->types->person;
     $contact->type($type);
+    # we could store the study_person_role here, but we don't
+    # we could also expose this in as_data_structure
+    # at the moment it doesn't really matter what we put in $contact->type!
 
     my $name = join ' ',
       grep $_,

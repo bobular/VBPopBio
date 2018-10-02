@@ -36,7 +36,7 @@ my $cvterms = $schema->cvterms;
 my @cvterms;
 
 if ($accession) {
-  my ($term_source, $term_accession) = split /:/, $accession;
+  my ($term_source, $term_accession) = split /:/, $accession, 2;
   my $cvterm = $cvterms->find_by_accession({ term_source_ref => $term_source,
 					     term_accession_number => $term_accession
 					   });
