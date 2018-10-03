@@ -130,6 +130,25 @@ sub create_from_isatab {
   }
 
   #
+  # add study tags multiprops
+  #
+  my @tags;
+  foreach my $study_tag (@{$study->{study_tags}}) {
+    my $tag_term = $cvterms->find_by_accession
+      ({ term_source_ref => $study_tag->{study_tag_term_source_ref},
+	 term_accession_number => $study_tag->{study_tag_term_accession_number}
+       });
+    if (defined $tag_term) {
+      push @tags, $tag_term;
+    } else {
+      $schema->defer_exception("Could not find ontology term $study_tag->{study_tag} ($study_tag->{study_tag_term_source_ref}:$study_tag->{study_tag_term_accession_number})");
+    }
+  }
+  if (@tags) {
+    $project->add_multiprop(Multiprop->new( cvterms=>[ $types->project_tags, @tags ] ));
+  }
+
+  #
   # add study design multiprops
   #
   my $sd = $types->study_design;
