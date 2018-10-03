@@ -1101,7 +1101,7 @@ sub add_tag {
   my $cvterm;
   if (my $ref = ref($arg)) {
     if ($ref =~ /Cvterm/) {
-      $cvterm = $ref;
+      $cvterm = $arg;
     } else {
       $cvterm = $schema->cvterms->find_by_accession($arg);
       unless (defined $cvterm) {

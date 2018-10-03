@@ -1,4 +1,4 @@
-use Test::More tests => 15;
+use Test::More tests => 18;
 use strict;
 use JSON;
 use Bio::Chado::VBPopBio;
@@ -41,11 +41,18 @@ $schema->txn_do_deferred(
 			   is($tags4[1]->name, "abundance", "And it was added in the second position");
 
 			   # now let's delete a tag
-			   my $rip_icemr_term = $project->delete_tag({ term_source_ref => 'VBcv', term_accession_number => '0001080'});
+			   my $rip_icemr_term = $project->delete_tag($icemr_term);
 			   is($rip_icemr_term->name, "ICEMR", "After deleting ICEMR tag, it was returned.");
 			   is(scalar $project->tags, 1, "After the delete, there is one tag.");
 
+			   # let's delete a tag that wasn't added
+			   my $snp_chip_term = $project->delete_tag({ term_source_ref => 'VBcv', term_accession_number => '0001091'}); # SNP-chip
+			   is($snp_chip_term, undef, "Undef returned when deleting tag that isn't there.");
 
+			   # and delete the remaining abundance tag
+			   my $rip_abundance_term = $project->delete_tag($abundance_term);
+			   is($rip_abundance_term->name, "abundance", "Deleted abundance term");
+			   is(scalar $project->tags, 0, "No tags left");
 
 			   $schema->defer_exception("This is the only exception we should see.");
 			 });
