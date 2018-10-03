@@ -670,6 +670,33 @@ sub collection_duration_in_days {
 memoize('collection_duration_in_days');
 
 
+=head2 project_tags
+
+=cut
+
+sub project_tags {
+  my $self = shift;
+  my $term = $self->schema->cvterms->find_by_accession( { term_source_ref => 'VBcv',
+							  term_accession_number => '0001095',
+							} );
+  return $term;
+}
+memoize('project_tags');
+
+
+=head2 project_tag_root
+
+=cut
+
+sub project_tag_root {
+  my $self = shift;
+  my $term = $self->schema->cvterms->find_by_accession( { term_source_ref => 'VBcv',
+							  term_accession_number => '0001076',
+							} );
+  return $term;
+}
+memoize('project_tags');
+
 
 #
 # this is a subsection - please add new terms above the previous head1

@@ -19,6 +19,7 @@ __PACKAGE__->subclass({
 #__PACKAGE__->resultset_attributes({ order_by => 'project_id' });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
+use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 use aliased 'Bio::Chado::VBPopBio::Util::Extra';
 use aliased 'Bio::Chado::VBPopBio::Util::Date';
 use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
@@ -659,6 +660,25 @@ sub add_multiprop {
     );
 }
 
+=head2 delete_multiprop
+
+Usage: my $success = $stock->delete_multiprop($multiprop)
+
+returns true (the multiprop object) if an exact copy of the multiprop is found and deleted,
+or false (undef) otherwise
+
+=cut
+
+sub delete_multiprop {
+  my ($self, $multiprop) = @_;
+
+  return Multiprops->delete_multiprop
+    ( multiprop => $multiprop,
+      row => $self,
+      prop_relation_name => 'projectprops',
+    );
+}
+
 =head2 multiprops
 
 get a arrayref of multiprops
@@ -1044,6 +1064,113 @@ sub as_cytoscape_graph {
 
   return $graph;
 }
+
+=head2 tags
+
+get an array of tag cvterm objects
+
+=cut
+
+sub tags {
+  my ($self) = @_;
+  my @tags;
+  my $project_tags_term = $self->result_source->schema->types->project_tags;
+  my ($multiprop) = $self->multiprops($project_tags_term);
+  if ($multiprop) {
+    my @cvterms = $multiprop->cvterms;
+    shift @cvterms; # remove first $project_tags_term
+    @tags = @cvterms;
+  }
+  return @tags;
+}
+
+=head2 add_tag
+
+add a tag term
+
+the argument should be a cvterm object or a hashref specifying how to find it
+{ term_source_ref => 'VBcv', term_accession_number => '0001080'}
+
+returns the cvterm object if successful, undef if not
+
+=cut
+
+sub add_tag {
+  my ($self, $arg, $delete_mode) = @_;
+  my $schema = $self->result_source->schema;
+  my $cvterm;
+  if (my $ref = ref($arg)) {
+    if ($ref =~ /Cvterm/) {
+      $cvterm = $ref;
+    } else {
+      $cvterm = $schema->cvterms->find_by_accession($arg);
+      unless (defined $cvterm) {
+	$schema->defer_exception("Cannot find term for '$arg->{term_source_ref}:$arg->{term_accession_number}'.");
+      }
+    }
+  }
+  if ($cvterm) {
+    my $project_tag_root = $schema->types->project_tag_root;
+    unless ($project_tag_root->has_child($cvterm)) {
+      my $bad_name = $cvterm->name;
+      $schema->defer_exception("Ontology term '$bad_name' is not a valid project tag term.");
+      return undef;
+    }
+
+    my $project_tags_term = $schema->types->project_tags;
+    my ($multiprop) = $self->multiprops($project_tags_term);
+    my @tags;
+    if ($multiprop) {
+      my @cvterms = $multiprop->cvterms;
+      shift @cvterms; # remove first $project_tags_term
+      @tags = @cvterms;
+    }
+
+    if ($delete_mode) {
+      my @newtags = grep { $_->id != $cvterm->id } @tags;
+      return undef unless (@tags - @newtags == 1); # the tag for deletion wasn't there
+      @tags = @newtags;
+    } else {
+      # check if $cvterm is already there:
+      my $got_tag_already = grep { $_->id == $cvterm->id } @tags;
+      return undef if $got_tag_already;
+    }
+
+    # OK now we can add it (unless this is called by delete_tag)
+    push @tags, $cvterm unless $delete_mode;
+
+    # we may need to delete the existing multiprop
+    if ($multiprop) {
+      my $result = $self->delete_multiprop($multiprop);
+      die "fatal error - coudln't delete project_tags multiprop\n" unless $result;
+    }
+
+    # and add a new one back with the extra tag added
+    # it might be empty if we are in "do not add" mode
+    if (@tags) {
+      $self->add_multiprop(Multiprop->new(cvterms=>[ $project_tags_term, @tags ]));
+    }
+    return $cvterm;
+  }
+  return undef;
+}
+
+=head2 delete_tag
+
+delete a tag term
+
+the argument should be a cvterm object or a hashref specifying how to find it
+{ term_source_ref => 'VBcv', term_accession_number => '0001080'}
+
+returns the cvterm object if successful, undef if not
+
+=cut
+
+sub delete_tag {
+  my ($self, $arg) = @_;
+  return $self->add_tag($arg, "delete");
+}
+
 
 =head1 AUTHOR
 
