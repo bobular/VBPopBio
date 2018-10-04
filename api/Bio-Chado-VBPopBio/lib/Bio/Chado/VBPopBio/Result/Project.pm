@@ -912,6 +912,8 @@ sub as_isatab {
 
   my $isa = { studies => [ {} ] };
   my $study = $isa->{studies}[0];
+  my $schema = $self->result_source->schema;
+  my $types = $schema->types;
 
   $study->{study_title} = $self->name;
   $study->{study_description} = $self->description;
@@ -961,7 +963,6 @@ sub as_isatab {
       my $sample_name = $sample->name;
       $samples_data->{$sample_name} = $sample->as_isatab($study);
       while (my $dependent_project = $projects->next) {
-	my $schema = $self->result_source->schema;
 	my $dependent_project_id = $dependent_project->stable_id;
 	$schema->defer_exception_once("This project contains samples used in another dependent project $dependent_project_id. You must dump and delete that project first before dumping and deleting this one.");
       }
@@ -974,15 +975,34 @@ sub as_isatab {
   }
 
   # all props are study designs
+  my $project_tags_type = $types->project_tags;
+  my $study_design_type = $types->study_design;
+
   foreach my $prop ($self->multiprops) {
-    my ($sd, $design_type) = $prop->cvterms;
-    my $dbxref = $design_type->dbxref;
-    push @{$study->{study_designs}},
-      {
-       study_design_type => $design_type->name,
-       study_design_type_term_source_ref => $dbxref->db->name,
-       study_design_type_term_accession_number => $dbxref->accession,
-      };
+    my ($type, @cvterms) = $prop->cvterms;
+
+    if ($type->id == $study_design_type->id && @cvterms == 1) {
+      my ($design_type) = @cvterms;
+      my $dbxref = $design_type->dbxref;
+      push @{$study->{study_designs}},
+	{
+	 study_design_type => $design_type->name,
+	 study_design_type_term_source_ref => $dbxref->db->name,
+	 study_design_type_term_accession_number => $dbxref->accession,
+	};
+    } elsif ($type->id == $project_tags_type->id && @cvterms) {
+      foreach my $cvterm (@cvterms) {
+	my $dbxref = $cvterm->dbxref;
+	push @{$study->{study_tags}},
+	  {
+	   study_tag => $cvterm->name,
+	   study_tag_term_source_ref => $dbxref->db->name,
+	   study_tag_term_accession_number => $dbxref->accession,
+	  };
+      }
+    } else {
+      $schema->defer_exception_once("Unrecognised project multiprop in ISA-Tab output conversion (not a tag or design type).");
+    }
 
   }
 

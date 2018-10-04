@@ -1,4 +1,4 @@
-use Test::More tests => 18;
+use Test::More tests => 19;
 use strict;
 use JSON;
 use Bio::Chado::VBPopBio;
@@ -9,6 +9,9 @@ my $json = JSON->new->pretty;
 my $verbose = 0;		# print out JSON (or not)
 $schema->txn_do_deferred(
 			 sub {
+			   my $project_tags_type = $schema->types->project_tags;
+			   ok($project_tags_type, "got the multiprops term project_tags");
+
 			   my $project = $projects->create_from_isatab({ directory=>'../../test-data/Fallback-Species' });
 			   ok($project, "parsed OK");
 

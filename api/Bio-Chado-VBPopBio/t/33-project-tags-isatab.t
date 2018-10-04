@@ -1,4 +1,4 @@
-use Test::More tests => 2;
+use Test::More tests => 4;
 use strict;
 use JSON;
 use Bio::Chado::VBPopBio;
@@ -13,7 +13,10 @@ $schema->txn_do_deferred(
 			   ok($project, "parsed OK");
 
 			   # it should have two tags
-			   is(scalar $project->tags, 2, "Two tags loaded from ISA-Tab");
+			   my @tags = $project->tags; 
+			   is(scalar @tags, 2, "Two tags loaded from ISA-Tab");
+			   is($tags[0]->name, "insecticide resistance phenotyping", "First tag correct name");
+			   is($tags[1]->name, "insecticide resistance genotyping", "First tag correct name");
 
 			   $schema->defer_exception("This is the only exception we should see.");
 			 });
