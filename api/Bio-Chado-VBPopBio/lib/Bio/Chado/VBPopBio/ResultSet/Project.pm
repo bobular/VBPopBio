@@ -354,6 +354,59 @@ sub find_by_external_id {
   return undef;
 }
 
+=head2 search_by_tag {
+
+return ResultSet of Projects that are tagged with the given tag
+
+argument can be a Cvterm object or a hashref specification as follows:
+{ term_source_ref => 'VBcv', term_accession_number => '0001085'}
+
+
+Note: currently this does NOT return child-tagged projects when querying with a parent term.
+This would require pre-population of the cvtermpath table for all used project tags.
+Or perhaps the careful implementation of Bio::Schema::VBPopBio::Result::Cvterm::recursive_children
+We would want to make sure that $cvterm->populate_cvtermpath_children_if_needed() does not
+interfere with $cvterm->populate_cvtermpath_parents_if_needed().
+I have a hunch that after a leaf term has had populate_cvtermpath_parents_if_needed() called,
+its parents would all have at least one child, so the pre-recursion check would stop
+populate_cvtermpath_children_if_needed() on those parents from doing anything.
+Without such a check, these methods become very inefficient, as they keep overwriting
+data.
+
+=cut
+
+
+sub search_by_tag {
+  my ($self, $arg) = @_;
+  my $schema = $self->result_source->schema;
+
+  my $cvterm;
+  if (my $ref = ref($arg)) {
+    if ($ref =~ /Cvterm/) {
+      $cvterm = $arg;
+    } else {
+      $cvterm = $schema->cvterms->find_by_accession($arg);
+      unless (defined $cvterm) {
+	$schema->defer_exception("Cannot find term for '$arg->{term_source_ref}:$arg->{term_accession_number}'.");
+      }
+    }
+  }
+
+  # now check that $cvterm is a child of 'project tag'
+  my $project_tag_root = $schema->types->project_tag_root;
+  if ($cvterm && !$project_tag_root->has_child($cvterm)) {
+    $schema->defer_exception("Term provided for projects->search_by_tag is not a child of 'project tag'. No results will be returned.");
+    undef $cvterm;
+  }
+
+  # search for projects with a projectprop the same as $cvterm
+  return $self->search({
+			'projectprops.type_id' => $cvterm ? $cvterm->id : -1,
+		       }, { join => 'projectprops' });
+}
+
+
+
 =head2 stocks
 
 returns the stocks linked to the project via add_to_stocks()

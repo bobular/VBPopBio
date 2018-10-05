@@ -57,52 +57,6 @@ $schema->txn_do_deferred(
 			   is($rip_abundance_term->name, "abundance", "Deleted abundance term");
 			   is(scalar $project->tags, 0, "No tags left");
 
-			   $schema->defer_exception("This is the only exception we should see.");
+			   $schema->defer_exception("Don't worry about this exception and the one before it.");
 			 });
 
-#
-#			   my $res3 = $project->add_tag({ term_source_ref => 'VBcv', term_accession_number => '0001080'}); # ICEMR
-#			   is($res3, undef, "After adding a duplicate tag, undef expected.");
-#
-#
-#			   my $res4 = $project->add_tag("second-tag");
-#			   is($res4, "good-format,second-tag", "After adding a new tag, string expected.");
-#			   my @tags2 = $project->tags;
-#			   is(scalar @tags2, 2, "now two tags in array result");
-#			   my $res5 = $project->remove_tag("non-existent");
-#			   is($res5, undef, "Expected undef when trying to remove non-existent tag");
-#			   my $res6 = $project->remove_tag("good-format");
-#			   is($res6, "second-tag", "remaining tag is second-tag");
-#			   my @tags1 = $project->tags;
-#			   is(scalar @tags1, 1, "now one tag in array result");
-#			   # now remove the final remaining tag
-#			   my $res7 = $project->remove_tag("second-tag");
-#			   is($res7, undef, "no more tags left");
-#			   my @tags0 = $project->tags;
-#			   is(scalar @tags0, 0, "Same zero result from project->tags");
-#			   # just check we can add some back again
-#			   my $res8 = $project->tags("a,b,c,d,e,f,g,simple");
-#			   isnt($res8, undef, "return value OK after adding 8 tags");
-#			   my @tags8 = $project->tags;
-#			   is(scalar @tags8, 8, "and got 8 from project->tags");
-#			   # now check they are parsed from ISA-Tab OK
-#			   $project = $projects->create_from_isatab({ directory=>'../../test-data/Project-Tags' });
-#			   ok($project, "parsed Project-Tags ISA-Tab OK");
-#			   # it should have three tags!
-#			   my @tags3 = $project->tags;
-#			   is(scalar @tags3, 3, "Project-Tags ISA-Tab yielded three tags");
-#			   #
-#			   # now test the retrieval of projects by tags
-#			   #
-#			   my $projects_simple = $projects->search_by_tag('simple');
-#			   is($projects_simple->count, 2, "found 2 projects for tag 'simple'");
-#			   like($projects_simple->first->tags, qr/\bsimple\b/, "first project has simple tag");
-#			   # print out all projectprop values
-#			   # warn map { "$_\n" } $projects->search_related("projectprops")->get_column('value')->all;
-#			   # try to retrieve projects by a projectprop value that is not actually a tag
-#			   my $projects_none = $projects->search_by_tag('2009');
-#			   is($projects_none->count, 0, "shouldn't be any projects tagged '2009'");
-#			   # we were just pretending!
-#			   $schema->defer_exception("This is the only exception we should see.");
-#			 }
-#			);
