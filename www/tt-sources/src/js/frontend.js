@@ -210,7 +210,7 @@ function updateAssayFull(assay, element) {
 function updateProjectFull(project, element, sandbox) {
     if (sandbox && (sandbox == '0' || sandbox == 'false' || sandbox == 'no')) sandbox = 0;
 
-    project.props = merge_repeated_props(project.props);
+    //    project.props = merge_repeated_props(project.props);
     fillInObjectValues(project, element.down('#project_info')).removeClassName('hide_on_load');
     var index = 1;
     var vis_array = new Array();
@@ -504,6 +504,17 @@ function fillInObjectValues(object, element) {
 		items = items.first();
 	    }
 	    e.update(items.join(', '));
+	}
+    });
+
+    element.select('.object_value.comma_separated_cvterms').each(function(e){
+        items = jsonPath(object, '$.'+e.id);
+	if (items != null) {
+	    // if the first element is another array we'll join that instead
+	    if (Object.prototype.toString.call(items.first()) === '[object Array]') {
+		items = items.first();
+	    }
+	    e.update(items.collect(function(term){return renderCvterm(term)}).join(', '));
 	}
     });
 
@@ -1007,6 +1018,8 @@ function getPagedObjects(url, limits, spinner, callback) {
  * merge all the values into one prop
  *
  * can only merge cvterm,cvterm props (a prop can't hold >1 plain text values)
+ *
+ * DEPRECATED now that project->designs returns just the design cvterms
  */
 
 function merge_repeated_props(props) {

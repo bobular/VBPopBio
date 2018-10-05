@@ -1,6 +1,6 @@
-[% root = 'http://base.vectorbase.org:3030/' 
-   root_static = 'http://base.vectorbase.org:3030/'
+[% root = 'http://vb-dev.bio.ic.ac.uk:3030/' 
+   root_static = 'http://vb-dev.bio.ic.ac.uk:3030/'
    vb_root = 'http://www.vectorbase.org/'
-   json_root = 'http://base.vectorbase.org:3030/REST/'
+   json_root = 'http://vb-dev.bio.ic.ac.uk:3030/REST/'
    development_environment = 1
 %]

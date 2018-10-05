@@ -19,9 +19,9 @@ STUDY
 "Study Tag Term Source Ref"	VBcv	VBcv
 
 "STUDY DESIGN DESCRIPTORS"
-"Study Design Type"	"strain or line design"
-"Study Design Type Term Accession Number"	0001754
-"Study Design Type Term Source Ref"	EFO
+"Study Design Type"	"strain or line design"	"pathogenicity_design"
+"Study Design Type Term Accession Number"	0001754	0001761
+"Study Design Type Term Source Ref"	EFO	EFO
 
 "STUDY PUBLICATIONS"
 "Study PubMed ID"	19655174

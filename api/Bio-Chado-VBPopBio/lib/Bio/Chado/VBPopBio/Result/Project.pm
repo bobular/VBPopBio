@@ -832,7 +832,8 @@ sub as_data_structure {
 	  vis_configs => $self->vis_configs,
 	  publications => [ map { $_->as_data_structure } $self->publications ],
 	  contacts => [ map { $_->as_data_structure } $self->contacts ],
-	  props => [ map { $_->as_data_structure } $self->multiprops ],
+	  tags => [ map { $_->as_data_structure } $self->tags ],
+	  designs => [ map { $_->as_data_structure } $self->designs ],
 	  ($depth > 0) ? (stocks => [ map { $_->as_data_structure($depth-1, $self) } $self->stocks->ordered_by_id ]) : (),
 	 };
 }
@@ -1189,6 +1190,21 @@ returns the cvterm object if successful, undef if not
 sub delete_tag {
   my ($self, $arg) = @_;
   return $self->add_tag($arg, "delete");
+}
+
+
+=head2 designs
+
+get an array of design cvterm objects
+
+=cut
+
+sub designs {
+  my ($self) = @_;
+  my @designs;
+  my $study_design_term = $self->result_source->schema->types->study_design;
+  my @props = $self->multiprops($study_design_term);
+  return map { my @cvterms = $_->cvterms; shift @cvterms; @cvterms } @props;
 }
 
 
