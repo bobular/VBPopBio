@@ -1,0 +1,64 @@
+[% INCLUDE header.html
+title = 'VectorBase Population Browser - Tag'
+js = [ 'https://ajax.googleapis.com/ajax/libs/prototype/1.7.2.0/prototype.js', 'js/config.js', 'js/phenovis-0.01.js', 'js/frontend.js' ]
+%]
+
+<div class="vbpg_object_info tag hide_on_load" id="tag_info">
+  [% IF development_environment %]<h1>Tag: <span class="object_value scalar" id="name"></span></h1>[% END %]
+  <table>
+   <tbody>
+    <tr>
+      <th class="row_heading">Name</th>
+      <td class="object_value scalar" id="name"></td>
+    </tr>
+   </tbody>
+   <tbody class="object_value clear_if_missing" id="definition">
+    <tr>
+      <th class="row_heading">Description</th>
+      <td class="object_value scalar" id="definition"></td>
+    </tr>
+   </tbody>
+   <tbody class="object_value clear_if_missing" id="synonyms">
+    <tr>
+      <th class="row_heading">Synonyms</th>
+      <td class="object_value comma_separated scalar" id="synonyms"></td>
+    </tr>
+   </tbody>
+  </table>
+</div>
+<div id="projects">
+
+  <h1 class="vbpg_progress"></h1>
+
+  [% IF development_environment %] [% title='Projects' %] [% END %]
+  [% INCLUDE 'list/projects.html' id='project_list' %]
+
+   </div>
+
+<script type="text/javascript">
+  var projects = $('project_list');
+  var spinner = projects.down('.vbpg_progress');
+
+  params = document.location.search.toQueryParams();
+  if (params.id && params.id.match("^\\w+:\\d+$")) {
+    var url = 'tag/'+params.id+'/projects';
+    var limits = {
+                  offset: 0,
+                  limit: 20
+    };
+
+    getPagedObjects(url, limits, spinner,
+      function(page) {
+        fillInPagedListValues(page, projects, url, limits); //down('.hide_on_load').removeClassName('hide_on_load');
+      });
+
+    var tagInfo = $('tag_info');
+    var url2 = 'cvterm/'+params.id;
+    getObject(url2, null, function(page) {
+     fillInObjectValues(page, tagInfo).removeClassName('hide_on_load');
+    });
+
+  }
+</script>
+
+[% INCLUDE footer.html %]

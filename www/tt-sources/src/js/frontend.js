@@ -518,6 +518,17 @@ function fillInObjectValues(object, element) {
 	}
     });
 
+    element.select('.object_value.comma_separated_tags').each(function(e){
+        items = jsonPath(object, '$.'+e.id);
+	if (items != null) {
+	    // if the first element is another array we'll join that instead
+	    if (Object.prototype.toString.call(items.first()) === '[object Array]') {
+		items = items.first();
+	    }
+	    e.update(items.collect(function(term){return renderTag(term)}).join(', '));
+	}
+    });
+
     element.select('.object_value.cvterm').each(function(e){
 	e.update(renderCvterm(jsonPath(object, '$.'+e.id).first())); // renderCvterm can't handle a list of one
     });
@@ -833,6 +844,18 @@ function renderCvterm(term) {
 	    var classes = term.accession.match(/^VBsp:/) ? "cvterm species_name" : "cvterm";
 	    return '<span class="'+classes+'" title="Click for more information about this ontology term." accession="'+term.accession+'" onclick="handle_cvterm_click(this)">'+term.name+'</span>';
 
+	} else {
+	    return term.name;
+	}
+    } else {
+	return '';
+    }
+}
+
+function renderTag(term) {
+    if (term != null) {
+	if (term.accession.match(/^\w+:\d+$/)) {
+	    return '<a class="tag" title="See projects with this tag." href="'+config.ROOT+'tag/?id='+term.accession+'">'+term.name+'</a>';
 	} else {
 	    return term.name;
 	}
