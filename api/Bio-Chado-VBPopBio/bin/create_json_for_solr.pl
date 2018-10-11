@@ -74,6 +74,8 @@ my $ac_config =
     geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    tags_cvterms =>                 { type => "Tag", cvterms => 1 },
+    license_cvterms =>              { type => "Licence", cvterms => 1 },
    },
    pop_sample_phenotype => 
    {
@@ -89,6 +91,8 @@ my $ac_config =
     geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    tags_cvterms =>                 { type => "Tag", cvterms => 1 },
+    license_cvterms =>              { type => "Licence", cvterms => 1 },
     # IR view
     insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
     # pathogen view
@@ -109,6 +113,8 @@ my $ac_config =
     geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    tags_cvterms =>                 { type => "Tag", cvterms => 1 },
+    license_cvterms =>              { type => "Licence", cvterms => 1 },
     # genotype specific:
     genotype_name_s =>              { type => "Allele" },  # this could be tricky if we add microsats
     locus_name_s =>                 { type => "Locus" },
@@ -249,18 +255,24 @@ my $study_design_type = $schema->types->study_design;
 my $start_date_type = $schema->types->start_date;
 my $end_date_type = $schema->types->end_date;
 my $date_type = $schema->types->date;
+my $usage_license_term = $schema->types->usage_license;
 
 # remember some project info for sample docs
 my %project2title;
 my %project2authors;
 my %project2pubmed; # PMIDs
 my %project2citations; # PMID or DOI or URL
-
+my %project2tags; # project id => [ tag_cvterm_objects ]
+my %project2licenses; # project id => [ tag_cvterm_objects ]
 
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
   my @design_terms = map { $_->cvterms->[1] } $project->multiprops($study_design_type);
   my @publications = $project->publications;
+  my @tag_terms = $project->tags;
+  my @license_terms = grep { $usage_license_term->has_child($_) } @tag_terms;
+  @tag_terms = grep { ! $usage_license_term->has_child($_) } @tag_terms;
+
   my $document = ohr(
 		    label => $project->name,
 		    id => $stable_id,
@@ -290,6 +302,12 @@ while (my $project = $projects->next) {
 		    exp_citations_ss => [ map { $_->pubmed_id ? "PMID:".$_->pubmed_id : (),
 						$_->doi ? "DOI:".$_->doi : (),
 						$_->url || () } @publications ],
+
+		    tags_ss => [ map { $_->name } @tag_terms ],
+		    tags_cvterms => [ map { flattened_parents($_) } @tag_terms ],
+
+		    licenses_ss => [ map { $_->name } @license_terms ],
+		    licenses_cvterms => [ map { flattened_parents($_) } @license_terms ],
 		    );
 
   print_document($output_prefix, $document, $ac_config) if (!defined $wanted_project_ids || $wanted_projects{$stable_id});
@@ -298,6 +316,7 @@ while (my $project = $projects->next) {
   $project2authors{$stable_id} = $document->{authors};
   $project2pubmed{$stable_id} = $document->{pubmed};
   $project2citations{$stable_id} = $document->{exp_citations_ss};
+  $project2tags{$stable_id} = \@tag_terms;
 }
 
 #
@@ -416,6 +435,9 @@ while (my $stock = $stocks->next) {
 		    exp_citations_ss => [ (map { "PMID:$_" } multiprops_pubmed_ids($stock)),
 				(map { @{$project2citations{$_}} } @projects)
 			      ],
+
+		    tags_ss => [ map { $_->name } map { @{$project2tags{$_}} } @projects ],
+		    tags_cvterms => [ map { flattened_parents($_) } map { @{$project2tags{$_}} } @projects ],
 
 		    sample_karyotype_fields(@genotypes),
 

@@ -695,7 +695,20 @@ sub project_tag_root {
 							} );
   return $term;
 }
-memoize('project_tags');
+memoize('project_tag_root');
+
+=head2 license_tag_root
+
+=cut
+
+sub usage_license {
+  my $self = shift;
+  my $term = $self->schema->cvterms->find_by_accession( { term_source_ref => 'VBcv',
+							  term_accession_number => '0001099',
+							} );
+  return $term;
+}
+memoize('usage_license');
 
 
 #
