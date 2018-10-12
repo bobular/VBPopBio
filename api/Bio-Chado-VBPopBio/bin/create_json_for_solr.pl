@@ -75,7 +75,7 @@ my $ac_config =
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
-    license_cvterms =>              { type => "Licence", cvterms => 1 },
+    licenses_cvterms =>              { type => "Licence", cvterms => 1 },
    },
    pop_sample_phenotype => 
    {
@@ -92,7 +92,7 @@ my $ac_config =
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
-    license_cvterms =>              { type => "Licence", cvterms => 1 },
+    licenses_cvterms =>              { type => "Licence", cvterms => 1 },
     # IR view
     insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
     # pathogen view
@@ -114,7 +114,7 @@ my $ac_config =
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
-    license_cvterms =>              { type => "Licence", cvterms => 1 },
+    licenses_cvterms =>              { type => "Licence", cvterms => 1 },
     # genotype specific:
     genotype_name_s =>              { type => "Allele" },  # this could be tricky if we add microsats
     locus_name_s =>                 { type => "Locus" },
@@ -317,6 +317,7 @@ while (my $project = $projects->next) {
   $project2pubmed{$stable_id} = $document->{pubmed};
   $project2citations{$stable_id} = $document->{exp_citations_ss};
   $project2tags{$stable_id} = \@tag_terms;
+  $project2licenses{$stable_id} = \@license_terms;
 }
 
 #
@@ -438,6 +439,9 @@ while (my $stock = $stocks->next) {
 
 		    tags_ss => [ map { $_->name } map { @{$project2tags{$_}} } @projects ],
 		    tags_cvterms => [ map { flattened_parents($_) } map { @{$project2tags{$_}} } @projects ],
+
+		    licenses_ss => [ map { $_->name } map { @{$project2licenses{$_}} } @projects ],
+		    licenses_cvterms => [ map { flattened_parents($_) } map { @{$project2licenses{$_}} } @projects ],
 
 		    sample_karyotype_fields(@genotypes),
 
