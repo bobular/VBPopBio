@@ -711,6 +711,54 @@ sub usage_license {
 memoize('usage_license');
 
 
+
+=head2 sex
+
+ISA-Tab Characteristics column heading for sex/gender
+
+=cut
+
+sub sex {
+  my $self = shift;
+  my $term = $self->schema->cvterms->find_by_accession( { term_source_ref => 'EFO',
+							  term_accession_number => '0000695',
+							} );
+  return $term;
+}
+memoize('sex');
+
+
+=head2 developmental_stage
+
+ISA-Tab Characteristics column heading for developmental_stage
+
+=cut
+
+sub developmental_stage {
+  my $self = shift;
+  my $term = $self->schema->cvterms->find_by_accession( { term_source_ref => 'IDOMAL',
+							  term_accession_number => '0000655',
+							} );
+  return $term;
+}
+memoize('developmental_stage');
+
+
+=head2 attractant
+
+ISA-Tab Characteristics column heading for attractant
+
+=cut
+
+sub attractant {
+  my $self = shift;
+  my $term = $self->schema->cvterms->find_by_accession( { term_source_ref => 'IRO',
+							  term_accession_number => '0000034',
+							} );
+  return $term;
+}
+memoize('attractant');
+
 #
 # this is a subsection - please add new terms above the previous head1
 #
