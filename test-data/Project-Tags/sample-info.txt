@@ -1,0 +1,4 @@
+# Project Study-Tags-Example (VBP0000002) loaded into database popbio-base-data-v5 (which contained 0 projects) by maccallr on Thu Oct  4 10:51:15 2018
+#Sample Name	VB PopBio Stable ID	VCF file(s)	Species	Comments...
+Corrales-El Playón	VBS0000003		Anopheles nuneztovari	age	Age not known due to collection method
+Encharcazón	VBS0000004		Anopheles funestus sensu lato	age	Age not known due to collection method

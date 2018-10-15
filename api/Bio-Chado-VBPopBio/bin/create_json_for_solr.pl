@@ -74,6 +74,10 @@ my $ac_config =
     geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    tags_cvterms =>                 { type => "Tag", cvterms => 1 },
+    licenses_cvterms =>             { type => "License", cvterms => 1 },
+    attractants_cvterms =>          { type => "Attractant", cvterms => 1 },
+    sex_s =>                        { type => "Sex" },
    },
    pop_sample_phenotype => 
    {
@@ -89,6 +93,9 @@ my $ac_config =
     geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    tags_cvterms =>                 { type => "Tag", cvterms => 1 },
+    licenses_cvterms =>             { type => "License", cvterms => 1 },
+    sex_s =>                        { type => "Sex" },
     # IR view
     insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
     # pathogen view
@@ -109,6 +116,9 @@ my $ac_config =
     geolocations_cvterms =>         { type => "Geography", cvterms => 1 },
     collection_protocols_cvterms => { type => "Collection protocol", cvterms => 1 },
     protocols_cvterms =>            { type => "Protocol", cvterms => 1 },
+    tags_cvterms =>                 { type => "Tag", cvterms => 1 },
+    licenses_cvterms =>             { type => "License", cvterms => 1 },
+    sex_s =>                        { type => "Sex" },
     # genotype specific:
     genotype_name_s =>              { type => "Allele" },  # this could be tricky if we add microsats
     locus_name_s =>                 { type => "Locus" },
@@ -151,94 +161,98 @@ if (defined $wanted_project_ids) {
 }
 
 
+# the following looks ripe for refactoring...
+
 # 'bioassay' MIRO:20000058
 # because unfortunately we have used MIRO:20000100 (PCR amplification of specific alleles)
 # to describe genotype assays totally unrelated to insecticide resistance
 my $ir_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
-							       term_accession_number => '20000058' });
+							       term_accession_number => '20000058' }) || die;
 
 my $dose_response_test_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
-								 term_accession_number => '20000076' });
+								 term_accession_number => '20000076' }) || die;
 
 
 # insecticidal substance
 my $insecticidal_substance = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
-							       term_accession_number => '10000239' });
+							       term_accession_number => '10000239' }) || die;
 
 # quantitative qualifier
 my $quantitative_qualifier = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
-							       term_accession_number => '0000702' });
+							       term_accession_number => '0000702' }) || die;
 
 my $concentration_term = $schema->cvterms->find_by_accession({ term_source_ref => 'PATO',
-							       term_accession_number => '0000033' });
+							       term_accession_number => '0000033' }) || die;
 
 my $duration_term = $schema->cvterms->find_by_accession({ term_source_ref => 'EFO',
-							       term_accession_number => '0000433' });
+							       term_accession_number => '0000433' }) || die;
 
 my $sample_size_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
-							       term_accession_number => '0000983' });
+							       term_accession_number => '0000983' }) || die;
 
 my $chromosomal_inversion_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO', 
-                      term_accession_number => '1000030' });
+                      term_accession_number => '1000030' }) || die;
 
 my $inversion_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
-                     term_accession_number => '1000036' });
+                     term_accession_number => '1000036' }) || die;
 
 my $genotype_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
-                     term_accession_number => '0001027' });
+                     term_accession_number => '0001027' }) || die;
 
 my $karyotype_term = $schema->cvterms->find_by_accession({ term_source_ref => 'EFO',
-                     term_accession_number => '0004426' });
+                     term_accession_number => '0004426' }) || die;
 
 my $count_unit_term = $schema->cvterms->find_by_accession({ term_source_ref => 'UO',
-                     term_accession_number => '0000189' });
+                     term_accession_number => '0000189' }) || die;
 
 my $percent_term = $schema->cvterms->find_by_accession({ term_source_ref => 'UO',
-							 term_accession_number => '0000187' });
+							 term_accession_number => '0000187' }) || die;
 
 my $simple_sequence_length_polymorphism_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
-										     term_accession_number => '0000207' });
+										     term_accession_number => '0000207' }) || die;
 
 my $microsatellite_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
-								term_accession_number => '0000289' });
+								term_accession_number => '0000289' }) || die;
 
 my $length_term = $schema->cvterms->find_by_accession({ term_source_ref => 'PATO',
-							term_accession_number => '0000122' });
+							term_accession_number => '0000122' }) || die;
 
 my $mutated_protein_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDOMAL',
-								 term_accession_number => '50000004' });
+								 term_accession_number => '50000004' }) || die;
 
 my $wild_type_allele_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
-								 term_accession_number => '0000001' });
+								 term_accession_number => '0000001' }) || die;
 
 my $variant_frequency_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
-								   term_accession_number => '0001763' });
+								   term_accession_number => '0001763' }) || die;
 
 my $reference_genome_term = $schema->cvterms->find_by_accession({ term_source_ref => 'SO',
-								   term_accession_number => '0001505' });
+								   term_accession_number => '0001505' }) || die;
 
 my $blood_meal_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
-							    term_accession_number => '0001003' });
+							    term_accession_number => '0001003' }) || die;
 
 my $blood_meal_source_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
-								   term_accession_number => '0001004' });
+								   term_accession_number => '0001004' }) || die;
 
 my $arthropod_infection_status_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VSMO',
-									    term_accession_number => '0000009' });
+									    term_accession_number => '0000009' }) || die;
 
 my $arthropod_host_blood_index_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VSMO',
-									    term_accession_number => '0000132' });
+									    term_accession_number => '0000132' }) || die;
 
 my $parent_term_of_present_absent = $schema->cvterms->find_by_accession({ term_source_ref => 'PATO',
-									  term_accession_number => '0000070' });
+									  term_accession_number => '0000070' }) || die;
 
 my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDO',
-								      term_accession_number => '0000486' });
+								      term_accession_number => '0000486' }) || die;
 
 my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
-								      term_accession_number => '0000123' });
-die "critical 'sequence variant position' term not in Chado\n" unless (defined $sequence_variant_position);
+								      term_accession_number => '0000123' }) || die;
 
+my $sex_heading_term = $schema->types->sex;
+my $developmental_stage_term = $schema->types->developmental_stage;
+my $attractant_term = $schema->types->attractant;
 my $sar_term = $schema->types->species_assay_result;
 
 my $iso8601 = DateTime::Format::ISO8601->new;
@@ -249,18 +263,24 @@ my $study_design_type = $schema->types->study_design;
 my $start_date_type = $schema->types->start_date;
 my $end_date_type = $schema->types->end_date;
 my $date_type = $schema->types->date;
+my $usage_license_term = $schema->types->usage_license;
 
 # remember some project info for sample docs
 my %project2title;
 my %project2authors;
 my %project2pubmed; # PMIDs
 my %project2citations; # PMID or DOI or URL
-
+my %project2tags; # project id => [ tag_cvterm_objects ]
+my %project2licenses; # project id => [ tag_cvterm_objects ]
 
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
   my @design_terms = map { $_->cvterms->[1] } $project->multiprops($study_design_type);
   my @publications = $project->publications;
+  my @tag_terms = $project->tags;
+  my @license_terms = grep { $usage_license_term->has_child($_) } @tag_terms;
+  @tag_terms = grep { ! $usage_license_term->has_child($_) } @tag_terms;
+
   my $document = ohr(
 		    label => $project->name,
 		    id => $stable_id,
@@ -290,6 +310,12 @@ while (my $project = $projects->next) {
 		    exp_citations_ss => [ map { $_->pubmed_id ? "PMID:".$_->pubmed_id : (),
 						$_->doi ? "DOI:".$_->doi : (),
 						$_->url || () } @publications ],
+
+		    tags_ss => [ map { $_->name } @tag_terms ],
+		    tags_cvterms => [ map { flattened_parents($_) } @tag_terms ],
+
+		    licenses_ss => [ map { $_->name } @license_terms ],
+		    licenses_cvterms => [ map { flattened_parents($_) } @license_terms ],
 		    );
 
   print_document($output_prefix, $document, $ac_config) if (!defined $wanted_project_ids || $wanted_projects{$stable_id});
@@ -298,6 +324,8 @@ while (my $project = $projects->next) {
   $project2authors{$stable_id} = $document->{authors};
   $project2pubmed{$stable_id} = $document->{pubmed};
   $project2citations{$stable_id} = $document->{exp_citations_ss};
+  $project2tags{$stable_id} = \@tag_terms;
+  $project2licenses{$stable_id} = \@license_terms;
 }
 
 #
@@ -360,6 +388,10 @@ while (my $stock = $stocks->next) {
     $assay_date_fields{collection_duration_days_i} &&
       $sample_type eq 'pool';
 
+  my ($sex_value_term) = map { ($_->cvterms)[1] } $stock->multiprops($sex_heading_term);
+  my @dev_stage_terms = map { ($_->cvterms)[1] } $stock->multiprops($developmental_stage_term);
+  my @attractant_terms = map { ($_->cvterms)[1] } map { $_->multiprops($attractant_term) } @field_collections;
+
   my $document = ohr(
 		    label => $stock->name,
 		    id => $stable_id,
@@ -417,6 +449,12 @@ while (my $stock = $stocks->next) {
 				(map { @{$project2citations{$_}} } @projects)
 			      ],
 
+		    tags_ss => [ map { $_->name } map { @{$project2tags{$_}} } @projects ],
+		    tags_cvterms => [ map { flattened_parents($_) } map { @{$project2tags{$_}} } @projects ],
+
+		    licenses_ss => [ map { $_->name } map { @{$project2licenses{$_}} } @projects ],
+		    licenses_cvterms => [ map { flattened_parents($_) } map { @{$project2licenses{$_}} } @projects ],
+
 		    sample_karyotype_fields(@genotypes),
 
 		    project_titles_txt => [ map { $project2title{$_} } @projects ],
@@ -430,6 +468,17 @@ while (my $stock = $stocks->next) {
 		    (defined $sample_size ? (sample_size_i => $sample_size) : ()),
 
 		     has_abundance_data_b => $has_abundance_data ? 1 : 0,
+
+		     (defined $sex_value_term ? ( sex_s => $sex_value_term->name,
+						  sex_cvterms => [ flattened_parents($sex_value_term) ] ) : ()),
+
+		     (@dev_stage_terms>0 ? ( dev_stages_ss => [ map { $_->name } @dev_stage_terms ],
+					     dev_stages_cvterms => [ map { flattened_parents($_) } @dev_stage_terms ] ) : ()),
+
+		     (@attractant_terms>0 ? ( attractants_ss => [ map { $_->name } @attractant_terms ],
+					      attractants_cvterms => [ map { flattened_parents($_) } @attractant_terms ] ) : ()),
+
+
 		     );
 
   fallback_value($document->{collection_protocols}, 'no data');

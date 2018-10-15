@@ -114,17 +114,13 @@ get qr{/projects/head} => sub {
 
     memcached_get_or_set("projects$head-$o-$l", sub {
 
-                           # for ordering by submission date
-                           my $sub_date_type = schema->types->submission_date;
-
 			   my $results = schema->projects->search(
-								  { 'projectprops.type_id' => $sub_date_type->id },
+								  { },
 								  {
 								   rows => $l,
 								   offset => $o,
 								   page => 1,
-								   join => 'projectprops',
-								   order_by => [ 'projectprops.value', 'me.name' ]
+								   order_by => { -desc => 'project_id' }
 								  },
 								 );
 			   my $depth = $head ? 0 : undef;
@@ -364,6 +360,45 @@ get qr{/cvterm/(\w+):(\w+)} => sub {
 			   }
 			 });
   };
+
+#
+# TAGS
+#
+
+# Projects by tag
+#
+# only returns "head" information
+#
+# only returns projects directly tagged with the tag,
+# doesn't do any parent/child stuff
+#
+
+get qr{/tag/(\w+):(\d+)/projects} => sub {
+    my ($ref, $accession) = splat;
+    my $l = params->{l} || 20;
+    my $o = params->{o} || 0;
+    memcached_get_or_set("tag-$ref-$accession-projects-$o-$l", sub {
+			      my $results = schema->projects->search_by_tag({
+									     term_source_ref=>$ref,
+									     term_accession_number=>$accession,
+									    })->search(
+											  { },
+											  {
+											      rows => $l,
+											      offset => $o,
+											      page => 1,
+											     },
+											   );
+			         my $depth = 0; # just the shallow information
+			         return {
+					    records => [ map { $_->as_data_structure($depth) } $results->all ],
+					    records_info($o, $l, $results)
+					   };
+			       });
+  };
+
+
+
 
 # fall back 404
 any qr{.*} => sub {

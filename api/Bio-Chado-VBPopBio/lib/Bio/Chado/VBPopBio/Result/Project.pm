@@ -19,6 +19,7 @@ __PACKAGE__->subclass({
 #__PACKAGE__->resultset_attributes({ order_by => 'project_id' });
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprops';
+use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 use aliased 'Bio::Chado::VBPopBio::Util::Extra';
 use aliased 'Bio::Chado::VBPopBio::Util::Date';
 use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
@@ -659,6 +660,25 @@ sub add_multiprop {
     );
 }
 
+=head2 delete_multiprop
+
+Usage: my $success = $stock->delete_multiprop($multiprop)
+
+returns true (the multiprop object) if an exact copy of the multiprop is found and deleted,
+or false (undef) otherwise
+
+=cut
+
+sub delete_multiprop {
+  my ($self, $multiprop) = @_;
+
+  return Multiprops->delete_multiprop
+    ( multiprop => $multiprop,
+      row => $self,
+      prop_relation_name => 'projectprops',
+    );
+}
+
 =head2 multiprops
 
 get a arrayref of multiprops
@@ -812,7 +832,8 @@ sub as_data_structure {
 	  vis_configs => $self->vis_configs,
 	  publications => [ map { $_->as_data_structure } $self->publications ],
 	  contacts => [ map { $_->as_data_structure } $self->contacts ],
-	  props => [ map { $_->as_data_structure } $self->multiprops ],
+	  tags => [ map { $_->as_data_structure } $self->tags ],
+	  designs => [ map { $_->as_data_structure } $self->designs ],
 	  ($depth > 0) ? (stocks => [ map { $_->as_data_structure($depth-1, $self) } $self->stocks->ordered_by_id ]) : (),
 	 };
 }
@@ -892,6 +913,8 @@ sub as_isatab {
 
   my $isa = { studies => [ {} ] };
   my $study = $isa->{studies}[0];
+  my $schema = $self->result_source->schema;
+  my $types = $schema->types;
 
   $study->{study_title} = $self->name;
   $study->{study_description} = $self->description;
@@ -941,7 +964,6 @@ sub as_isatab {
       my $sample_name = $sample->name;
       $samples_data->{$sample_name} = $sample->as_isatab($study);
       while (my $dependent_project = $projects->next) {
-	my $schema = $self->result_source->schema;
 	my $dependent_project_id = $dependent_project->stable_id;
 	$schema->defer_exception_once("This project contains samples used in another dependent project $dependent_project_id. You must dump and delete that project first before dumping and deleting this one.");
       }
@@ -954,15 +976,34 @@ sub as_isatab {
   }
 
   # all props are study designs
+  my $project_tags_type = $types->project_tags;
+  my $study_design_type = $types->study_design;
+
   foreach my $prop ($self->multiprops) {
-    my ($sd, $design_type) = $prop->cvterms;
-    my $dbxref = $design_type->dbxref;
-    push @{$study->{study_designs}},
-      {
-       study_design_type => $design_type->name,
-       study_design_type_term_source_ref => $dbxref->db->name,
-       study_design_type_term_accession_number => $dbxref->accession,
-      };
+    my ($type, @cvterms) = $prop->cvterms;
+
+    if ($type->id == $study_design_type->id && @cvterms == 1) {
+      my ($design_type) = @cvterms;
+      my $dbxref = $design_type->dbxref;
+      push @{$study->{study_designs}},
+	{
+	 study_design_type => $design_type->name,
+	 study_design_type_term_source_ref => $dbxref->db->name,
+	 study_design_type_term_accession_number => $dbxref->accession,
+	};
+    } elsif ($type->id == $project_tags_type->id && @cvterms) {
+      foreach my $cvterm (@cvterms) {
+	my $dbxref = $cvterm->dbxref;
+	push @{$study->{study_tags}},
+	  {
+	   study_tag => $cvterm->name,
+	   study_tag_term_source_ref => $dbxref->db->name,
+	   study_tag_term_accession_number => $dbxref->accession,
+	  };
+      }
+    } else {
+      $schema->defer_exception_once("Unrecognised project multiprop in ISA-Tab output conversion (not a tag or design type).");
+    }
 
   }
 
@@ -1044,6 +1085,128 @@ sub as_cytoscape_graph {
 
   return $graph;
 }
+
+=head2 tags
+
+get an array of tag cvterm objects
+
+=cut
+
+sub tags {
+  my ($self) = @_;
+  my @tags;
+  my $project_tags_term = $self->result_source->schema->types->project_tags;
+  my ($multiprop) = $self->multiprops($project_tags_term);
+  if ($multiprop) {
+    my @cvterms = $multiprop->cvterms;
+    shift @cvterms; # remove first $project_tags_term
+    @tags = @cvterms;
+  }
+  return @tags;
+}
+
+=head2 add_tag
+
+add a tag term
+
+the argument should be a cvterm object or a hashref specifying how to find it
+{ term_source_ref => 'VBcv', term_accession_number => '0001080'}
+
+returns the cvterm object if successful, undef if not
+
+=cut
+
+sub add_tag {
+  my ($self, $arg, $delete_mode) = @_;
+  my $schema = $self->result_source->schema;
+  my $cvterm;
+  if (my $ref = ref($arg)) {
+    if ($ref =~ /Cvterm/) {
+      $cvterm = $arg;
+    } else {
+      $cvterm = $schema->cvterms->find_by_accession($arg);
+      unless (defined $cvterm) {
+	$schema->defer_exception("Cannot find term for '$arg->{term_source_ref}:$arg->{term_accession_number}'.");
+      }
+    }
+  }
+  if ($cvterm) {
+    my $project_tag_root = $schema->types->project_tag_root;
+    unless ($project_tag_root->has_child($cvterm)) {
+      my $bad_name = $cvterm->name;
+      $schema->defer_exception("Ontology term '$bad_name' is not a valid project tag term.");
+      return undef;
+    }
+
+    my $project_tags_term = $schema->types->project_tags;
+    my ($multiprop) = $self->multiprops($project_tags_term);
+    my @tags;
+    if ($multiprop) {
+      my @cvterms = $multiprop->cvterms;
+      shift @cvterms; # remove first $project_tags_term
+      @tags = @cvterms;
+    }
+
+    if ($delete_mode) {
+      my @newtags = grep { $_->id != $cvterm->id } @tags;
+      return undef unless (@tags - @newtags == 1); # the tag for deletion wasn't there
+      @tags = @newtags;
+    } else {
+      # check if $cvterm is already there:
+      my $got_tag_already = grep { $_->id == $cvterm->id } @tags;
+      return undef if $got_tag_already;
+    }
+
+    # OK now we can add it (unless this is called by delete_tag)
+    push @tags, $cvterm unless $delete_mode;
+
+    # we may need to delete the existing multiprop
+    if ($multiprop) {
+      my $result = $self->delete_multiprop($multiprop);
+      die "fatal error - coudln't delete project_tags multiprop\n" unless $result;
+    }
+
+    # and add a new one back with the extra tag added
+    # it might be empty if we are in "do not add" mode
+    if (@tags) {
+      $self->add_multiprop(Multiprop->new(cvterms=>[ $project_tags_term, @tags ]));
+    }
+    return $cvterm;
+  }
+  return undef;
+}
+
+=head2 delete_tag
+
+delete a tag term
+
+the argument should be a cvterm object or a hashref specifying how to find it
+{ term_source_ref => 'VBcv', term_accession_number => '0001080'}
+
+returns the cvterm object if successful, undef if not
+
+=cut
+
+sub delete_tag {
+  my ($self, $arg) = @_;
+  return $self->add_tag($arg, "delete");
+}
+
+
+=head2 designs
+
+get an array of design cvterm objects
+
+=cut
+
+sub designs {
+  my ($self) = @_;
+  my @designs;
+  my $study_design_term = $self->result_source->schema->types->study_design;
+  my @props = $self->multiprops($study_design_term);
+  return map { my @cvterms = $_->cvterms; shift @cvterms; @cvterms } @props;
+}
+
 
 =head1 AUTHOR
 
