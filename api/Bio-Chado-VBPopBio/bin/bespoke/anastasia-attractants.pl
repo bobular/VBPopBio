@@ -34,9 +34,9 @@ $schema->txn_do_deferred
       my $attractant_heading = $schema->types->attractant;
       my %done_collection_id;
       my %term_cache;
-
+      my %seen_projects;
       while (<>) {
-	my ($sample_id, $proj, $name, $attractants, $terms) = split;
+	my ($sample_id, $project_id, $name, $attractants, $terms) = split;
 	next unless ($sample_id && $terms);
 	my $sample = $samples->find_by_stable_id($sample_id) || die;
 	foreach my $collection ($sample->field_collections) {
@@ -47,9 +47,16 @@ $schema->txn_do_deferred
 		$cvterms->find_by_accession({ term_source_ref => $1,
 					      term_accession_number => $2 }) : undef;
 	    $collection->add_multiprop(Multiprop->new(cvterms=>[$attractant_heading, $attractant_term]));
+	    $seen_projects{$project_id}++;
 	  }
 	}
       }
+      # update the timestamp on each project
+      foreach my $project_id (keys %seen_projects) {
+	my $project = $schema->projects->find_by_stable_id($project_id);
+	$project->update_modification_date() if ($project);
+      }
+
       $schema->defer_exception("dry-run option - rolling back") if ($dry_run);
     } );
 
