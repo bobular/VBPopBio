@@ -57,8 +57,9 @@ $schema->txn_do_deferred
 	    }
 	  }
 
+	  # this was broken before (it was $protocol->name)
 	  foreach my $protocol ($collection->nd_protocols) {
-	    if ($protocol->name eq 'baited light trap catch') {
+	    if ($protocol->type->name eq 'baited light trap catch') {
 	      $protocol->type_id($CDC_light_trap_id);
 	      $protocol->update;
 	    }
