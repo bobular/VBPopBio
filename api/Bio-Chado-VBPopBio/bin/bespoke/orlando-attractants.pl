@@ -39,6 +39,7 @@ $schema->txn_do_deferred
       my $date_type = $schema->types->date;
 
       foreach my $project_id ('VBP0000257'..'VBP0000262') {
+	warn "processing $project_id...\n";
 	my $project = $schema->projects->find_by_stable_id($project_id);
 	$project->update_modification_date() if ($project);
 
@@ -49,7 +50,8 @@ $schema->txn_do_deferred
 	    if ($date lt '2006-05-01') {
 	      $collection->add_multiprop(Multiprop->new(cvterms=>[$attractant_heading, $light_term]));
 	    } else {
-	      die " need to check if this is the correct way to add multiple terms ";
+	      # the following is the correct way to add multiple values
+	      # for an ISA-Tab "characteristic column", as seen in Multiprops::add_multiprops_from_isatab_characteristics()
 	      $collection->add_multiprop(Multiprop->new(cvterms=>[$attractant_heading, $light_term]));
 	      $collection->add_multiprop(Multiprop->new(cvterms=>[$attractant_heading, $CO2_term]));
 	    }
