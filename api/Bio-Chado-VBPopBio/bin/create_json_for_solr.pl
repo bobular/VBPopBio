@@ -250,6 +250,10 @@ my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_sourc
 my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
 								      term_accession_number => '0000123' }) || die;
 
+# CC BY
+my $default_license = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
+							    term_accession_number => '0001107' }) || die;
+
 my $sex_heading_term = $schema->types->sex;
 my $developmental_stage_term = $schema->types->developmental_stage;
 my $attractant_term = $schema->types->attractant;
@@ -280,6 +284,9 @@ while (my $project = $projects->next) {
   my @tag_terms = $project->tags;
   my @license_terms = grep { $usage_license_term->has_child($_) } @tag_terms;
   @tag_terms = grep { ! $usage_license_term->has_child($_) } @tag_terms;
+
+  # default license
+  push @license_terms, $default_license unless (@license_terms);
 
   my $document = ohr(
 		    label => $project->name,
