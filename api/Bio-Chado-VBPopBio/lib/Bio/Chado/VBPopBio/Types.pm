@@ -736,8 +736,8 @@ ISA-Tab Characteristics column heading for developmental_stage
 
 sub developmental_stage {
   my $self = shift;
-  my $term = $self->schema->cvterms->find_by_accession( { term_source_ref => 'IDOMAL',
-							  term_accession_number => '0000655',
+  my $term = $self->schema->cvterms->find_by_accession( { term_source_ref => 'EFO',
+							  term_accession_number => '0000399',
 							} );
   return $term;
 }
