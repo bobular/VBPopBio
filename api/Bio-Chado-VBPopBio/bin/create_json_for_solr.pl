@@ -488,10 +488,15 @@ while (my $stock = $stocks->next) {
 
 		     );
 
+  #
+  # these are needed if you have legend modes in the map for these fields
+  #
   fallback_value($document->{collection_protocols}, 'no data');
   fallback_value($document->{protocols}, 'no data');
   fallback_value($document->{collection_protocols_cvterms}, 'no data');
   fallback_value($document->{protocols_cvterms}, 'no data');
+  fallback_value($document->{attractants}, 'no data');
+  fallback_value($document->{attractants_protocols}, 'no data');
 
   # split the species for zero abundance data
   # but only where there's one assay and many results VB-6319
