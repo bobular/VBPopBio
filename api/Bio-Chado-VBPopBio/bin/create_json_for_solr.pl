@@ -495,7 +495,7 @@ while (my $stock = $stocks->next) {
   fallback_value($document->{protocols}, 'no data');
   fallback_value($document->{collection_protocols_cvterms}, 'no data');
   fallback_value($document->{protocols_cvterms}, 'no data');
-  fallback_value($document->{attractants}, 'no data');
+  fallback_value($document->{attractants_ss}, 'no data');
   fallback_value($document->{attractants_protocols}, 'no data');
 
   # split the species for zero abundance data
