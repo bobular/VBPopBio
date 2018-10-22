@@ -1445,6 +1445,7 @@ sub sanitise_contact {
 #
 sub fallback_value {
   my ($arrayref, $value) = @_;
+  $arrayref = [] unless defined $arrayref;
   unless (@$arrayref) {
     push @$arrayref, $value;
   }
