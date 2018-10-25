@@ -482,9 +482,8 @@ while (my $stock = $stocks->next) {
 		     (@dev_stage_terms>0 ? ( dev_stages_ss => [ map { $_->name } @dev_stage_terms ],
 					     dev_stages_cvterms => [ map { flattened_parents($_) } @dev_stage_terms ] ) : ()),
 
-		     (@attractant_terms>0 ? ( attractants_ss => [ map { $_->name } @attractant_terms ],
-					      attractants_cvterms => [ map { flattened_parents($_) } @attractant_terms ] ) : ()),
-
+		     attractants_ss => [ map { $_->name } @attractant_terms ],
+		     attractants_cvterms => [ map { flattened_parents($_) } @attractant_terms ],
 
 		     );
 
@@ -496,7 +495,7 @@ while (my $stock = $stocks->next) {
   fallback_value($document->{collection_protocols_cvterms}, 'no data');
   fallback_value($document->{protocols_cvterms}, 'no data');
   fallback_value($document->{attractants_ss}, 'no data');
-  fallback_value($document->{attractants_protocols}, 'no data');
+  fallback_value($document->{attractants_cvterms}, 'no data');
 
   # split the species for zero abundance data
   # but only where there's one assay and many results VB-6319
@@ -1445,7 +1444,6 @@ sub sanitise_contact {
 #
 sub fallback_value {
   my ($arrayref, $value) = @_;
-  $arrayref = [] unless defined $arrayref;
   unless (@$arrayref) {
     push @$arrayref, $value;
   }
