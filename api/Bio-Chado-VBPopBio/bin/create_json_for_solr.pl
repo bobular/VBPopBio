@@ -169,9 +169,15 @@ if (defined $wanted_project_ids) {
 my $ir_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '20000058' }) || die;
 
+# 'biochemical assay' MIRO:20000003 - also an allowable IR phenotype parent term
+my $ir_biochem_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
+							       term_accession_number => '20000003' }) || die;
+
 my $dose_response_test_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
 								 term_accession_number => '20000076' }) || die;
-
+# MIRO:00000003
+my $metabolic_resistance_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
+								 term_accession_number => '00000003' }) || die;
 
 # insecticidal substance
 my $insecticidal_substance = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
@@ -543,10 +549,12 @@ while (my $stock = $stocks->next) {
     # is it a phenotype that we can use?
     my @protocol_types = map { $_->type } $phenotype_assay->protocols->all;
 
-    if (grep { $_->id == $ir_assay_base_term->id ||
-	       $ir_assay_base_term->has_child($_) } @protocol_types) {
+    if (grep { $_->id == $ir_assay_base_term->id ||   # should we audit the use of the base term and see if this can be made more strict
+	       $ir_assay_base_term->has_child($_) ||
+	       $ir_biochem_assay_base_term->has_child($_)  # don't allow the base term to be used for biochem assays
+	     } @protocol_types) {
 
-      # yes we have an INSECTICIDE RESISTANCE BIOASSAY
+      # yes we have an INSECTICIDE RESISTANCE BIOASSAY or BIOCHEMICAL ASSAY
 
       # cloning is safer and simpler (but more expensive) than re-using $document
       # $document is the sample document
@@ -624,7 +632,11 @@ while (my $stock = $stocks->next) {
 		  if (defined $insecticide) {
 		    $doc->{insecticide_s} = $insecticide->name;
 		    $doc->{insecticide_cvterms} = [ flattened_parents($insecticide) ];
-
+		  } elsif ($phenotype->observable->id == $metabolic_resistance_term->id) {
+		    $doc->{insecticide_s} = 'N/A (biochemical assay)';
+		    $doc->{insecticide_cvterms} = [ $doc->{insecticide_s} ];
+		  }
+		  if (defined $doc->{insecticide_s}) {
 		    if (defined $concentration && looks_like_number($concentration) && defined $concentration_unit) {
 		      $doc->{concentration_f} = $concentration;
 		      $doc->{concentration_unit_s} = $concentration_unit->name;
