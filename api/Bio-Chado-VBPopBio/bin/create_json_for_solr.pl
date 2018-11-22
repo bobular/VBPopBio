@@ -642,8 +642,10 @@ while (my $stock = $stocks->next) {
 		      $doc->{concentration_unit_s} = $concentration_unit->name;
 		      $doc->{concentration_unit_cvterms} = [ flattened_parents($concentration_unit) ];
 		    } elsif (not grep { $_->id == $dose_response_test_term->id ||
-					  $dose_response_test_term->has_child($_) } @protocol_types) {
-		      # this warning only for non-DR tests
+					  $dose_response_test_term->has_child($_) ||
+					  $ir_biochem_assay_base_term->has_child($_)
+					} @protocol_types) {
+		      # this warning only for non-DR and non-biochem tests
 		      log_message("$assay_stable_id (@projects) has no/incomplete/corrupted concentration data for phenotype ".$phenotype->name." - keeping");
 		    }
 
