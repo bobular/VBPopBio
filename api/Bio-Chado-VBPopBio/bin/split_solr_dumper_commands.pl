@@ -52,6 +52,9 @@ $schema->storage->_use_join_optimizer(0);
 my $ir_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '20000058' });
 
+# 'biochemical assay' MIRO:20000003 - also an allowable IR phenotype parent term
+my $ir_biochem_assay_base_term = $schema->cvterms->find_by_accession({ term_source_ref => 'MIRO',
+							       term_accession_number => '20000003' }) || die;
 
 
 my $projects = $schema->projects->ordered_by_id;
@@ -77,7 +80,9 @@ while (my $project = $projects->next) {
   while (my $phenotype_assay = $phenotype_assays->next) {
     my @protocol_types = map { $_->type } $phenotype_assay->protocols->all;
     if (grep { $_->id == $ir_assay_base_term->id ||
-		 $ir_assay_base_term->has_child($_) } @protocol_types) {
+		 $ir_assay_base_term->has_child($_) ||
+		   $ir_biochem_assay_base_term->has_child($_)
+		 } @protocol_types) {
       $is_IR = 1;
       last;
     }

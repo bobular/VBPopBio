@@ -40,7 +40,7 @@ my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
 my $wanted_project_ids;
-my $inverted_IR_regexp = qr/^(LT|LC)/;
+my $inverted_IR_regexp = qr/^(LT|LC|fraction greater than \d+th percentile activity)/;
 my $loggable_IR_regexp = qr/^(LT|LC)/;
 my $chunk_size = 200000;
 
