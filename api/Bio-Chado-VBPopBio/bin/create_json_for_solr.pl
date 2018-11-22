@@ -40,7 +40,7 @@ my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
 my $dry_run;
 my $wanted_project_ids;
-my $inverted_IR_regexp = qr/^(LT|LC|fraction greater than \d+th percentile activity)/;
+my $inverted_IR_regexp = qr/^(LT|LC)/; # fraction > 99th percentile handled separately by the spline transform
 my $loggable_IR_regexp = qr/^(LT|LC)/;
 my $chunk_size = 200000;
 
@@ -953,6 +953,9 @@ foreach my $phenotype_signature (keys %phenotype_signature2values) {
   my $who_spline;
   if ($phenotype_signature eq 'mortality rate/percent') {
     $who_spline = Math::Spline->new([0, 90, 98, 100],[0, 0.2, 0.8, 1]);
+  } elsif ($phenotype_signature eq 'fraction greater than 99th percentile activity/percent') {
+    # this spline takes care of the inversion also
+    $who_spline = Math::Spline->new([100, 50, 15, 0],[0, 0.2, 0.8, 1]);
   }
 
   # log transform all values if required.
