@@ -34,7 +34,7 @@ echo fixing a_ s_ p_ and g_ files in $directory only
 for file in $directory/[aspg]_*.txt
 do
 
-  perl -i.bak -npe 's/\b(VBcv|VBsp|IRO|UO|VSMO|IDOMAL|PATO|EFO)\t(\d+)\b/sprintf "%s\t%07d", $1, $2/ge; s/\b(MIRO|GAZ)\t(\d+)/sprintf "%s\t%08d", $1, $2/ge' $file
+  perl -i.bak -npe 's/\b(VBcv|VBsp|IRO|UO|VSMO|IDOMAL|PATO|EFO|OBI)\t(\d+)\b/sprintf "%s\t%07d", $1, $2/ge; s/\b(MIRO|GAZ)\t(\d+)/sprintf "%s\t%08d", $1, $2/ge' $file
 
   # check to see if that actually did anything
   if ! cmp --quiet $file $file.bak
