@@ -632,7 +632,7 @@ while (my $stock = $stocks->next) {
 		  if (defined $insecticide) {
 		    $doc->{insecticide_s} = $insecticide->name;
 		    $doc->{insecticide_cvterms} = [ flattened_parents($insecticide) ];
-		  } elsif ($phenotype->observable->id == $metabolic_resistance_term->id) {
+		  } elsif (defined $phenotype->observable && $phenotype->observable->id == $metabolic_resistance_term->id) {
 		    $doc->{insecticide_s} = 'N/A (biochemical assay)';
 		    $doc->{insecticide_cvterms} = [ $doc->{insecticide_s} ];
 		  }
