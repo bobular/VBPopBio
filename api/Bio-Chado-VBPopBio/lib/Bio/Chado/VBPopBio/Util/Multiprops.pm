@@ -304,7 +304,10 @@ sub add_multiprops_from_isatab_characteristics {
 	      my $vterm = $schema->cvterms->find_by_accession({ term_source_ref => $refs[$i],
 								term_accession_number => $accs[$i],
 								prefered_term_source_ref => $cdata->{prefered_term_source_ref}});
-	      $schema->defer_exception_once("$cname column failed to find ontology term for '$refs[$i]:$accs[$i]'") unless (defined $vterm);
+              unless (defined $vterm) {
+                $schema->defer_exception_once("$cname column failed to find ontology term for '$refs[$i]:$accs[$i]'");
+                $vterm = $schema->types->placeholder;
+              }
 
 	      $multiprops->{"$multiprop_key.$i"} = Multiprop->new(cvterms => [ $cterm, $vterm ]);
 	    }
