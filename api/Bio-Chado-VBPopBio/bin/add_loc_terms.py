@@ -93,7 +93,8 @@ def main():
 
                 # Loop through each term and store its value.
                 for term in terms:
-                    locations[location][term] = row[term]
+                    if term in row:
+                        locations[location][term] = row[term]
 
     with open(args.dest_file) as dest_f, open(temp_filename, 'w') as temp_f:
         column_names = get_column_names(dest_f, args.dest_delim)
@@ -115,13 +116,14 @@ def main():
                 # if a term is already filled in.
                 if not args.overwrite_terms:
                     for term in terms:
-                        if row[term]:
+                        if term in row and row[term]:
                             write_terms = False
                             break
 
                 if write_terms:
                     for term in terms:
-                        row[term] = locations[location][term]
+                        if term in row and term in locations[location]:
+                            row[term] = locations[location][term]
 
             temp_csv.writerow(row)
 
