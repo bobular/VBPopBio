@@ -141,7 +141,7 @@ def main():
 
         # Go to the beginning of the file and write the header row.
         temp_f.seek(0)
-        temp_f.write(args.dest_delim.join(column_names) + '\n')
+        temp_f.write(args.dest_delim.join(column_names))
 
     # If we don't want to leave it as a temp file, overwrite the
     # destination file.
