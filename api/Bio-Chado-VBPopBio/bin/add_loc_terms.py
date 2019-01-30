@@ -64,6 +64,7 @@ def main():
     # The column headings of the location terms to copy.
     terms = (
         'Characteristics [Collection site (VBcv:0000831)]',
+        'Term Source Ref {Characteristics [Collection site (VBcv:0000831)]}',
         'Term Accession Number {Characteristics [Collection site (VBcv:0000831)]}',
         'Characteristics [Collection site location (VBcv:0000698)]',
         'Characteristics [Collection site village (VBcv:0000829)]',
