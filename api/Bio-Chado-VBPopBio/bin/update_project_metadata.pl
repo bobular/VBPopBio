@@ -7,7 +7,7 @@
 #        description (easier!)
 #
 #
-# usage: CHADO_DB_NAME=my_chado_instance bin/load_project.pl --project VBP0000123 ../path/to/ISA-Tab-directory
+# usage: CHADO_DB_NAME=my_chado_instance bin/update_project_metadata.pl --project VBP0000123 ../path/to/ISA-Tab-directory
 #
 # options:
 #   --project stable-id    : which project to update
