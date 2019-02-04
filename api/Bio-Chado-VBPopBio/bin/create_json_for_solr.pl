@@ -391,8 +391,11 @@ while (my $stock = $stocks->next) {
       undef $sample_size;
     } elsif ($sample_size != int($sample_size)) {
       log_message("$stable_id (@projects) sample has non-integer sample_size '$sample_size' - rounding with int(x)");
+      $sample_size = int($sample_size);
+    } else {
+      # do this anyway for 1.0 -> 1, etc
+      $sample_size = int($sample_size);
     }
-    $sample_size = int($sample_size);
   }
 
   my $sample_type = $stock->type->name;
