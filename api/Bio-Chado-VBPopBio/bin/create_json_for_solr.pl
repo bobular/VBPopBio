@@ -389,10 +389,10 @@ while (my $stock = $stocks->next) {
     if (!looks_like_number($sample_size)) {
       log_message("$stable_id (@projects) sample has non-numeric sample_size '$sample_size'");
       undef $sample_size;
-    } elsif ($sample_size =~ /\d+\.\d+/) {
-      log_message("$stable_id (@projects) sample has non-integer sample_size '$sample_size' - using int(x)");
-      $sample_size = int($sample_size);
+    } elsif ($sample_size != int($sample_size)) {
+      log_message("$stable_id (@projects) sample has non-integer sample_size '$sample_size' - rounding with int(x)");
     }
+    $sample_size = int($sample_size);
   }
 
   my $sample_type = $stock->type->name;
