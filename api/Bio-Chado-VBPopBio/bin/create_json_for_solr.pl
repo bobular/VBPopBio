@@ -13,7 +13,7 @@
 # option:
 #   --chunk-size          # how many docs per main output file chunk (autocomplete will have 5x this)
 #   --project VBP0000123   # or comma-delimited list of VBPs - will only process these project(s)
-#
+#   --nounique            # will switch off the unique-ification of the autocomplete Solr dump
 #
 
 use strict;
@@ -43,12 +43,14 @@ my $wanted_project_ids;
 my $inverted_IR_regexp = qr/^(LT|LC)/; # fraction > 99th percentile handled separately by the spline transform
 my $loggable_IR_regexp = qr/^(LT|LC)/;
 my $chunk_size = 200000;
+my $unique_autocomplete = 1;
 
 GetOptions("dbname=s"=>\$dbname,
 	   "dbuser=s"=>\$dbuser,
 	   "dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$wanted_project_ids, # project(s) for debugging, can be comma-separated
 	   "chunk_size|chunksize=i"=>\$chunk_size, # number of docs in each output chunk
+           "unique_autocomplete|unique_autocomplete!"=>\$unique_autocomplete,  # --nounique will switch off 
 	  );
 
 
@@ -131,6 +133,7 @@ my $log_filename = "$output_prefix.log";
 my $log_size = 0;
 
 my ($document_counter, $ac_document_counter, $chunk_counter, $ac_chunk_counter) = (0, 0, 0, 0);
+my %seen_autocomplete;
 my ($chunk_fh, $ac_chunk_fh);
 
 my $dsn = "dbi:Pg:dbname=$dbname";
@@ -1527,10 +1530,10 @@ sub print_document {
 	   type => $type,
 	   bundle => $bundle,
 	   field => $field,
+	   geo_coords => $document->{geo_coords}, # used for "local suggestions"
 	   ( $has_abundance_data ? (has_abundance_data_b => 1) : () ),
 	   ( defined $phenotype_type ? (phenotype_type_s => $phenotype_type) : () ),
 	   ( defined $genotype_type ? (genotype_type_s => $genotype_type) : () ),
-	   geo_coords => $document->{geo_coords}, # used for "local suggestions"
 	  );
 
 	if ($config->{$field}{multi} || $config->{$field}{cvterms}) {
@@ -1542,10 +1545,10 @@ sub print_document {
 	      ohr(
 		  id => "$document->{id}.$typedot.$i",
 		  textsuggest => $text,
-		  @common_fields,
 		  textboost => $config->{$field}{cvterms} && $i == 0 ? 100 : 20,
-		  is_synonym => $config->{$field}{cvterms} && $i>0 &&
-		                !$is_accession && !$last_was_accession ? 'true' : 'false'
+		  is_synonym => ($config->{$field}{cvterms} && $i>0 &&
+                                 !$is_accession && !$last_was_accession ? 'true' : 'false'),
+		  @common_fields
 		 );
 	    $last_was_accession = $is_accession;
 	    print_ac_document($prefix, $ac_document);
@@ -1572,6 +1575,15 @@ sub print_document {
 #
 sub print_ac_document {
   my ($prefix, $ac_document) = @_;
+
+  # skip any 
+  if ($unique_autocomplete) {
+    my @values = values %$ac_document; # order preserving hash
+    # ignore the unique 'id' field:
+    shift @values;
+    my $signature = join '|', @values;
+    return if ($seen_autocomplete{$signature}++);
+  }
 
   if (!defined $ac_chunk_fh) {	# start a new chunk
     $ac_chunk_counter++;
