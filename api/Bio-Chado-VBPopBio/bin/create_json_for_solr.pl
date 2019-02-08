@@ -1581,7 +1581,7 @@ sub print_ac_document {
     my @values = values %$ac_document; # order preserving hash
     # ignore the unique 'id' field:
     shift @values;
-    my $signature = join '|', @values;
+    my $signature = join '|', map { $_ // '' } @values;
     return if ($seen_autocomplete{$signature}++);
   }
 
