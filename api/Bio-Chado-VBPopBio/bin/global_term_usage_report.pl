@@ -85,4 +85,8 @@ if ($fill_cvtermpath) {
     my $cvterm = $cvterms->find($cvterm_id);
     $cvterm->recursive_parents();
   }
+  # the CC_BY term isn't stored in the database by default (see create_json_for_solr.pl)
+  my $default_license = $cvterms->find_by_accession({ term_source_ref => 'VBcv',
+                                                      term_accession_number => '0001107' }) || die;
+  $default_license->recursive_parents();
 }
