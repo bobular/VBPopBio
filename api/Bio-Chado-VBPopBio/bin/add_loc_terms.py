@@ -9,7 +9,9 @@ destination sheet.  Only the terms from the first row of each unique
 location within the source sheet will be used.  By default, if a
 matching location is found in the destination file but it already has
 some location terms filled in, it will not be changed.  The script takes
-tab-delimited files by default and CSVs by option.
+tab-delimited files by default and CSVs by option, and writes to
+'[dest_file].temp' by default with an option to instead overwrite the
+destination file.
 
 This script requires at least Python 3.5.
 """
@@ -22,13 +24,14 @@ import os
 def parse_args():
     """Parse the command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Copies location terms from one ISA-Tab collection sheet to another. This '
-                    'script stores the location terms for each unique location within the source '
-                    'sheet and adds them to matching locations within the destination sheet. Only'
-                    ' the terms from the first row of each unique location within the source sheet'
-                    ' will be used. By default, if a matching location is found in the destination'
-                    ' file but it already has some location terms filled in, it will not be '
-                    'changed.  The script takes tab-delimited files by default and CSVs by option.'
+        description="This script stores the location terms for each unique location within the "
+                    "source sheet and adds them to matching locations within the destination "
+                    "sheet.  Only the terms from the first row of each unique location within the "
+                    "source sheet will be used.  By default, if a matching location is found in "
+                    "the destination file but it already has some location terms filled in, it "
+                    "will not be changed.  The script takes tab-delimited files by default and "
+                    "CSVs by option, and writes to '[dest_file].temp' by default with an option to"
+                    " instead overwrite the destination file."
     )
 
     parser.add_argument('source_file', help='The file to get location terms from.')
@@ -41,9 +44,11 @@ def parse_args():
                         help='If a matching location in the destination file already contains '
                              'some location terms, overwrite them with the terms from the source '
                              'file.')
-    parser.add_argument('--temp', action='store_true',
-                        help="Instead of overwriting the existing destination file, write to a new"
-                             " file named '[dest_file].temp'.")
+    parser.add_argument('--add-missing', action='store_true',
+                        help='If the destination file is missing any location columns, add them.')
+    parser.add_argument('--overwrite-dest', action='store_true',
+                        help='Instead of writing to a temporary file, overwrite the destination '
+                             'file.')
 
     args = parser.parse_args()
 
@@ -66,6 +71,7 @@ def main():
         'Characteristics [Collection site (VBcv:0000831)]',
         'Term Source Ref {Characteristics [Collection site (VBcv:0000831)]}',
         'Term Accession Number {Characteristics [Collection site (VBcv:0000831)]}',
+        'Comment [collection site coordinates]',
         'Characteristics [Collection site location (VBcv:0000698)]',
         'Characteristics [Collection site village (VBcv:0000829)]',
         'Characteristics [Collection site locality (VBcv:0000697)]',
@@ -100,7 +106,28 @@ def main():
     with open(args.dest_file) as dest_f, open(temp_filename, 'w') as temp_f:
         column_names = get_column_names(dest_f, args.dest_delim)
         dest_csv = csv.DictReader(dest_f, fieldnames=column_names, delimiter=args.dest_delim)
+
+        # Add missing terms if directed.
+        if args.add_missing:
+            column_names.extend([term for term in terms if term not in column_names])
+
+        # Make a CSV DictWriter for the temp file.
         temp_csv = csv.DictWriter(temp_f, fieldnames=column_names, delimiter=args.dest_delim)
+
+        qualified_terms = ('Term Source Ref', 'Term Accession Number')
+        original_column_names = []
+
+        # Remove qualifiers from column names that we added them to
+        # to return to the original headings.
+        for name in column_names:
+            for term in qualified_terms:
+                if name.startswith(term):
+                    name = term
+
+            original_column_names.append(name)
+
+        # Write the header row.
+        temp_f.write(args.dest_delim.join(original_column_names) + '\n')
 
         for row in dest_csv:
             location = (
@@ -123,30 +150,16 @@ def main():
 
                 if write_terms:
                     for term in terms:
-                        if term in row and term in locations[location]:
-                            row[term] = locations[location][term]
+                        if term in row or args.add_missing:
+                            if term in locations[location]:
+                                row[term] = locations[location][term]
+                            else:
+                                row[term] = ''
 
             temp_csv.writerow(row)
 
-        # Remove qualifiers from column names that we added them to
-        # to return to the original headings.
-        for i in range(len(column_names)):
-            name = column_names[i]
-            qualified_terms = ('Term Source Ref', 'Term Accession Number')
-
-            for term in qualified_terms:
-                if name.startswith(term):
-                    name = term
-
-            column_names[i] = name
-
-        # Go to the beginning of the file and write the header row.
-        temp_f.seek(0)
-        temp_f.write(args.dest_delim.join(column_names))
-
-    # If we don't want to leave it as a temp file, overwrite the
-    # destination file.
-    if not args.temp:
+    # Overwrite the destination file if directed.
+    if args.overwrite_dest:
         os.rename(temp_filename, args.dest_file)
 
 
@@ -159,7 +172,7 @@ def get_column_names(file, delimiter):
     names within the sheet; this function adds the column name that
     each such column describes to the column's own name to make it
     unique.  The function also strips quotes and whitespace from the
-    ends of each name.
+    ends of each name and leaves the file pointer at line 2.
     """
     # Parse the first line to get column headings.
     column_names = file.readline().split(delimiter)
@@ -182,9 +195,6 @@ def get_column_names(file, delimiter):
             name += ' {' + column_names[i - 2] + '}'
 
         column_names[i] = name
-
-    # Reset the file pointer to the beginning.
-    file.seek(0)
 
     return column_names
 
