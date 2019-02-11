@@ -26,14 +26,12 @@ use Bio::Chado::VBPopBio;
 use JSON;
 use Getopt::Long;
 
-my $jobs = 4;
-my $num_chunks = 12;
+my $num_chunks = 24;
 my $records_per_file = 200000;
 my $max_phenotypes_to_check = 500;
 my $ir_only;
 
-GetOptions("jobs=i"=>\$jobs,
-	   "num-chunks=i"=>\$num_chunks,
+GetOptions("num-chunks=i"=>\$num_chunks,
 	   "records_per_file=i"=>\$records_per_file,
 	   "max_phenotypes_to_check=i"=>\$max_phenotypes_to_check,
 	   "only_ir|only-ir|ir_only|ir-only"=>\$ir_only,
