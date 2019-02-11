@@ -9,7 +9,9 @@ destination sheet.  Only the terms from the first row of each unique
 location within the source sheet will be used.  By default, if a
 matching location is found in the destination file but it already has
 some location terms filled in, it will not be changed.  The script takes
-tab-delimited files by default and CSVs by option.
+tab-delimited files by default and CSVs by option, and writes to
+'[dest_file].temp' by default with an option to instead overwrite the
+destination file.
 
 This script requires at least Python 3.5.
 """
@@ -22,13 +24,14 @@ import os
 def parse_args():
     """Parse the command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Copies location terms from one ISA-Tab collection sheet to another. This '
-                    'script stores the location terms for each unique location within the source '
-                    'sheet and adds them to matching locations within the destination sheet. Only'
-                    ' the terms from the first row of each unique location within the source sheet'
-                    ' will be used. By default, if a matching location is found in the destination'
-                    ' file but it already has some location terms filled in, it will not be '
-                    'changed.  The script takes tab-delimited files by default and CSVs by option.'
+        description="This script stores the location terms for each unique location within the "
+                    "source sheet and adds them to matching locations within the destination "
+                    "sheet.  Only the terms from the first row of each unique location within the "
+                    "source sheet will be used.  By default, if a matching location is found in "
+                    "the destination file but it already has some location terms filled in, it "
+                    "will not be changed.  The script takes tab-delimited files by default and "
+                    "CSVs by option, and writes to '[dest_file].temp' by default with an option to"
+                    " instead overwrite the destination file."
     )
 
     parser.add_argument('source_file', help='The file to get location terms from.')
@@ -43,9 +46,9 @@ def parse_args():
                              'file.')
     parser.add_argument('--add-missing', action='store_true',
                         help='If the destination file is missing any location columns, add them.')
-    parser.add_argument('--temp', action='store_true',
-                        help="Instead of overwriting the existing destination file, write to a new"
-                             " file named '[dest_file].temp'.")
+    parser.add_argument('--overwrite-dest', action='store_true',
+                        help='Instead of writing to a temporary file, overwrite the destination '
+                             'file.')
 
     args = parser.parse_args()
 
@@ -155,9 +158,8 @@ def main():
 
             temp_csv.writerow(row)
 
-    # If we don't want to leave it as a temp file, overwrite the
-    # destination file.
-    if not args.temp:
+    # Overwrite the destination file if directed.
+    if args.overwrite_dest:
         os.rename(temp_filename, args.dest_file)
 
 
