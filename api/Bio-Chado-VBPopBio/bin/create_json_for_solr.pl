@@ -752,7 +752,7 @@ while (my $stock = $stocks->next) {
 	    }
 	  }
 
-	  print_document($output_prefix, $doc); # NO autocomplete ATM
+	  print_document($output_prefix, $doc, $ac_config);
 
 	  ### infection phenotype ###
 	} elsif (defined $observable && $observable->id == $arthropod_infection_status_term->id &&
