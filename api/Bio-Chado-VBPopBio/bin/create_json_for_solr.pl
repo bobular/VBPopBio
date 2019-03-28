@@ -104,7 +104,7 @@ my $ac_config =
     infection_source_cvterms =>     { type => "Pathogen", cvterms => 1 },
     infection_status_s =>           { type => "Infection status" },
     # bloodmeal view
-    blood_meal_source_s =>          { type => "Blood meal source", cvterms => 1 },
+    blood_meal_source_cvterms =>    { type => "Blood meal source", cvterms => 1 },
    },
    pop_sample_genotype =>
    {
