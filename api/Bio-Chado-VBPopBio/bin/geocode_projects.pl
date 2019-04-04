@@ -17,6 +17,9 @@
 # --gadm-stem ../../../gadm-processing/gadm36       # location of gadmVV_N.{shp,dbf,...} files ("shapefile")
 # --verbose                                         # extra progress output
 # --quiet                                           # no progress output, but geocoding failure warnings will still be emitted
+# --radius-degrees 0.01       # max distance in degrees to search around points that don't geocode (default = 1km)
+# --steps 10                  # number of steps with which to do the search (increasing radius at each step)
+#                             # use --steps 1 to disable the search
 #
 # requires that the GADM-based VBGEO ontology is already loaded, see
 # https://github.com/bobular/GADM-to-OBO
@@ -64,17 +67,21 @@ use Encode::Detect::Detector;
 
 my $dbname = $ENV{CHADO_DB_NAME};
 my $dbuser = $ENV{USER};
-my $dry_run = 1;
+my $dry_run;
 my $gadm_stem = '../../../gadm-processing/gadm36';
 my $project_ids;
-my $verbose = 1;
+my $verbose;
 my $quiet;
+my $max_radius_degrees = 0.01;
+my $radius_steps = 10;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$project_ids,
            "gadm_stem|gadm-stem=s"=>\$gadm_stem,
            "verbose"=>\$verbose,  # extra progress output to stderr
            "quiet"=>\$quiet,      # no progress output to stderr
+           "radius-degrees=s"=>\$max_radius_degrees,
+           "steps|num-steps=i"=>\$radius_steps,
 	  );
 
 
@@ -136,77 +143,81 @@ $schema->txn_do_deferred
           my $geolocation = $collection->geolocation;
           if ($geolocation) {
             next if ($seen_geolocation{$geolocation->id}++);  # only process each geolocation once
-            my $latitude = $geolocation->latitude;
-            my $longitude = $geolocation->longitude;
-            if (looks_like_number($latitude) && looks_like_number($longitude)) {
-              my $lat = $geolocation->latitude;
-              my $long = $geolocation->longitude;
+            warn sprintf("\nProcessing collection %s (%d of %d)\n",
+                         $collection_id, $num_done, $num_collections) unless $quiet;
 
-              warn sprintf("\nProcessing collection %s (%d of %d)\nGeolocation ( %s , %s )\n",
-                           $collection_id, $num_done, $num_collections, $lat, $long) unless $quiet;
+            my $lat = $geolocation->latitude;
+            my $long = $geolocation->longitude;
 
-              # remove existing props
-              foreach my $multiprop ($geolocation->multiprops) {
-                my ($mprop_type) = $multiprop->cvterms;
-                if ($mprop_type->id == $collection_site_term->id ||
-                    $anthropogenic_descriptor_term->has_child($mprop_type)) {
-                  warn "Removing old property : ".$multiprop->as_string."\n" if $verbose;
-                  $geolocation->delete_multiprop($multiprop);
-                }
+            warn sprintf("Geolocation ( %s , %s )\n", $lat // 'NA', $long // 'NA') unless $quiet;
+            # remove existing props
+            foreach my $multiprop ($geolocation->multiprops) {
+              my ($mprop_type) = $multiprop->cvterms;
+              if ($mprop_type->id == $collection_site_term->id ||
+                  $anthropogenic_descriptor_term->has_child($mprop_type)) {
+                warn "Removing old property : ".$multiprop->as_string."\n" if $verbose;
+                $geolocation->delete_multiprop($multiprop);
               }
+            }
 
-              # do the geocoding lookup
-              my $query_point = Geo::ShapeFile::Point->new(X => $long, Y => $lat);
+            if (looks_like_number($lat) && looks_like_number($long)) {
+              my $pi = 3.14159265358979;
               my $best_geo_term; # the finest-grained VBGEO term we can find for "collection site" property
-              my $parent_id;      # the ID, e.g. AFG of the higher level term that was geocoded
+              # now try a bunch of different radii and angles - starting at zero
+              # until the polygon lookup succeeds
+            RADIUS:
+              for (my $radius=0; $radius<$max_radius_degrees; $radius += $max_radius_degrees/$radius_steps) {
+                for (my $angle = 0; $radius==0 ? $angle<=0 : $angle<2*$pi; $angle += 2*$pi/8) { # try N, NE, E, SE, S etc
+                  # do the geocoding lookup
+                  my $query_point = Geo::ShapeFile::Point->new(X => $long + cos($angle)*$radius,
+                                                               Y => $lat + sin($angle)*$radius);
+                  my $parent_id; # the ID, e.g. AFG of the higher level term that was geocoded
 
-              foreach my $level (0 .. 2) {
-                last if ($level > 0 && !defined $parent_id);
-                # warn "Scanning level $level\n" if $verbose;
-                my $shapefile = $shapefile[$level];
-                my $num_shapes = $shapefile->shapes;
-                my @found_indices;
-                foreach my $index (1 .. $num_shapes) {
-                  if ($level == 0 || is_child_of_previous($index, $shapefile, $parent_id, $level-1)) {
-                    my $shape = $shapefile->get_shp_record($index);
-                    if ($shape->contains_point($query_point)) {
-                      push @found_indices, $index;
+                  foreach my $level (0 .. 2) {
+                    last if ($level > 0 && !defined $parent_id);
+                    # warn "Scanning level $level\n" if $verbose;
+                    my $shapefile = $shapefile[$level];
+                    my $num_shapes = $shapefile->shapes;
+                    my @found_indices;
+                    foreach my $index (1 .. $num_shapes) {
+                      if ($level == 0 || is_child_of_previous($index, $shapefile, $parent_id, $level-1)) {
+                        my $shape = $shapefile->get_shp_record($index);
+                        if ($shape->contains_point($query_point)) {
+                          push @found_indices, $index;
+                        }
+                      }
+                    }
+                    if (@found_indices == 1) {
+                      my $index = shift @found_indices;
+                      my $dbf = $shapefile->get_dbf_record($index);
+                      my $gadm_id = $dbf->{"GID_$level"};
+                      my $gadm_name = cleanup($dbf->{"NAME_$level"});
+                      my $gadm_term = $cvterms->find_by_accession({ term_source_ref => 'GADM',
+                                                                    term_accession_number => $gadm_id,
+                                                                    prefered_term_source_ref => 'VBGEO' });
+                      die "FATAL couldn't find VBGEO term for $gadm_name\n" unless (defined $gadm_term);
+
+                      $parent_id = $gadm_id;
+                      $best_geo_term = $gadm_term;
+
+                      warn sprintf("Adding free text %s property : %s\n", $level_terms[$level]->name, $gadm_name) unless $quiet;
+                      my $peachy_prop = Multiprop->new(cvterms=>[ $level_terms[$level] ], value => $gadm_name);
+                      $geolocation->add_multiprop($peachy_prop); # legacy from the "peach coloured" free text columns in ISA-Tab
+
                     }
                   }
-                }
-                if (@found_indices == 1) {
-                  my $index = shift @found_indices;
-                  my $dbf = $shapefile->get_dbf_record($index);
-                  my $gadm_id = $dbf->{"GID_$level"};
-                  my $gadm_name = cleanup($dbf->{"NAME_$level"});
-                  my $gadm_term = $cvterms->find_by_accession({ term_source_ref => 'GADM',
-                                                                term_accession_number => $gadm_id,
-                                                                prefered_term_source_ref => 'VBGEO' });
-                  die "FATAL couldn't find VBGEO term for $gadm_name\n" unless (defined $gadm_term);
-
-                  $parent_id = $gadm_id;
-                  $best_geo_term = $gadm_term;
-
-                  warn sprintf("Adding free text %s property : %s\n", $level_terms[$level]->name, $gadm_name) unless $quiet;
-                  my $peachy_prop = Multiprop->new(cvterms=>[ $level_terms[$level] ], value => $gadm_name);
-                  $geolocation->add_multiprop($peachy_prop); # legacy from the "peach coloured" free text columns in ISA-Tab
-
-                } elsif ($level == 0) {
-                  # warnings at country level only...
-                  my @projects = map { $_->stable_id } $collection->projects->all;
-                  my $fc_id = $collection->stable_id;
-
-                  if (@found_indices == 0) {
-                    warn "WARNING: no country found for $collection_id ( $lat, $long ) from $fc_id of @projects\n";
-                  } else {
-                    warn "WARNING: multiple countries found for $collection_id ( $lat, $long ) from $fc_id of @projects\n";
+                  if ($best_geo_term) {
+                    warn sprintf("Adding ontology-based collection site property : %s (%s)\n", $best_geo_term->name, $best_geo_term->dbxref->as_string) unless $quiet;
+                    my $site_prop = Multiprop->new(cvterms=>[ $collection_site_term, $best_geo_term ]);
+                    $geolocation->add_multiprop($site_prop);
+                    last RADIUS;
                   }
                 }
               }
-              if ($best_geo_term) {
-                warn sprintf("Adding ontology-based collection site property : %s (%s)\n", $best_geo_term->name, $best_geo_term->dbxref->as_string) unless $quiet;
-                my $site_prop = Multiprop->new(cvterms=>[ $collection_site_term, $best_geo_term ]);
-                $geolocation->add_multiprop($site_prop);
+              # tried all radii and angles
+              unless ($best_geo_term) {
+                my @projects = map { $_->stable_id } $collection->projects->all;
+                warn "WARNING: no country found for $collection_id ( $lat, $long ) from project @projects\n";
               }
             }
           }
