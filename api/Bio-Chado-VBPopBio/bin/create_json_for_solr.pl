@@ -265,6 +265,12 @@ my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_sourc
 my $default_license = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
 							    term_accession_number => '0001107' }) || die;
 
+# VBGEO/GADM names
+my $country_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0000701' }) || die;
+my $adm1_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001129' }) || die;
+my $adm2_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001130' }) || die;
+
+
 my $sex_heading_term = $schema->types->sex;
 my $developmental_stage_term = $schema->types->developmental_stage;
 my $attractant_term = $schema->types->attractant;
@@ -434,10 +440,11 @@ while (my $stock = $stocks->next) {
 		    collection_protocols_cvterms => [ map { flattened_parents($_) } @collection_protocol_types ],
 
 		    has_geodata => (defined $latlong ? 'true' : 'false'),
-		    (defined $latlong ? ( geo_coords_fields($latlong) ) : ()),
+		    (defined $latlong ? geo_coords_fields($latlong) : ()),
+                    (defined $fc ? placename_fields($fc) : ()),
 
 		    geolocations => [ map { $_->geolocation->summary } @field_collections ],
-		    geolocations_cvterms => [ remove_gaz_crap( map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation, qr/^GAZ:\d+$/) } @field_collections ) ],
+		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation, qr/^VBGEO:\d+$/) } @field_collections ],
 
 		    genotypes =>  [ map { ($_->description, $_->name) } @genotypes ],
 		    genotypes_cvterms => [ map { flattened_parents($_)  } map { ( $_->type, multiprops_cvterms($_) ) } @genotypes ],
@@ -1358,6 +1365,38 @@ sub geo_coords_fields {
 	  geohash_3 => substr($geohash, 0, 3),
 	  geohash_2 => substr($geohash, 0, 2),
 	  geohash_1 => substr($geohash, 0, 1));
+}
+
+
+#
+# placename_fields
+#
+# output country_s, adm1_s, adm2_s from geolocation props
+#
+
+sub placename_fields {
+  my ($fc) = @_;
+  return () unless ($fc->geolocation);
+  my @result;
+  my @props = $fc->geolocation->multiprops;
+  foreach my $prop (@props) {
+    my @cvterms = $prop->cvterms;
+    given ($cvterms[0]->id) {
+      when($country_term->id) {
+        push @result, ( 'country_s' => $prop->value );
+      }
+      when($adm1_term->id) {
+        push @result, ( 'adm1_s' => $prop->value );
+      }
+      when($adm2_term->id) {
+        push @result, ( 'adm2_s' => $prop->value );
+      }
+      default {
+
+      }
+    }
+  }
+  return @result;
 }
 
 
