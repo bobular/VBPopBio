@@ -154,6 +154,9 @@ $schema->txn_do_deferred
             foreach my $multiprop ($geolocation->multiprops) {
               my ($mprop_type) = $multiprop->cvterms;
               if ($mprop_type->id == $collection_site_term->id ||
+                  $mprop_type->id == $country_term->id ||
+                  $mprop_type->id == $adm1_term->id ||
+                  $mprop_type->id == $adm2_term->id ||
                   $anthropogenic_descriptor_term->has_child($mprop_type)) {
                 warn "Removing old property : ".$multiprop->as_string."\n" if $verbose;
                 $geolocation->delete_multiprop($multiprop);
@@ -200,8 +203,8 @@ $schema->txn_do_deferred
                       $parent_id = $gadm_id;
                       $best_geo_term = $gadm_term;
 
-                      warn sprintf("Adding free text %s property : %s\n", $level_terms[$level]->name, $gadm_name) unless $quiet;
-                      my $peachy_prop = Multiprop->new(cvterms=>[ $level_terms[$level] ], value => $gadm_name);
+                      warn sprintf("Adding free text %s property : %s\n", $level_terms[$level]->name, $gadm_term->name) unless $quiet;
+                      my $peachy_prop = Multiprop->new(cvterms=>[ $level_terms[$level] ], value => $gadm_term->name);
                       $geolocation->add_multiprop($peachy_prop); # legacy from the "peach coloured" free text columns in ISA-Tab
 
                     }
