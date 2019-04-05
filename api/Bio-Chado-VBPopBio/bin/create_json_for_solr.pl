@@ -1380,22 +1380,16 @@ sub placename_fields {
   my @result;
   my @props = $fc->geolocation->multiprops;
   foreach my $prop (@props) {
-    my @cvterms = $prop->cvterms;
-    given ($cvterms[0]->id) {
-      when($country_term->id) {
-        push @result, ( 'country_s' => $prop->value );
-      }
-      when($adm1_term->id) {
-        push @result, ( 'adm1_s' => $prop->value );
-      }
-      when($adm2_term->id) {
-        push @result, ( 'adm2_s' => $prop->value );
-      }
-      default {
-
-      }
+    my ($header_term) = $prop->cvterms;
+    if ($header_term->id == $country_term->id) {
+      push @result, ( 'country_s' => $prop->value );
+    } elsif ($header_term->id == $adm1_term->id) {
+      push @result, ( 'adm1_s' => $prop->value );
+    } elsif ($header_term->id == $adm2_term->id) {
+      push @result, ( 'adm2_s' => $prop->value );
     }
   }
+
   return @result;
 }
 
