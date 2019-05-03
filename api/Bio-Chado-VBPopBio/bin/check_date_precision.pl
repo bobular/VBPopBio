@@ -55,7 +55,7 @@ my $date_type = $schema->types->date;
 $schema->txn_do_deferred
   ( sub {
       if (lc($project_ids) eq 'all') {
-        $project_ids = join(',', map { $_->stable_id } $schema->projects->all);
+        $project_ids = join(',', sort map { $_->stable_id } $schema->projects->all);
       }
 
       print join ("\t", 
