@@ -662,7 +662,7 @@ sub add_multiprop {
 
 =head2 delete_multiprop
 
-Usage: my $success = $stock->delete_multiprop($multiprop)
+Usage: my $success = $project->delete_multiprop($multiprop)
 
 returns true (the multiprop object) if an exact copy of the multiprop is found and deleted,
 or false (undef) otherwise
