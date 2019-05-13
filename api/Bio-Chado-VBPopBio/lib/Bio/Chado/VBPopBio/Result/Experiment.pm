@@ -487,7 +487,7 @@ sub add_to_protocols_from_isatab {
 
       if (my $dates = $protocol_data->{date}) {
 	foreach my $date (split /;\s*/, $dates) {
-	  my ($start_date, $end_date) = split qr{/}, $date;
+	  my ($start_date, $end_date) = split qr{/}, $date, 2;
 	  if ($start_date && $end_date) {
 	    my $valid_start = Date->simple_validate_date($start_date, $self);
 	    my $valid_end = Date->simple_validate_date($end_date, $self);

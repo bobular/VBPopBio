@@ -45,16 +45,22 @@ sub simple_validate_date {
     # remove any trailing zero days/months
     # we have one instance of 2002-00-09 in UCDavis data - make it 2002
     $date =~ s/-00.*//;
-    try {
-      my $dt = $iso8601->parse_datetime($date);
-      # the parsing succeeded, ultimately return the original string
-      # because the parser doesn't handle missing month or date info properly
-      # (and there is no simple solution involving DateTime::Format::CLDR and DateTime::Incomplete)
-      $valid_date = $date;
-    } catch {
-      if (defined $row) {
-	$row->result_source->schema->defer_exception("Cannot parse date '$date'");
+    # the iso8601 parser will parse "09" to 0901-01-01T00:00:00
+    # so we need to check that the date starts with a four digit number at least
+    if ($date =~ /^\d{4}/) {
+      try {
+        my $dt = $iso8601->parse_datetime($date);
+        # the parsing succeeded, ultimately return the original string
+        # because the parser doesn't handle missing month or date info properly
+        # (and there is no simple solution involving DateTime::Format::CLDR and DateTime::Incomplete)
+        $valid_date = $date;
+      } catch {
+        if (defined $row) {
+          $row->result_source->schema->defer_exception("Cannot parse date '$date'");
+        }
       }
+    } elsif (defined $row) {
+      $row->result_source->schema->defer_exception("Cannot parse date '$date'");
     }
   }
   return $valid_date;
