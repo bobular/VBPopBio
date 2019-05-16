@@ -16,10 +16,13 @@
 # --dry-run
 # --gadm-stem ../../../gadm-processing/gadm36       # location of gadmVV_N.{shp,dbf,...} files ("shapefile")
 # --verbose                                         # extra progress output
-# --quiet                                           # no progress output, but geocoding failure warnings will still be emitted
 # --radius-degrees 0.01       # max distance in degrees to search around points that don't geocode (default = 1km)
 # --steps 10                  # number of steps with which to do the search (increasing radius at each step)
 #                             # use --steps 1 to disable the search
+# --nosummary                 # don't output a summary of place names geocoded to
+# --limit-summary 10          # how many placenames to output in the summary at the end (best to be an even number)
+#                             # though note that all countries will be listed
+#
 #
 # requires that the GADM-based VBGEO ontology is already loaded, see
 # https://github.com/bobular/GADM-to-OBO
@@ -71,17 +74,19 @@ my $dry_run;
 my $gadm_stem = '../../../gadm-processing/gadm36';
 my $project_ids;
 my $verbose;
-my $quiet;
 my $max_radius_degrees = 0.01;
 my $radius_steps = 10;
+my $summary = 1;
+my $summary_limit = 10;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$project_ids,
            "gadm_stem|gadm-stem=s"=>\$gadm_stem,
            "verbose"=>\$verbose,  # extra progress output to stderr
-           "quiet"=>\$quiet,      # no progress output to stderr
            "radius-degrees=s"=>\$max_radius_degrees,
            "steps|num-steps=i"=>\$radius_steps,
+           "summary!"=>\$summary,
+           "limit-summary=i"=>\$summary_limit,
 	  );
 
 
@@ -110,6 +115,10 @@ foreach my $level (0 .. 2) {
 my @level_terms = ( $country_term, $adm1_term, $adm2_term );
 my %seen_geolocation; # id => 1
 
+my $total_lookups = 0;  # count of unique geolocation Chado records
+my $failed_lookups = 0; # counter
+my %seen_names;     # keep track for summary  LEVEL => NAME => count
+
 
 # should speed things up
 $schema->storage->_use_join_optimizer(0);
@@ -127,11 +136,11 @@ $schema->txn_do_deferred
             $schema->defer_exception("not a valid project ID '$project_id'");
             next;
           }
-          warn "Processing project : ".$project->name."...\n" unless $quiet;
+          print "Processing project : ".$project->name."...\n" if $verbose;
           $collections = $project->field_collections;
         } else {
           $collections = $schema->field_collections;
-          warn "Processing ALL field collections...\n" unless $quiet;
+          print "Processing ALL field collections...\n" if $verbose;
         }
 
         my $num_collections = $collections->count;
@@ -143,13 +152,14 @@ $schema->txn_do_deferred
           my $geolocation = $collection->geolocation;
           if ($geolocation) {
             next if ($seen_geolocation{$geolocation->id}++);  # only process each geolocation once
-            warn sprintf("\nProcessing collection %s (%d of %d)\n",
-                         $collection_id, $num_done, $num_collections) unless $quiet;
+            $total_lookups++;
+            print sprintf("\nProcessing collection %s (%d of %d)\n",
+                         $collection_id, $num_done, $num_collections) if $verbose;
 
             my $lat = $geolocation->latitude;
             my $long = $geolocation->longitude;
 
-            warn sprintf("Geolocation ( %s , %s )\n", $lat // 'NA', $long // 'NA') unless $quiet;
+            print sprintf("Geolocation ( %s , %s )\n", $lat // 'NA', $long // 'NA') if $verbose;
             # remove existing props
             foreach my $multiprop ($geolocation->multiprops) {
               my ($mprop_type) = $multiprop->cvterms;
@@ -158,7 +168,7 @@ $schema->txn_do_deferred
                   $mprop_type->id == $adm1_term->id ||
                   $mprop_type->id == $adm2_term->id ||
                   $anthropogenic_descriptor_term->has_child($mprop_type)) {
-                warn "Removing old property : ".$multiprop->as_string."\n" if $verbose;
+                print "Removing old property : ".$multiprop->as_string."\n" if $verbose;
                 $geolocation->delete_multiprop($multiprop);
               }
             }
@@ -178,7 +188,7 @@ $schema->txn_do_deferred
 
                   foreach my $level (0 .. 2) {
                     last if ($level > 0 && !defined $parent_id);
-                    # warn "Scanning level $level\n" if $verbose;
+                    # print "Scanning level $level\n" if $verbose;
                     my $shapefile = $shapefile[$level];
                     my $num_shapes = $shapefile->shapes;
                     my @found_indices;
@@ -203,14 +213,14 @@ $schema->txn_do_deferred
                       $parent_id = $gadm_id;
                       $best_geo_term = $gadm_term;
 
-                      warn sprintf("Adding free text %s property : %s\n", $level_terms[$level]->name, $gadm_term->name) unless $quiet;
+                      print sprintf("Adding free text %s property : %s\n", $level_terms[$level]->name, $gadm_term->name) if $verbose;
                       my $peachy_prop = Multiprop->new(cvterms=>[ $level_terms[$level] ], value => $gadm_term->name);
                       $geolocation->add_multiprop($peachy_prop); # legacy from the "peach coloured" free text columns in ISA-Tab
-
+                      $seen_names{$level}{$gadm_term->name}++;
                     }
                   }
                   if ($best_geo_term) {
-                    warn sprintf("Adding ontology-based collection site property : %s (%s)\n", $best_geo_term->name, $best_geo_term->dbxref->as_string) unless $quiet;
+                    print sprintf("Adding ontology-based collection site property : %s (%s)\n", $best_geo_term->name, $best_geo_term->dbxref->as_string) if $verbose;
                     my $site_prop = Multiprop->new(cvterms=>[ $collection_site_term, $best_geo_term ]);
                     $geolocation->add_multiprop($site_prop);
                     last RADIUS;
@@ -220,7 +230,8 @@ $schema->txn_do_deferred
               # tried all radii and angles
               unless ($best_geo_term) {
                 my @projects = map { $_->stable_id } $collection->projects->all;
-                warn "WARNING: no country found for $collection_id ( $lat, $long ) from project @projects\n";
+                print "WARNING: no country found for $collection_id ( $lat, $long ) from project @projects\n";
+                $failed_lookups++;
               }
             }
           }
@@ -229,6 +240,23 @@ $schema->txn_do_deferred
 
       $schema->defer_exception("dry-run option - rolling back") if ($dry_run);
     } );
+
+if ($summary) {
+  printf "Summary: %3d attempted, %3d failed.\n", $total_lookups, $failed_lookups;
+  foreach my $level (0 .. 2) {
+
+    # names at this level sorted most-first
+    my @placenames = sort { $seen_names{$level}{$b} <=> $seen_names{$level}{$a} } keys %{$seen_names{$level}};
+    # but only print out top N and bottom N (where N = summary_limit/2) for ADM1 and ADM2
+    if ($level > 0 && @placenames > $summary_limit) {
+      my $excess = @placenames - $summary_limit;
+      splice @placenames, $summary_limit/2, $excess, '...';
+    }
+    printf "Level $level: %3d different places assigned - %s\n", scalar keys %{$seen_names{$level}}, join(', ', @placenames);
+  }
+
+
+}
 
 
 
