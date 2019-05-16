@@ -46,9 +46,13 @@ $schema->txn_do_deferred
       # see comments at top for explanation
       my $response = json GET 'http://vb-dev.bio.ic.ac.uk:7997/solr/vb_popbio/select?fl=assay_id_s&fq=bundle:pop_sample_phenotype&fq=phenotype_type_s:%22infection%20status%22&fq=sample_size_i:0&fq=tags_ss:(%22Rhode%20Island%20Department%20of%20Environmental%20Management%22%20OR%20%22Northwest%20Mosquito%20and%20Vector%20Control%20District%22)&indent=on&q=*:*&rows=10000&wt=json';
 
-      my $n = scalar @{$response->{response}{docs}};
+      my %assay_ids; # unique-ify
+      map { $assay_ids{$_->{assay_id_s}}++ } @{$response->{response}{docs}};
+
+      my @assay_ids = sort keys %assay_ids;;
+      my $n = @assay_ids;
       my $count = 0;
-      foreach my $assay_id (map { $_->{assay_id_s} } @{$response->{response}{docs}}) {
+      foreach my $assay_id (@assay_ids) {
         printf "\r\tdeleting %3d of $n", ++$count;
         my $assay = $schema->assays->find_by_stable_id($assay_id);
         if (defined $assay) {
