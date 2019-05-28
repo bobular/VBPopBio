@@ -261,6 +261,16 @@ my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_sourc
 my $sequence_variant_position = $schema->cvterms->find_by_accession({ term_source_ref => 'IRO',
 								      term_accession_number => '0000123' }) || die;
 
+
+my $genotyping_by_sequencing = $schema->cvterms->find_by_accession({ term_source_ref => 'EFO',
+                                                                     term_accession_number => '0002771' }) || die;
+
+my $genotyping_by_array = $schema->cvterms->find_by_accession({ term_source_ref => 'EFO',
+                                                                term_accession_number => '0002767' }) || die;
+
+my $DNA_barcode_assay = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
+                                                              term_accession_number => '0001025' }) || die;
+
 # CC BY
 my $default_license = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
 							    term_accession_number => '0001107' }) || die;
@@ -359,6 +369,11 @@ while (my $project = $projects->next) {
 my %phenotype_signature2values; # measurement_type/assay/insecticide/concentration/c_units/duration/d_units/species => [ vals, ... ]
 my %phenotype_id2value; # phenotype_stable_ish_id => un-normalised value
 my %phenotype_id2signature; # phenotype_stable_ish_id => signature
+
+#
+# store data signposts for each sample
+#
+my %sample_id2signposts; # sample_id => signpost_string => 1
 
 ### SAMPLES ###
 my $done_samples = 0;
@@ -517,6 +532,18 @@ while (my $stock = $stocks->next) {
   fallback_value($document->{protocols_cvterms}, 'no data');
   fallback_value($document->{attractants_ss}, 'no data');
   fallback_value($document->{attractants_cvterms}, 'no data');
+
+  #
+  # handle data signposting (only for non-zero samples)
+  #
+
+  # create an empty hash so we can loop through the keys later
+  # and assign a default value to any unsignposted samples:
+  $sample_id2signposts{$stable_id} = { };
+  # now any data-specific signposts (more will be added below for sample_phenotypes etc)
+  $sample_id2signposts{$stable_id}{"Abundance (view:abnd)"}++ if ($has_abundance_data);
+  # TO DO barcoding (no tag yet)
+
 
   # split the species for zero abundance data
   # but only where there's one assay and many results VB-6319
@@ -684,6 +711,8 @@ while (my $stock = $stocks->next) {
 		  # phenotype_cvterms (singular)
 		  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
 
+
+                  $sample_id2signposts{$stable_id}{"Insecticide resistance phenotype (view:ir)"}++;
 		  print_document($output_prefix, $doc, $ac_config);
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
@@ -759,6 +788,7 @@ while (my $stock = $stocks->next) {
 	    }
 	  }
 
+          $sample_id2signposts{$stable_id}{"Blood meal host (view:meal)"}++;
 	  print_document($output_prefix, $doc, $ac_config);
 
 	  ### infection phenotype ###
@@ -810,7 +840,7 @@ while (my $stock = $stocks->next) {
 	      next;
 	    }
 	  }
-
+          $sample_id2signposts{$stable_id}{"Pathogen (view:path)"}++;
           print_document($output_prefix, $doc, $ac_config);
 
 	} else {
@@ -827,6 +857,17 @@ while (my $stock = $stocks->next) {
 
     my ($sample_size_prop) = $genotype_assay->multiprops($sample_size_term);
     my $assay_sample_size = defined $sample_size_prop ? $sample_size_prop->value : undef;
+
+    # handle some data signposts
+    $sample_id2signposts{$stable_id}{"Whole genome sequencing"}++
+      if (grep { $_->id == $genotyping_by_sequencing->id || $genotyping_by_sequencing->has_child($_) } @protocol_types);
+
+    $sample_id2signposts{$stable_id}{"DNA barcoding"}++
+      if (grep { $_->id == $DNA_barcode_assay->id || $DNA_barcode_assay->has_child($_) } @protocol_types);
+
+    $sample_id2signposts{$stable_id}{"SNP-chip"}++
+      if (grep { $_->id == $genotyping_by_array->id || $genotyping_by_array->has_child($_) } @protocol_types);
+
 
     foreach my $genotype ($genotype_assay->genotypes) {
       my ($genotype_name, $genotype_value, $genotype_subtype, $genotype_unit); # these vars are "undefined" to start with
@@ -931,9 +972,11 @@ while (my $stock = $stocks->next) {
 	given($genotype_subtype) {
 	  when('chromosomal inversion') {
 	    $doc->{genotype_inverted_allele_count_i} = $genotype_value;
+            $sample_id2signposts{$stable_id}{"Chromosomal inversions"}++;
 	  }
 	  when('microsatellite') {
 	    $doc->{genotype_microsatellite_length_i} = $genotype_value;
+            $sample_id2signposts{$stable_id}{"Microsatellites"}++;
 	  }
 	  when('mutated protein') {
 	    $doc->{genotype_mutated_protein_value_f} = $genotype_value;
@@ -944,6 +987,7 @@ while (my $stock = $stocks->next) {
 	      $doc->{locus_name_cvterms} = [ flattened_parents($locus_term) ];
 	    }
 	    $ac = $ac_config; # autocomplete ON for this subtype
+            $sample_id2signposts{$stable_id}{"Insecticide resistance genotype (view:geno)"}++;
 	  }
 	}
 
@@ -1026,6 +1070,20 @@ foreach my $phenotype_stable_ish_id (keys %phenotype_id2signature) {
 			       );
     print_document($output_prefix, $atomic_update_doc);
   }
+}
+
+#
+# add the data signposting update records
+#
+
+foreach my $sample_id (keys %sample_id2signposts) {
+  my @signposts = keys %{$sample_id2signposts{$sample_id}};
+  push @signposts, 'Sample metadata only' unless (@signposts);
+  my $atomic_update_doc = ohr(
+                              id => $sample_id,
+                              signposts_ss => { set => \@signposts }
+                             );
+  print_document($output_prefix, $atomic_update_doc);
 }
 
 
