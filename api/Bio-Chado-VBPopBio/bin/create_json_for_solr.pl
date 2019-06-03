@@ -374,6 +374,8 @@ my %phenotype_id2signature; # phenotype_stable_ish_id => signature
 # store data signposts for each sample
 #
 my %sample_id2signposts; # sample_id => signpost_string => 1
+# need geo_coords too
+my %sample_id2geo_coords; # sample_id => geo_coords
 
 ### SAMPLES ###
 my $done_samples = 0;
@@ -542,7 +544,9 @@ while (my $stock = $stocks->next) {
   $sample_id2signposts{$stable_id} = { };
   # now any data-specific signposts (more will be added below for sample_phenotypes etc)
   $sample_id2signposts{$stable_id}{"Abundance (view:abnd)"}++ if ($has_abundance_data);
-  # TO DO barcoding (no tag yet)
+  # save the geo-coords
+  $sample_id2geo_coords{$stable_id} = $latlong;
+
 
 
   # split the species for zero abundance data
@@ -1084,6 +1088,21 @@ foreach my $sample_id (keys %sample_id2signposts) {
                               signposts_ss => { set => \@signposts }
                              );
   print_document($output_prefix, $atomic_update_doc);
+
+  # manually handle autocomplete for this
+  for (my $i=0; $i<@signposts; $i++) {
+    my $ac_doc = ohr(id => "$sample_id.signpost.$i",
+                     bundle => 'pop_sample',
+                     type => 'Available data type',
+                     field => 'signposts_ss',
+                     textsuggest => $signposts[$i],
+                     textboost => 100,
+                     is_synonym => 'false',
+                     geo_coords => $sample_id2geo_coords{$sample_id},
+                    );
+    print_ac_document($output_prefix, $ac_doc);
+  }
+
 }
 
 
