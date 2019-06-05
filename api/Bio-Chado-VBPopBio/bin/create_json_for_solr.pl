@@ -98,6 +98,7 @@ my $ac_config =
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
     licenses_cvterms =>             { type => "License", cvterms => 1 },
     sex_s =>                        { type => "Sex" },
+    signposts_ss =>                 { type => "Available data type", multi => 1 },
     # IR view
     insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
     # pathogen view
@@ -123,6 +124,7 @@ my $ac_config =
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
     licenses_cvterms =>             { type => "License", cvterms => 1 },
     sex_s =>                        { type => "Sex" },
+    signposts_ss =>                 { type => "Available data type", multi => 1 },
     # genotype specific:
     genotype_name_s =>              { type => "Allele" },  # this could be tricky if we add microsats
     locus_name_s =>                 { type => "Locus" },
@@ -717,6 +719,7 @@ while (my $stock = $stocks->next) {
 
 
                   $sample_id2signposts{$stable_id}{"Insecticide resistance phenotype (view:ir)"}++;
+                  $doc->{signposts_ss} = [ "Insecticide resistance phenotype (view:ir)" ];
 		  print_document($output_prefix, $doc, $ac_config);
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
@@ -793,6 +796,7 @@ while (my $stock = $stocks->next) {
 	  }
 
           $sample_id2signposts{$stable_id}{"Blood meal host (view:meal)"}++;
+          $doc->{signposts_ss} = [ "Blood meal host (view:meal)" ];
 	  print_document($output_prefix, $doc, $ac_config);
 
 	  ### infection phenotype ###
@@ -845,6 +849,7 @@ while (my $stock = $stocks->next) {
 	    }
 	  }
           $sample_id2signposts{$stable_id}{"Pathogen (view:path)"}++;
+          $doc->{signposts_ss} = [ "Pathogen (view:path)" ];
           print_document($output_prefix, $doc, $ac_config);
 
 	} else {
@@ -992,6 +997,7 @@ while (my $stock = $stocks->next) {
 	    }
 	    $ac = $ac_config; # autocomplete ON for this subtype
             $sample_id2signposts{$stable_id}{"Insecticide resistance genotype (view:geno)"}++;
+            $doc->{signposts_ss} = [ "Insecticide resistance genotype (view:geno)" ];
 	  }
 	}
 
@@ -1077,7 +1083,7 @@ foreach my $phenotype_stable_ish_id (keys %phenotype_id2signature) {
 }
 
 #
-# add the data signposting update records
+# 'manually' add the data signposting update records for pop_samples only
 #
 
 foreach my $sample_id (keys %sample_id2signposts) {
