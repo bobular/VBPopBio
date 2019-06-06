@@ -98,7 +98,7 @@ my $ac_config =
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
     licenses_cvterms =>             { type => "License", cvterms => 1 },
     sex_s =>                        { type => "Sex" },
-    signposts_ss =>                 { type => "Available data type", multi => 1 },
+    signposts_ss =>                 { type => "Available data types", multi => 1 },
     # IR view
     insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
     # pathogen view
@@ -124,7 +124,7 @@ my $ac_config =
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
     licenses_cvterms =>             { type => "License", cvterms => 1 },
     sex_s =>                        { type => "Sex" },
-    signposts_ss =>                 { type => "Available data type", multi => 1 },
+    signposts_ss =>                 { type => "Available data types", multi => 1 },
     # genotype specific:
     genotype_name_s =>              { type => "Allele" },  # this could be tricky if we add microsats
     locus_name_s =>                 { type => "Locus" },
@@ -1099,7 +1099,7 @@ foreach my $sample_id (keys %sample_id2signposts) {
   for (my $i=0; $i<@signposts; $i++) {
     my $ac_doc = ohr(id => "$sample_id.signpost.$i",
                      bundle => 'pop_sample',
-                     type => 'Available data type',
+                     type => 'Available data types',
                      field => 'signposts_ss',
                      textsuggest => $signposts[$i],
                      textboost => 100,
