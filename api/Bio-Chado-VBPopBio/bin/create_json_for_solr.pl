@@ -545,7 +545,7 @@ while (my $stock = $stocks->next) {
   # and assign a default value to any unsignposted samples:
   $sample_id2signposts{$stable_id} = { };
   # now any data-specific signposts (more will be added below for sample_phenotypes etc)
-  $sample_id2signposts{$stable_id}{"Abundance (view:abnd)"}++ if ($has_abundance_data);
+  $sample_id2signposts{$stable_id}{"Abundance"}++ if ($has_abundance_data);
   # save the geo-coords
   $sample_id2geo_coords{$stable_id} = $latlong;
 
@@ -718,8 +718,8 @@ while (my $stock = $stocks->next) {
 		  $doc->{phenotype_cvterms} = [ map { flattened_parents($_)  } grep { defined $_ } ( $phenotype->observable, $phenotype->attr, $phenotype->cvalue, multiprops_cvterms($phenotype) ) ];
 
 
-                  $sample_id2signposts{$stable_id}{"Insecticide resistance phenotype (view:ir)"}++;
-                  $doc->{signposts_ss} = [ "Insecticide resistance phenotype (view:ir)" ];
+                  $sample_id2signposts{$stable_id}{"Insecticide res. phenotype"}++;
+                  $doc->{signposts_ss} = [ "Insecticide res. phenotype" ];
 		  print_document($output_prefix, $doc, $ac_config);
 
 		  # collate the values for each unique combination of protocol, insecticide, ...
@@ -795,8 +795,8 @@ while (my $stock = $stocks->next) {
 	    }
 	  }
 
-          $sample_id2signposts{$stable_id}{"Blood meal host (view:meal)"}++;
-          $doc->{signposts_ss} = [ "Blood meal host (view:meal)" ];
+          $sample_id2signposts{$stable_id}{"Blood meal host"}++;
+          $doc->{signposts_ss} = [ "Blood meal host" ];
 	  print_document($output_prefix, $doc, $ac_config);
 
 	  ### infection phenotype ###
@@ -848,8 +848,8 @@ while (my $stock = $stocks->next) {
 	      next;
 	    }
 	  }
-          $sample_id2signposts{$stable_id}{"Pathogen (view:path)"}++;
-          $doc->{signposts_ss} = [ "Pathogen (view:path)" ];
+          $sample_id2signposts{$stable_id}{"Pathogen"}++;
+          $doc->{signposts_ss} = [ "Pathogen" ];
           print_document($output_prefix, $doc, $ac_config);
 
 	} else {
@@ -996,8 +996,8 @@ while (my $stock = $stocks->next) {
 	      $doc->{locus_name_cvterms} = [ flattened_parents($locus_term) ];
 	    }
 	    $ac = $ac_config; # autocomplete ON for this subtype
-            $sample_id2signposts{$stable_id}{"Insecticide resistance genotype (view:geno)"}++;
-            $doc->{signposts_ss} = [ "Insecticide resistance genotype (view:geno)" ];
+            $sample_id2signposts{$stable_id}{"Insecticide res. genotype"}++;
+            $doc->{signposts_ss} = [ "Insecticide res. genotype" ];
 	  }
 	}
 
