@@ -27,7 +27,7 @@ use JSON;
 use Getopt::Long;
 
 my $num_chunks = 24;
-my $records_per_file = 200000;
+my $records_per_file = 10e12;  # effectively no splitting of output per chunk of projects, due to atomic updates for signposts_ss
 my $max_phenotypes_to_check = 500;
 my $ir_only;
 

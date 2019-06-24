@@ -42,7 +42,7 @@ my $dry_run;
 my $wanted_project_ids;
 my $inverted_IR_regexp = qr/^(LT|LC)/; # fraction > 99th percentile handled separately by the spline transform
 my $loggable_IR_regexp = qr/^(LT|LC)/;
-my $chunk_size = 200000;
+my $chunk_size = 10e12;  # effectively no splitting of output per chunk of projects, due to atomic updates for signposts_ss
 my $unique_autocomplete = 1;
 
 GetOptions("dbname=s"=>\$dbname,
