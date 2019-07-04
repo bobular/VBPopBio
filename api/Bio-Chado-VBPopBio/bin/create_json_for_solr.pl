@@ -283,6 +283,12 @@ my $adm1_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
 my $adm2_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001130' }) || die;
 
 
+# geolocation qualifier headings
+my $geoloc_accuracy_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001151' }) || die;
+my $geoloc_precision_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001140' }) || die;
+my $geoloc_provenance_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001139' }) || die;
+
+
 my $sex_heading_term = $schema->types->sex;
 my $developmental_stage_term = $schema->types->developmental_stage;
 my $attractant_term = $schema->types->attractant;
@@ -460,7 +466,7 @@ while (my $stock = $stocks->next) {
 
 		    has_geodata => (defined $latlong ? 'true' : 'false'),
 		    (defined $latlong ? geo_coords_fields($latlong) : ()),
-                    (defined $fc ? placename_fields($fc) : ()),
+                    (defined $fc ? geolocation_extra_fields($fc) : ()),
 
 		    geolocations => [ map { $_->geolocation->summary } @field_collections ],
 		    geolocations_cvterms => [ map { flattened_parents($_)  } map { multiprops_cvterms($_->geolocation, qr/^VBGEO:\d+$/) } @field_collections ],
@@ -1452,24 +1458,33 @@ sub geo_coords_fields {
 
 
 #
-# placename_fields
+# geolocation_extra_fields
 #
 # output country_s, adm1_s, adm2_s from geolocation props
 #
 
-sub placename_fields {
+sub geolocation_extra_fields {
   my ($fc) = @_;
   return () unless ($fc->geolocation);
   my @result;
   my @props = $fc->geolocation->multiprops;
   foreach my $prop (@props) {
-    my ($header_term) = $prop->cvterms;
+    my ($header_term, @value_terms) = $prop->cvterms;
     if ($header_term->id == $country_term->id) {
       push @result, ( 'country_s' => $prop->value );
     } elsif ($header_term->id == $adm1_term->id) {
       push @result, ( 'adm1_s' => $prop->value );
     } elsif ($header_term->id == $adm2_term->id) {
       push @result, ( 'adm2_s' => $prop->value );
+    } elsif ($header_term->id == $geoloc_provenance_term->id) {
+      push @result, ( 'geolocation_provenance_s' => $value_terms[0]->name,
+                      'geolocation_provenance_cvterms' => [ flattened_parents($value_terms[0]) ] );
+    } elsif ($header_term->id == $geoloc_accuracy_term->id) {
+      push @result, ( 'geolocation_accuracy_s' => $value_terms[0]->name,
+                      'geolocation_accuracy_cvterms' => [ flattened_parents($value_terms[0]) ] );
+    } elsif ($header_term->id == $geoloc_precision_term->id) {
+      push @result, ( 'geolocation_precision_s' => $value_terms[0]->name,
+                      'geolocation_precision_cvterms' => [ flattened_parents($value_terms[0]) ] );
     }
   }
 
