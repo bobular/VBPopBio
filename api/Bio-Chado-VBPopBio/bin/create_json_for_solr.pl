@@ -543,6 +543,15 @@ while (my $stock = $stocks->next) {
   fallback_value($document->{attractants_ss}, 'no data');
   fallback_value($document->{attractants_cvterms}, 'no data');
 
+  fallback_value($document->{geolocation_provenance_s}, 'no data');
+  fallback_value($document->{geolocation_provenance_cvterms}, 'no data');
+
+  fallback_value($document->{geolocation_accuracy_s}, 'no data');
+  fallback_value($document->{geolocation_accuracy_cvterms}, 'no data');
+
+  fallback_value($document->{geolocation_precision_s}, 'no data');
+  fallback_value($document->{geolocation_precision_cvterms}, 'no data');
+
   #
   # handle data signposting (only for non-zero samples)
   #
