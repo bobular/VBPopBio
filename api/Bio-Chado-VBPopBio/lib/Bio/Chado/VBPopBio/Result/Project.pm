@@ -23,6 +23,7 @@ use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 use aliased 'Bio::Chado::VBPopBio::Util::Extra';
 use aliased 'Bio::Chado::VBPopBio::Util::Date';
 use Bio::Chado::VBPopBio::Util::Functions qw/ordered_hashref/;
+use Bio::Chado::VBPopBio::Util::ISATab qw/write_extra_sheets/;
 
 =head1 NAME
 
@@ -853,49 +854,7 @@ sub write_to_isatab {
 
   my $writer = Bio::Parser::ISATab->new(directory=>$output_directory);
   $writer->write($isatab);
-
-  #
-  # deeply examine $isatab for all assay 'raw_data_files'
-  # and search for $isa_data->{assays}{$assay_name}{genotypes}
-  # or $isa_data->{assays}{$assay_name}{phenotypes}
-  # and for each raw_data_filename, make a copy of the data for $writer->write_study_or_assay()
-  #
-  my %filename2assays2genotypes;
-  my %filename2assays2phenotypes;
-
-  foreach my $study_assay (@{$isatab->{studies}[0]{study_assays}}) {
-    foreach my $sample (keys %{$study_assay->{samples}}) {
-      foreach my $assay (keys %{$study_assay->{samples}{$sample}{assays}}) {
-	my $assay_isa = $study_assay->{samples}{$sample}{assays}{$assay};
-	foreach my $g_or_p_filename ($assay_isa->{raw_data_files} ? keys($assay_isa->{raw_data_files}) : ()) {
-	  if ($assay_isa->{genotypes}) {
-	    $filename2assays2genotypes{$g_or_p_filename}{assays} //= ordered_hashref();
-	    $filename2assays2genotypes{$g_or_p_filename}{assays}{$assay}{genotypes} = $assay_isa->{genotypes};
-	  }
-	  if ($assay_isa->{phenotypes}) {
-	    $filename2assays2phenotypes{$g_or_p_filename}{assays} //= ordered_hashref();
-	    $filename2assays2phenotypes{$g_or_p_filename}{assays}{$assay}{phenotypes} = $assay_isa->{phenotypes};
-	  }
-	}
-      }
-    }
-  }
-  foreach my $g_filename (keys %filename2assays2genotypes) {
-    $writer->write_study_or_assay($g_filename, $filename2assays2genotypes{$g_filename},
-				  ordered_hashref(
-				   'Genotype Name' => 'reusable node',
-				   'Type' => 'attribute',
-				  ));
-  }
-  foreach my $p_filename (keys %filename2assays2phenotypes) {
-    $writer->write_study_or_assay($p_filename, $filename2assays2phenotypes{$p_filename},
-				  ordered_hashref(
-				   'Phenotype Name' => 'reusable node',
-				   'Observable' => 'attribute',
-				   'Attribute' => 'attribute',
-				   'Value' => 'attribute',
-				  ));
-  }
+  write_extra_sheets($writer, $isatab);
 }
 
 
