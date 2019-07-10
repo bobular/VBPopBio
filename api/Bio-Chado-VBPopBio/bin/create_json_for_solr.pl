@@ -257,6 +257,9 @@ my $arthropod_host_blood_index_term = $schema->cvterms->find_by_accession({ term
 my $parent_term_of_present_absent = $schema->cvterms->find_by_accession({ term_source_ref => 'PATO',
 									  term_accession_number => '0000070' }) || die;
 
+my $equivocal_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
+                                                           term_accession_number => '0001127' }) || die;
+
 my $infection_prevalence_term = $schema->cvterms->find_by_accession({ term_source_ref => 'IDO',
 								      term_accession_number => '0000486' }) || die;
 
@@ -763,7 +766,10 @@ while (my $stock = $stocks->next) {
 	# blood meal
 	if (defined $observable && ($observable->id == $blood_meal_term->id || $observable->id == $blood_meal_source_term->id) &&
 	    defined $attribute && $blood_meal_source_term->has_child($attribute) &&
-	    defined $cvalue && $parent_term_of_present_absent->has_child($cvalue)) {
+	    defined $cvalue &&
+            ($parent_term_of_present_absent->has_child($cvalue) ||
+             $cvalue->id == $equivocal_term->id)
+           ) {
 	  my $doc = clone($document);
 
 	  # always change these fields
