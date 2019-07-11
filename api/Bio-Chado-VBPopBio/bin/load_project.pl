@@ -124,7 +124,7 @@ $schema->txn_do_deferred
       }
 
       print project_summary($project)."\n" unless ($quiet);
-      print "Don't forget to run:\nbin/geocode_project.pl --project ".$project->stable_id."\n" unless ($dry_run);
+      print "Don't forget to run:\nbin/geocode_projects.pl --project ".$project->stable_id."\n" unless ($dry_run);
       $schema->defer_exception("dry-run option - rolling back") if ($dry_run);
     } );
 
