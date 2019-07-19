@@ -287,7 +287,6 @@ my $adm2_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
 
 
 # geolocation qualifier headings
-my $geoloc_accuracy_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001151' }) || die;
 my $geoloc_precision_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001140' }) || die;
 my $geoloc_provenance_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001139' }) || die;
 
@@ -548,9 +547,6 @@ while (my $stock = $stocks->next) {
 
   $document->{geolocation_provenance_s} //= 'no data';
   $document->{geolocation_provenance_cvterms} //= [ 'no data' ];
-
-  $document->{geolocation_accuracy_s} //= 'no data';
-  $document->{geolocation_accuracy_cvterms} //= [ 'no data' ];
 
   $document->{geolocation_precision_s} //= 'no data';
   $document->{geolocation_precision_cvterms} //= [ 'no data' ];
@@ -1494,9 +1490,6 @@ sub geolocation_extra_fields {
     } elsif ($header_term->id == $geoloc_provenance_term->id) {
       push @result, ( 'geolocation_provenance_s' => $value_terms[0]->name,
                       'geolocation_provenance_cvterms' => [ flattened_parents($value_terms[0]) ] );
-    } elsif ($header_term->id == $geoloc_accuracy_term->id) {
-      push @result, ( 'geolocation_accuracy_s' => $value_terms[0]->name,
-                      'geolocation_accuracy_cvterms' => [ flattened_parents($value_terms[0]) ] );
     } elsif ($header_term->id == $geoloc_precision_term->id) {
       push @result, ( 'geolocation_precision_s' => $value_terms[0]->name,
                       'geolocation_precision_cvterms' => [ flattened_parents($value_terms[0]) ] );
