@@ -1,8 +1,18 @@
 #!/usr/bin/env perl
 # -*- mode: cperl -*-
 #
+# This script loops over every collection object and looks to see if it has "Comment [collection site coordinates]" comments and
+# will replace "IC" with "estimated by curator" and "IA" and "IP" with "provided" or "provided and obfuscated"
 #
-# usage: bin/project_fix_geo_qualifiers.pl --default-accuracy accurate --project VBP0000nnn
+# If --curation-level option is provided (see below) then the appropriate child of "estimated by curator" will be used.
+#
+# If none of those comments are found - existing collection properties will not be changed.
+#
+# Options allow the replacement/addition/removal of geolocation precision terms
+#
+#
+#
+# usage: bin/project_fix_geo_qualifiers.pl --project VBP0000nnn
 #
 #        also allows comma-separated project IDs.
 #
@@ -14,6 +24,10 @@
 #                            *note* if you don't provide this, nothing will be added.
 #
 #   --remove-precision     : remove any old precision annotations and don't complain if no new precision is provide (previous option)
+#
+#   --obfuscated           : add the "provided and obfuscated" term for IA/IP
+#
+#   --curation-level {country,adm1,adm2,street} : use the corresponding child term of 'estimated by curator'
 #
 #   --dry-run              : rolls back transaction and doesn't insert into db permanently
 #
@@ -36,9 +50,10 @@ my $projects = $schema->projects;
 my $dry_run;
 my $project_ids;
 my $limit;
-my $default_accuracy;
 my $default_precision;
 my $remove_precision;
+my $obfuscated;
+my $curation_level;
 
 # if this matches the comment type/heading
 # e.g. Comment [collection site coordinates]
@@ -49,13 +64,14 @@ my $comment_regexp = qr/\bcollection site coordinates\b/;
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$project_ids,
            "limit=i"=>\$limit, # just process N collections per project, implies dry-run
-           "default-accuracy=s"=>\$default_accuracy,
            "default-precision=i"=>\$default_precision,
            "remove-precision"=>\$remove_precision,
+           "obfuscated"=>\$obfuscated,
+           "curation-level=s"=>\$curation_level,
 	  );
 
 
-die "must provide options --default-accuracy and --project\n" unless ($default_accuracy && $project_ids);
+die "must provide option --project\n" unless ($project_ids);
 
 $dry_run = 1 if ($limit);
 
@@ -65,33 +81,37 @@ $| = 1;
 my $comment_term = $schema->types->comment;
 
 # geolocation qualifier headings
-my $geoloc_accuracy_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001151' }) || die;
-my $geoloc_precision_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001140' }) || die;
-my $geoloc_provenance_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001139' }) || die;
+my $geoloc_precision_term = $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001140' }) || die;
+my $geoloc_provenance_term = $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001139' }) || die;
 
 # geolocation provenance values
-my $ic_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001141' }) || die;
-my $ia_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001142' }) || die;
-my $ip_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001143' }) || die;
+my $est_curator_term = $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001141' }) || die;
 
-# geolocation accuracy values
-my $accurate_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001152' }) || die;
-my $inaccurate_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001153' }) || die;
-my %accuracy_terms = ( accurate => $accurate_term, inaccurate => $inaccurate_term);
-die "default accuracy must be one of: ".join(", ", keys %accuracy_terms)."\n" unless ($accuracy_terms{$default_accuracy});
+my %estimated_terms  = (
+                        country => $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001156' }),
+                        adm1 => $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001157' }),
+                        adm2 => $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001158' }),
+                        street => $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001159' }),
+                       );
+
+die "unrecognised curation-level '$curation_level'\n" if ($curation_level and not $estimated_terms{$curation_level});
+
+my $provided_term = $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001143' }) || die;
+my $obfuscated_term = $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001155' }) || die;
 
 
 # geolocation precision values
 my @geolocation_precision_terms =
   (
-   $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001144' }), # 0 or better
-   $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001145' }), # 1 or better
-   $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001146' }),
-   $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001147' }),
-   $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001148' }),
-   $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001149' }),
-   $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001150' }), # 6 decimal places
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001144' }), # 0 or better
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001145' }), # 1 or better
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001146' }),
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001147' }),
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001148' }),
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001149' }),
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001150' }), # 6 decimal places
   );
+
 
 
 
@@ -108,13 +128,14 @@ $schema->txn_do_deferred
         my $todo = $project->field_collections->count();
 	warn "processing $project_id...\n";
 
+        my %things_done; # "replaced IP with <term name>" => 1
+
 	$project->update_modification_date() if ($project);
 
 	foreach my $collection ($project->field_collections) {
 
           my @props = $collection->multiprops;
           my @RIP_props;
-          my $collection_accuracy = $default_accuracy;
 
           foreach my $prop (@props) {
             my ($heading_term, @value_terms) = $prop->cvterms;
@@ -127,13 +148,16 @@ $schema->txn_do_deferred
               if ($comment_heading =~ $comment_regexp) {
                 push @RIP_props, $prop;
 
-                if ($comment eq 'IP') {
-                  $collection->add_multiprop(Multiprop->new(cvterms=>[$geoloc_provenance_term, $ip_term]));
-                } elsif ($comment eq 'IA') {
-                  $collection->add_multiprop(Multiprop->new(cvterms=>[$geoloc_provenance_term, $ia_term]));
+                if ($comment eq 'IP' || $comment eq 'IA') {
+                  $collection->add_multiprop(my $p = Multiprop->new(cvterms=>[$geoloc_provenance_term,
+                                                                              $obfuscated ? $obfuscated_term : $provided_term]));
+
+                  $things_done{sprintf "replaced %s with %s", $comment, $p->as_string}++;
                 } elsif ($comment eq 'IC') {
-                  $collection->add_multiprop(Multiprop->new(cvterms=>[$geoloc_provenance_term, $ic_term]));
-                  $collection_accuracy = 'inaccurate';
+                  $collection->add_multiprop(my $p = Multiprop->new(cvterms=>[$geoloc_provenance_term,
+                                                                              $curation_level ? $estimated_terms{$curation_level} :
+                                                                              $est_curator_term]));
+                  $things_done{sprintf "replaced %s with %s", $comment, $p->as_string}++;
                 } else {
                   my $collection_id = $collection->stable_id;
                   $schema->defer_exception("unknown comment value '$comment' for $collection_id");
@@ -142,9 +166,6 @@ $schema->txn_do_deferred
               }
             }
 
-            if ($heading_term->id == $geoloc_accuracy_term->id) {
-              push @RIP_props, $prop;
-            }
             if ($heading_term->id == $geoloc_precision_term->id) {
               if (defined $default_precision) {
                 push @RIP_props, $prop;
@@ -155,21 +176,24 @@ $schema->txn_do_deferred
             }
 
           }
-          # remove the comment IC/IA/IP props and any old accuracy+precision props if needed
+          # remove the comment IC/IA/IP props and any old precision props if needed
           map { $collection->delete_multiprop($_) } @RIP_props;
-
-          # add the accuracy prop
-          $collection->add_multiprop(Multiprop->new(cvterms=>[$geoloc_accuracy_term, $accuracy_terms{$collection_accuracy}]));
 
           # add the precision - if provided
           if (defined $default_precision) {
             $collection->add_multiprop(Multiprop->new(cvterms=>[$geoloc_precision_term, $geolocation_precision_terms[$default_precision]]));
+            $things_done{"added precision level $default_precision"}++;
           }
 
           printf "\rdone %4d of %4d collections", ++$done, $todo;
           last if ($limit && $done >= $limit);
 	}
         print "\n";
+
+        foreach my $thing_done (sort keys %things_done) {
+          print "$thing_done $things_done{$thing_done} times\n";
+        }
+
       }
       $schema->defer_exception("dry-run option - rolling back") if ($dry_run);
     } );
