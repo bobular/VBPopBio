@@ -1487,7 +1487,13 @@ sub geolocation_extra_fields {
       push @result, ( 'adm1_s' => $prop->value );
     } elsif ($header_term->id == $adm2_term->id) {
       push @result, ( 'adm2_s' => $prop->value );
-    } elsif ($header_term->id == $geoloc_provenance_term->id) {
+    }
+  }
+
+  my @aprops = $fc->multiprops;
+  foreach my $prop (@aprops) {
+    my ($header_term, @value_terms) = $prop->cvterms;
+    if ($header_term->id == $geoloc_provenance_term->id) {
       push @result, ( 'geolocation_provenance_s' => $value_terms[0]->name,
                       'geolocation_provenance_cvterms' => [ flattened_parents($value_terms[0]) ] );
     } elsif ($header_term->id == $geoloc_precision_term->id) {
