@@ -25,6 +25,9 @@
 #
 #   --remove-precision     : remove any old precision annotations and don't complain if no new precision is provide (previous option)
 #
+#   --default-provenance IA : if no "collection site coordinates" comments containing IC/IA/IP are found, pretend this code was found instead
+#
+#
 #   --obfuscated           : add the "provided and obfuscated" term for IA/IP
 #
 #   --curation-level {country,adm1,adm2,street} : use the corresponding child term of 'estimated by curator'
@@ -51,6 +54,7 @@ my $dry_run;
 my $project_ids;
 my $limit;
 my $default_precision;
+my $default_provenance;
 my $remove_precision;
 my $obfuscated;
 my $curation_level;
@@ -66,13 +70,14 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
            "limit=i"=>\$limit, # just process N collections per project, implies dry-run
            "default-precision=i"=>\$default_precision,
            "remove-precision"=>\$remove_precision,
+           "default-provenance=s"=>\$default_provenance,
            "obfuscated"=>\$obfuscated,
            "curation-level=s"=>\$curation_level,
 	  );
 
 
 die "must provide option --project\n" unless ($project_ids);
-
+die "--default-provenance must be IA, IP or IC\n" if ($default_provenance && $default_provenance !~ /^(IC|IP|IA)$/);
 $dry_run = 1 if ($limit);
 
 $| = 1;
@@ -137,6 +142,8 @@ $schema->txn_do_deferred
           my @props = $collection->multiprops;
           my @RIP_props;
 
+          my $found_a_comment;
+
           foreach my $prop (@props) {
             my ($heading_term, @value_terms) = $prop->cvterms;
 
@@ -153,11 +160,13 @@ $schema->txn_do_deferred
                                                                               $obfuscated ? $obfuscated_term : $provided_term]));
 
                   $things_done{sprintf "replaced %s with %s", $comment, $p->as_string}++;
+                  $found_a_comment = 1;
                 } elsif ($comment eq 'IC') {
                   $collection->add_multiprop(my $p = Multiprop->new(cvterms=>[$geoloc_provenance_term,
                                                                               $curation_level ? $estimated_terms{$curation_level} :
                                                                               $est_curator_term]));
                   $things_done{sprintf "replaced %s with %s", $comment, $p->as_string}++;
+                  $found_a_comment = 1;
                 } else {
                   my $collection_id = $collection->stable_id;
                   $schema->defer_exception("unknown comment value '$comment' for $collection_id");
@@ -176,6 +185,22 @@ $schema->txn_do_deferred
             }
 
           }
+
+          # add the default_provenance if no "comment [collection site coordinates]" was found
+          if (!$found_a_comment && $default_provenance) {
+            if ($default_provenance eq 'IP' || $default_provenance eq 'IA') {
+              $collection->add_multiprop(my $p = Multiprop->new(cvterms=>[$geoloc_provenance_term,
+                                                                          $obfuscated ? $obfuscated_term : $provided_term]));
+              $things_done{sprintf "default provenance added: %s", $p->as_string}++;
+            } elsif ($default_provenance eq 'IC') {
+              $collection->add_multiprop(my $p = Multiprop->new(cvterms=>[$geoloc_provenance_term,
+                                                                          $curation_level ? $estimated_terms{$curation_level} :
+                                                                          $est_curator_term]));
+              $things_done{sprintf "default provenance added: %s", $p->as_string}++;
+            }
+          }
+
+
           # remove the comment IC/IA/IP props and any old precision props if needed
           map { $collection->delete_multiprop($_) } @RIP_props;
 
@@ -191,7 +216,7 @@ $schema->txn_do_deferred
         print "\n";
 
         foreach my $thing_done (sort keys %things_done) {
-          print "$thing_done $things_done{$thing_done} times\n";
+          print "'$thing_done' $things_done{$thing_done} times\n";
         }
 
       }
