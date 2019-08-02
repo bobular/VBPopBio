@@ -16,7 +16,7 @@
 # --dry-run
 # --gadm-stem ../../../gadm-processing/gadm36       # location of gadmVV_N.{shp,dbf,...} files ("shapefile")
 # --verbose                                         # extra progress output
-# --radius-degrees 0.01       # max distance in degrees to search around points that don't geocode (default = 1km)
+# --radius-degrees 0.025      # max distance in degrees to search around points that don't geocode (default = 1km)
 # --steps 10                  # number of steps with which to do the search (increasing radius at each step)
 #                             # use --steps 1 to disable the search
 # --nosummary                 # don't output a summary of place names geocoded to
@@ -74,7 +74,7 @@ my $dry_run;
 my $gadm_stem = '../../../gadm-processing/gadm36';
 my $project_ids;
 my $verbose;
-my $max_radius_degrees = 0.01;
+my $max_radius_degrees = 0.025;
 my $radius_steps = 10;
 my $summary = 1;
 my $summary_limit = 10;
