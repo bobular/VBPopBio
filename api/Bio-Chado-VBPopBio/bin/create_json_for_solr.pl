@@ -80,6 +80,9 @@ my $ac_config =
     licenses_cvterms =>             { type => "License", cvterms => 1 },
     attractants_cvterms =>          { type => "Attractant", cvterms => 1 },
     sex_s =>                        { type => "Sex" },
+    # signposts_ss not here intentionally - it's handled specially via atomic updates
+    geolocation_provenance_s =>     { type => "Location provenance" },
+    geolocation_precision_s =>      { type => "Location precision" },
    },
    pop_sample_phenotype => 
    {
@@ -98,6 +101,8 @@ my $ac_config =
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
     licenses_cvterms =>             { type => "License", cvterms => 1 },
     sex_s =>                        { type => "Sex" },
+    geolocation_provenance_s =>     { type => "Location provenance" },
+    geolocation_precision_s =>      { type => "Location precision" },
     signposts_ss =>                 { type => "Available data types", multi => 1 },
     # IR view
     insecticide_cvterms =>          { type => "Insecticide", cvterms => 1 },
@@ -124,6 +129,8 @@ my $ac_config =
     tags_cvterms =>                 { type => "Tag", cvterms => 1 },
     licenses_cvterms =>             { type => "License", cvterms => 1 },
     sex_s =>                        { type => "Sex" },
+    geolocation_provenance_s =>     { type => "Location provenance" },
+    geolocation_precision_s =>      { type => "Location precision" },
     signposts_ss =>                 { type => "Available data types", multi => 1 },
     # genotype specific:
     genotype_name_s =>              { type => "Allele" },  # this could be tricky if we add microsats
