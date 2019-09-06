@@ -1126,7 +1126,6 @@ foreach my $sample_id (keys %sample_id2signposts) {
                      type => 'Available data types',
                      field => 'signposts_ss',
                      textsuggest => $signposts[$i],
-                     textboost => 100,
                      is_synonym => 'false',
                      geo_coords => $sample_id2geo_coords{$sample_id},
                     );
@@ -1699,7 +1698,6 @@ sub print_document {
 	      ohr(
 		  id => "$document->{id}.$typedot.$i",
 		  textsuggest => $text,
-		  textboost => $config->{$field}{cvterms} && $i == 0 ? 100 : 20,
 		  is_synonym => ($config->{$field}{cvterms} && $i>0 &&
                                  !$is_accession && !$last_was_accession ? 'true' : 'false'),
 		  @common_fields
