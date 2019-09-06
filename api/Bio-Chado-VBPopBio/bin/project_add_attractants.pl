@@ -9,7 +9,9 @@
 # adds attractants to EVERY collection assay, no questions asked...
 #
 # options:
-#   --dry-run              : rolls back transaction and doesn't insert into db permanently
+#   --dry-run                        : rolls back transaction and doesn't insert into db permanently
+#
+#   --replace-free-text "light;CO2"  : only add terms when this single free text annotation is present (and remove it, obvs)
 #
 
 use strict;
@@ -29,9 +31,11 @@ my $cvterms = $schema->cvterms;
 my $projects = $schema->projects;
 my $dry_run;
 my $project_ids;
+my $replace;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$project_ids,
+           "replace-free-text=s"=>\$replace,
 	  );
 
 
@@ -59,6 +63,20 @@ $schema->txn_do_deferred
 	$project->update_modification_date() if ($project);
 
 	foreach my $collection ($project->field_collections) {
+
+          my $ok_to_replace;
+          if ($replace) {
+            my @attractants_props = $collection->multiprops($attractant_heading);
+            if (@attractants_props == 1 && $attractants_props[0]->value eq $replace) {
+              my $rip_prop = $collection->remove_multiprop($attractants_props[0]);
+              if ($rip_prop) {
+                $ok_to_replace = 1;
+              } else {
+                $schema->defer_exception("Failed to remove '$replace' property for ".$collection->stable_id."\n");
+              }
+            }
+          }
+          next if ($replace && !$ok_to_replace);
 	  foreach my $term (@terms) {
 	    $collection->add_multiprop(Multiprop->new(cvterms=>[$attractant_heading, $term]));
 	  }
