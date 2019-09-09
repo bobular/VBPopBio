@@ -29,7 +29,7 @@ my $samples = $schema->stocks;
 my $cvterms = $schema->cvterms;
 my $projects = $schema->projects;
 my $dry_run;
-my $limit = 10;
+my $limit;
 my $data_dir = '../../../data/iowa-float-remediation';
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
