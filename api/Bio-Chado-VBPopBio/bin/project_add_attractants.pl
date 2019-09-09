@@ -68,7 +68,7 @@ $schema->txn_do_deferred
           if ($replace) {
             my @attractants_props = $collection->multiprops($attractant_heading);
             if (@attractants_props == 1 && $attractants_props[0]->value eq $replace) {
-              my $rip_prop = $collection->remove_multiprop($attractants_props[0]);
+              my $rip_prop = $collection->delete_multiprop($attractants_props[0]);
               if ($rip_prop) {
                 $ok_to_replace = 1;
               } else {
