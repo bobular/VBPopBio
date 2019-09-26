@@ -848,11 +848,11 @@ sub as_data_structure {
 
 sub write_to_isatab {
   my ($self, $options) = @_;
-  my $output_directory = $options->{directory} || die "must provide { directory => 'output_directory' } to write_to_isatab\n";
+  die "must provide { directory => 'output_directory' } to write_to_isatab\n" unless ($options->{directory});
 
   my $isatab = $self->as_isatab();
 
-  my $writer = Bio::Parser::ISATab->new(directory=>$output_directory);
+  my $writer = Bio::Parser::ISATab->new(%$options);
   $writer->write($isatab);
   write_extra_sheets($writer, $isatab);
 }

@@ -21,6 +21,9 @@
 #                            (implies dry-run - so does not delete - use this for archiving)
 #   --max_samples          : skip the whole process (no dump, no deletion) if more than this number of samples
 #   --ignore-geo-name      : don't validate the contents of 'Collection site (VBcv:0000831)' column
+#   --protocols-first      : in sample and assay sheets, output the Protocol REF before the Assay Name column
+#                            for VEuPathDB compatibility!
+#
 
 use strict;
 use warnings;
@@ -46,6 +49,7 @@ my ($verify, $ignore_geo_name);
 my $output_dir;
 my $max_samples;
 my $dump_only;
+my $protocols_first;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "dump_only|dump-only"=>\$dump_only,
@@ -55,6 +59,7 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "verify"=>\$verify,
 	   "ignore-geo-name"=>\$ignore_geo_name,
 	   "max_samples=i"=>\$max_samples,
+           "protocols-first"=>\$protocols_first,
 	  );
 
 $dry_run = 1 if ($verify);
@@ -80,7 +85,7 @@ $schema->txn_do_deferred
 	$schema->defer_exception("skipping this project as it has $num_samples samples (more than max_samples option)");
       } else {
 	my $project_data = $project->as_data_structure;
-	$project->write_to_isatab({ directory=>$output_dir });
+	$project->write_to_isatab({ directory=>$output_dir, protocols_first=>$protocols_first });
 	if (not $dump_only) {
 	  $project->delete;
 	  if ($verify) {
