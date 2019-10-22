@@ -126,9 +126,9 @@ sub as_isatab {
 
   my $assay_characteristics = $isa->{characteristics};
 
-  my $latitude_heading = 'Collection site latitude (VBcv:0000817)';
-  my $longitude_heading = 'Collection site longitude (VBcv:0000816)';
-  my $altitude_heading = 'Collection site altitude (VBcv:0000832)';
+  my $latitude_heading = 'Collection site latitude (VBcv:VBcv_0000817)';
+  my $longitude_heading = 'Collection site longitude (VBcv:VBcv_0000816)';
+  my $altitude_heading = 'Collection site altitude (VBcv:VBcv_0000832)';
 
   my $geolocation = $self->geolocation;
   $assay_characteristics->{$latitude_heading}{value} = $geolocation->latitude;
@@ -154,7 +154,7 @@ sub as_isatab {
   }
 
   # fallback for non-ontology site names
-  my $collection_site_heading = 'Collection site (VBcv:0000831)';
+  my $collection_site_heading = 'Collection site (VBcv:VBcv_0000831)';
   unless ($assay_characteristics->{$collection_site_heading}{value}) {
     $assay_characteristics->{$collection_site_heading}{value} = $geolocation->description;
   }
