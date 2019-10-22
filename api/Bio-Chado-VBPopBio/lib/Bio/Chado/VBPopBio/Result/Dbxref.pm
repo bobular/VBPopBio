@@ -37,6 +37,33 @@ sub as_string {
 }
 
 
+=head2 accession
+
+OVERRIDE of parent class method for EuPath export branch only
+
+It will return EFO_0012345 rather than 0012345
+
+Special case for SO in EuPath as SO:0012345
+
+=cut
+
+sub accession {
+  my $self = shift;
+  my $accession = $self->SUPER::accession();
+  my $dbname = $self->db->name;
+
+  # for stable-id internal usage, return the plain accession
+  if ($dbname =~ /^VB[PSA]$/) {
+    return $accession;
+  } elsif ($dbname =~ /^SO$/) {
+    return "$dbname:$accession";
+  } else {
+    return "${dbname}_$accession";
+  }
+}
+
+
+
 =head1 AUTHOR
 
 VectorBase, C<< <info at vectorbase.org> >>
