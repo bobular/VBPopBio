@@ -21,7 +21,7 @@ my $fill_cvtermpath;
 my $tab_delim_file;
 
 GetOptions("prefill_cvtermpath|fill_cvtermpath"=>\$fill_cvtermpath,
-           "output"=>\$tab_delim_file,
+           "output=s"=>\$tab_delim_file,
           );
 
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
@@ -89,7 +89,7 @@ foreach my $relationship (@cvterm_relationships) {
           # Tab delimited text file with the following header (order matters):
           # id, name, def, synonyms (comma-separated), uri, is_obsolete [true/false]
           my $source_id = $dbxref->accession;
-          print TAB join("\t", $source_id, $cvterm->name, $cvterm->definition,
+          print TAB join("\t", $source_id, $cvterm->name, $cvterm->definition || '',
                          join(",", $cvterm->cvtermsynonyms->get_column('synonym')->all),
                          "http://purl.obolibrary.org/obo/$source_id", 'false')."\n";
         }

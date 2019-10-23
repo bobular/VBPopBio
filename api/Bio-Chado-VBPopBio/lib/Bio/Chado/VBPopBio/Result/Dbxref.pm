@@ -43,8 +43,6 @@ OVERRIDE of parent class method for EuPath export branch only
 
 It will return EFO_0012345 rather than 0012345
 
-Special case for SO in EuPath as SO:0012345
-
 =cut
 
 sub accession {
@@ -55,8 +53,6 @@ sub accession {
   # for stable-id internal usage, return the plain accession
   if ($dbname =~ /^VB[PSA]$/) {
     return $accession;
-  } elsif ($dbname =~ /^SO$/) {
-    return "$dbname:$accession";
   } else {
     return "${dbname}_$accession";
   }
