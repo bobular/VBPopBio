@@ -4,7 +4,10 @@
 #
 # usage: CHADO_DB_NAME=my_chado_instance bin/global_term_usage_report.pl > term_usage.tsv
 #
+# option: --output foo.tsv    # tab delimited file for loading into GUS via InsertOntologyFromTabDelim.pm
 #
+#
+
 
 use strict;
 use warnings;
@@ -15,7 +18,11 @@ use JSON;
 use Getopt::Long;
 
 my $fill_cvtermpath;
-GetOptions("prefill_cvtermpath|fill_cvtermpath"=>\$fill_cvtermpath);
+my $tab_delim_file;
+
+GetOptions("prefill_cvtermpath|fill_cvtermpath"=>\$fill_cvtermpath,
+           "output"=>\$tab_delim_file,
+          );
 
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
@@ -34,6 +41,10 @@ my @cvterm_relationships = grep !/^(cvterm)/, $cvterms_rs->relationships;
 # remember all unique cvterms for cvtermpath prefilling
 my %seen_cvterm_ids;
 
+
+if ($tab_delim_file) {
+  open(TAB, ">$tab_delim_file") || die;
+}
 
 print join("\t", 'Term accession prefix', 'Term accession', 'Term name', 'Number of uses in this context',  'Object type', 'Object column')."\n";
 
@@ -74,9 +85,21 @@ foreach my $relationship (@cvterm_relationships) {
 
 	print join("\t", $prefix, $accession, $cvterm->name, $count, $obj_class, $object_column)."\n";
 
+        if ($tab_delim_file) {
+          # Tab delimited text file with the following header (order matters):
+          # id, name, def, synonyms (comma-separated), uri, is_obsolete [true/false]
+          my $source_id = $dbxref->accession;
+          print TAB join("\t", $source_id, $cvterm->name, $cvterm->definition,
+                         join(",", $cvterm->cvtermsynonyms->get_column('synonym')->all),
+                         "http://purl.obolibrary.org/obo/$source_id", 'false')."\n";
+        }
       }
     }
   }
+}
+
+if ($tab_delim_file) {
+  close(TAB);
 }
 
 if ($fill_cvtermpath) {
