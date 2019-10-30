@@ -870,7 +870,9 @@ will descend into samples, assays etc.
 sub as_isatab {
   my $self = shift;
 
-  my $isa = { studies => [ {} ] };
+  my $project_id = $self->stable_id;
+
+  my $isa = { investigation_identifier => $project_id, studies => [ {} ] };
   my $study = $isa->{studies}[0];
   my $schema = $self->result_source->schema;
   my $types = $schema->types;
@@ -910,8 +912,6 @@ sub as_isatab {
 
 
   # process the samples
-  my $project_id = $self->stable_id;
-
   my $samples = $self->stocks->ordered_by_id;
   my $samples_data = $study->{sources}{$external_id}{samples} = ordered_hashref();
   while (my $sample = $samples->next) {
