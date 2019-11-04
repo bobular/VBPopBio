@@ -917,6 +917,13 @@ sub as_isatab {
     my $source_name = $field_collection->external_id;
     my $source_data = $study->{sources}{$source_name} //= $field_collection->as_isatab($study);
 
+    # add a material_type for the collection
+    $source_data->{material_type} = { value => 'collection',
+                                      term_source_ref => 'EUPATH',
+                                      term_accession_number => 'OBI_0000659' };
+
+
+
     # remember the sample to collection links for below
     foreach my $sample ($field_collection->stocks) {
       $sample2collection{$sample->id}{$field_collection->id} = 1;
