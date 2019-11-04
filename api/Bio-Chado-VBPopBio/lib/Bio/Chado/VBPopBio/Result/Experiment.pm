@@ -979,8 +979,13 @@ sub as_isatab {
   while (@starts) {
     push @dates, join '/', shift @starts, shift @ends;
   }
-  # put these dates back in ISA-Tab's single Date column
-  $protocol_isa->{date} = join ';', sort @dates;
+  if ($assay_filename) {
+    # put these dates back in ISA-Tab's single Date column
+    $protocol_isa->{date} = join ';', sort @dates;
+  } else {
+    # unless it's field collection
+    $isa->{characteristics}{"specimen collection date (OBI:OBI_0001619)"}{value} = join ';', sort @dates;
+  }
 
   return $isa;
 }
