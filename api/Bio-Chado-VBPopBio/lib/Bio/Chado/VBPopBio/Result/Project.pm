@@ -910,11 +910,36 @@ sub as_isatab {
 
   }
 
+  # process the field collections to create the study sources
+  my %sample2collection; # sample internal id => collection internal id => 1
+  my $field_collections = $self->field_collections;
+  while (my $field_collection = $field_collections->next) {
+    my $source_name = $field_collection->external_id;
+    my $source_data = $study->{sources}{$source_name} //= $field_collection->as_isatab($study);
+
+    # remember the sample to collection links for below
+    foreach my $sample ($field_collection->stocks) {
+      $sample2collection{$sample->id}{$field_collection->id} = 1;
+    }
+  }
+
+
+
 
   # process the samples
   my $samples = $self->stocks->ordered_by_id;
-  my $samples_data = $study->{sources}{$external_id}{samples} = ordered_hashref();
   while (my $sample = $samples->next) {
+
+    # figure out which source to use
+    my $source_name = 'ERROR_UNKNOWN_SOURCE';
+    if (keys %{$sample2collection{$sample->id}} == 1) {
+      my $fc = $schema->assays->find(keys %{$sample2collection{$sample->id}}); # find by primary key ID
+      $source_name = $fc->external_id;
+    } else {
+      $self->schema->defer_exception_once("No collection or no unique collection for ".$sample->stable_id);
+    }
+    my $samples_data = $study->{sources}{$source_name}{samples} //= ordered_hashref();
+
     my $projects = $sample->projects->ordered_by_id;
     my $samples_main_project = $projects->first;
     my $samples_main_project_id = $samples_main_project->stable_id;

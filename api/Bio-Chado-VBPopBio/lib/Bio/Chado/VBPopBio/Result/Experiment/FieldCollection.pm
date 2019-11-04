@@ -163,6 +163,18 @@ sub as_isatab {
 }
 
 
+=head2 has_isatab_sheet
+
+returns true if the assay should be represented in ISA-Tab
+
+=cut
+
+sub has_isatab_sheet {
+  my $self = shift;
+  return 0;
+}
+
+
 
 =head1 AUTHOR
 
