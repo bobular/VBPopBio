@@ -233,7 +233,7 @@ sub as_isatab {
     $isa->{genotypes} //= ordered_hashref;
 
     my $genotype_name = $genotype->name;
-    $isa->{genotypes}{$genotype_name} = $genotype->as_isatab();
+    $isa->{genotypes}{$genotype_name} = $genotype->as_isatab($study);
 
     $isa->{raw_data_files}{$genotypes_filename} //= {};
   }

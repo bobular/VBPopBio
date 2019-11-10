@@ -104,7 +104,7 @@ sub as_data_structure {
 =cut
 
 sub as_isatab {
-  my ($self) = @_;
+  my ($self, $study) = @_;
 
   my $isa = ordered_hashref;
   $isa->{description} = $self->description;
@@ -114,6 +114,30 @@ sub as_isatab {
   $isa->{type}{term_source_ref} = $type_dbxref->db->name;
   $isa->{type}{term_accession_number} = $type_dbxref->accession;
   ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
+  # there is some cut and paste duplication with Phenotype.pm here which
+  # could probably be fixed by making Genotype and Phenotype inherit from
+  # a new class "AssayResult"
+
+  # fake a protocol to go from Assay to Phenotype
+  my $protocol_key = 'DOCUMENTING';
+  my $protocol_isa = $isa->{protocols}{$protocol_key} = {};
+
+  # also add to investigation sheet if needed
+  my $already_added_to_investigation_sheet =
+    grep { $_->{study_protocol_name} eq $protocol_key }
+      @{$study->{study_protocols}};
+  unless ($already_added_to_investigation_sheet) {
+    push @{$study->{study_protocols}},
+	{
+	 study_protocol_name => $protocol_key,
+	 study_protocol_type => 'documenting',
+	 study_protocol_type_term_source_ref => 'OBI',
+	 study_protocol_type_term_accession_number => 'IAO_0000572',
+	 # study_protocol_description => '',
+	};
+  }
+
 
   return $isa;
 }

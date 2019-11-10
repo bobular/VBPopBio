@@ -148,7 +148,7 @@ sub as_isatab {
     $isa->{phenotypes} //= ordered_hashref;
 
     my $phenotype_name = $phenotype->name;
-    $isa->{phenotypes}{$phenotype_name} = $phenotype->as_isatab();
+    $isa->{phenotypes}{$phenotype_name} = $phenotype->as_isatab($study);
 
     $isa->{raw_data_files}{$phenotypes_filename} //= {};
   }
