@@ -159,6 +159,26 @@ sub as_isatab {
     $assay_characteristics->{$collection_site_heading}{value} = $geolocation->description;
   }
 
+  # add a catch-all protocol if none present
+  unless (keys %{$isa->{protocols}}) {
+    my $protocol_key = 'GENERIC_COLLECT';
+    my $protocol_isa = $isa->{protocols}{$protocol_key} = {};
+
+    my $already_added_to_investigation_sheet =
+      grep { $_->{study_protocol_name} eq $protocol_key }
+        @{$study->{study_protocols}};
+    unless ($already_added_to_investigation_sheet) {
+      push @{$study->{study_protocols}},
+	{
+	 study_protocol_name => $protocol_key,
+	 study_protocol_type => 'arthropod specimen collection process',
+	 study_protocol_type_term_source_ref => 'EUPATH',
+	 study_protocol_type_term_accession_number => 'EUPATH_0000808',
+	 # study_protocol_description => '',
+	};
+    }
+  }
+
   return $isa;
 }
 
