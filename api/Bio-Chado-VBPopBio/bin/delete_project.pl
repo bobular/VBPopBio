@@ -23,7 +23,7 @@
 #   --ignore-geo-name      : don't validate the contents of 'Collection site (VBcv:0000831)' column
 #   --protocols-first      : in sample and assay sheets, output the Protocol REF before the Assay Name column
 #                            for VEuPathDB compatibility!
-#
+#   --noprotocols-first    : disables the above which is now on by default
 
 use strict;
 use warnings;
@@ -49,7 +49,7 @@ my ($verify, $ignore_geo_name);
 my $output_dir;
 my $max_samples;
 my $dump_only;
-my $protocols_first;
+my $protocols_first = 1;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "dump_only|dump-only"=>\$dump_only,
@@ -59,7 +59,7 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "verify"=>\$verify,
 	   "ignore-geo-name"=>\$ignore_geo_name,
 	   "max_samples=i"=>\$max_samples,
-           "protocols-first"=>\$protocols_first,
+           "protocols-first!"=>\$protocols_first,
 	  );
 
 $dry_run = 1 if ($verify);
