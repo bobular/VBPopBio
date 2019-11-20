@@ -505,6 +505,9 @@ sub as_isatab {
     }
   }
 
+  my $sample_primary_project_id = $self->projects->first->stable_id;
+  ### TO DO: figure out shared sample/assay stuff properly ###
+
   foreach my $assay ($self->nd_experiments->ordered_by_id) {
     next unless ($assay->has_isatab_sheet);
 
@@ -530,7 +533,7 @@ sub as_isatab {
 	   study_assay_measurement_type_term_accession_number => $assay->type->dbxref->accession,
 	   study_assay_file_name => $assay_filename,
 	   samples => ordered_hashref(),
-           comments => { dataset_names => 'ISATab_fromChado_${project_id}_RSRC|1' },
+           comments => { dataset_names => "ISATab_fromChado_${sample_primary_project_id}_RSRC|1" },
 	  };
 
     my $assay_name = $assay->external_id;
