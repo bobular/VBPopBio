@@ -943,7 +943,7 @@ sub as_isatab {
       my $fc = $schema->assays->find(keys %{$sample2collection{$sample->id}}); # find by primary key ID
       $source_name = $fc->external_id;
     } else {
-      $self->schema->defer_exception_once("No collection or no unique collection for ".$sample->stable_id);
+      $schema->defer_exception_once("No collection or no unique collection for ".$sample->stable_id);
     }
     my $samples_data = $study->{sources}{$source_name}{samples} //= ordered_hashref();
 

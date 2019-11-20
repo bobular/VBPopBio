@@ -97,6 +97,21 @@ $schema->txn_do_deferred
 	    }
 	  }
 	}
+        #
+        # write dataset.xml for GUS loader
+        #
+        open(DATASET, ">$output_dir/dataset.xml");
+        print DATASET << "EOF";
+  <dataset class="ISATabPopBio">
+    <prop name="projectName">PopBio</prop>
+    <prop name="studyType">fromChado</prop>
+    <prop name="studyName">$project_id</prop>
+    <prop name="version">1</prop>
+  </dataset>
+
+EOF
+        close(DATASET);
+
       }
 
       $schema->defer_exception("--dry-run or --verify option used - rolling back") if ($dry_run);
