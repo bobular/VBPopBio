@@ -476,11 +476,12 @@ sub as_isatab {
   ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
   my $sample_key = $self->name; # needed for attaching assays below
 
+  my @sample_assays = $self->nd_experiments->ordered_by_id->all;
   my $sample_manipulations = $self->sample_manipulations;
   my $manipulation = $sample_manipulations->first;
   if ($sample_manipulations->next) {
-    my $schema = $self->result_source->schema;
-    $schema->defer_exception("Wasn't expecting multiple sample_manipulations for $sample_key - perhaps its 'derived from' other samples in other projects that should be deleted first before dumping this one");
+    # my $schema = $self->result_source->schema;
+    # $schema->defer_exception("Wasn't expecting multiple sample_manipulations for $sample_key - perhaps its 'derived from' other samples in other projects that should be deleted first before dumping this one");
   }
   if ($manipulation) {
     #my $schema = $self->result_source->schema;
@@ -490,18 +491,20 @@ sub as_isatab {
     my $sample_created = $manipulation->stocks_created->first;
 
     if ($sample_created->id == $self->id) {
-      $isa->{comments}{'derived from'} = $sample_used->stable_id;
+      $isa->{comments}{'previously derived from'} = $sample_used->stable_id;
+      # put the derived-from sample's species ID assay(s) into the ISA-Tab dump for this project:
+      push @sample_assays, $sample_used->species_identification_assays->all;
     } elsif ($sample_used->id == $self->id) {
-      my $schema = $self->result_source->schema;
-      my $other_project_id = $sample_created->projects->first->stable_id;
-      $schema->defer_exception("$sample_key is used by a 'derived from' sample manipulation from another project $other_project_id. You must dump and delete that project first before dumping and deleting this one.");
+      # my $schema = $self->result_source->schema;
+      # my $other_project_id = $sample_created->projects->first->stable_id;
+      # $schema->defer_exception("$sample_key is used by a 'derived from' sample manipulation from another project $other_project_id. You must dump and delete that project first before dumping and deleting this one.");
     } else {
       my $schema = $self->result_source->schema;
       schema->defer_exception("unexpected sample manipulation situation for $sample_key");
     }
   }
 
-  foreach my $assay ($self->nd_experiments->ordered_by_id) {
+  foreach my $assay (@sample_assays) {
     next unless ($assay->has_isatab_sheet);
 
     my $study_assay_measurement_type = $assay->isatab_measurement_type;
