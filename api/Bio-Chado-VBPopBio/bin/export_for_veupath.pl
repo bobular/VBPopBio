@@ -6,7 +6,7 @@
 #
 # run this in a production 'screen' from the usual production directory
 #
-# usage: bin/export_for_veupath.pl --projects VBPnnnnnnn,VBPmmmmmmm --output_dir isatab_dir | parallel --jobs .jobs
+# usage: bin/export_for_veupath.pl --projects VBPnnnnnnn,VBPmmmmmmm --output_path manualDelivery/PopBio/fromChado/%s/1/final | parallel --jobs .jobs
 #
 #
 # options:
