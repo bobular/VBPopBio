@@ -463,7 +463,7 @@ generates isatab datastructure for writing to files with Bio::Parser::ISATab
 =cut
 
 sub as_isatab {
-  my ($self, $study, $sample_id, $project_id) = @_;
+  my ($self, $study, $project_id) = @_;
   my $isa = { };
 
   my $material_type = $self->type;
@@ -472,16 +472,9 @@ sub as_isatab {
   $isa->{material_type}{term_source_ref} = $mt_dbxref->db->name;
   $isa->{material_type}{term_accession_number} = $mt_dbxref->accession;
 
-  my $sample_key; # needed for attaching assays below
-
-  if ($sample_id && $project_id) { # passed as args when re-using a sample from another project
-    $sample_key = $sample_id;
-  } else {
-    # this sample belongs to the project being dumped and needs all the columns
-    $isa->{description} = $self->description;
-    ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
-    $sample_key = $self->name;
-  }
+  $isa->{description} = $self->description;
+  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+  my $sample_key = $self->name; # needed for attaching assays below
 
   my $sample_manipulations = $self->sample_manipulations;
   my $manipulation = $sample_manipulations->first;
@@ -490,6 +483,9 @@ sub as_isatab {
     $schema->defer_exception("Wasn't expecting multiple sample_manipulations for $sample_key - perhaps its 'derived from' other samples in other projects that should be deleted first before dumping this one");
   }
   if ($manipulation) {
+    #my $schema = $self->result_source->schema;
+    #$schema->defer_exception("Sample manipulation handling not yet implemented for VEuPath export (sample: $sample_key)");
+
     my $sample_used = $manipulation->stocks_used->first;
     my $sample_created = $manipulation->stocks_created->first;
 
@@ -505,14 +501,8 @@ sub as_isatab {
     }
   }
 
-  my $sample_primary_project_id = $self->projects->first->stable_id;
-  ### TO DO: figure out shared sample/assay stuff properly ###
-
   foreach my $assay ($self->nd_experiments->ordered_by_id) {
     next unless ($assay->has_isatab_sheet);
-
-    # don't dump the assay if it doesn't primarily belong to this project
-    next if (defined $project_id && $assay->projects->first->stable_id ne $project_id);
 
     my $study_assay_measurement_type = $assay->isatab_measurement_type;
 
@@ -533,7 +523,7 @@ sub as_isatab {
 	   study_assay_measurement_type_term_accession_number => $assay->type->dbxref->accession,
 	   study_assay_file_name => $assay_filename,
 	   samples => ordered_hashref(),
-           comments => { dataset_names => "ISATab_fromChado_${sample_primary_project_id}_RSRC|1" },
+           comments => { dataset_names => "ISATab_fromChado_${project_id}_RSRC|1" },
 	  };
 
     my $assay_name = $assay->external_id;

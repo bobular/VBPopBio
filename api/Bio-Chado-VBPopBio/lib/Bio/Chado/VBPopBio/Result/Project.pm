@@ -939,31 +939,41 @@ sub as_isatab {
 
     # figure out which source to use
     my $source_name = 'ERROR_UNKNOWN_SOURCE';
-    if (keys %{$sample2collection{$sample->id}} == 1) {
-      my $fc = $schema->assays->find(keys %{$sample2collection{$sample->id}}); # find by primary key ID
+    my @collection_ids = keys %{$sample2collection{$sample->id}};
+    if (@collection_ids == 1) {
+      my $fc = $schema->assays->find($collection_ids[0]); # find by primary key ID
       $source_name = $fc->external_id;
+    } elsif (@collection_ids > 1) {
+      $schema->defer_exception_once("Unhandled multiple collections for ".$sample->stable_id);
     } else {
-      $schema->defer_exception_once("No collection or no unique collection for ".$sample->stable_id);
+      # put in a nasty placeholder collection
+      $source_name = 'GENERIC_COLLECTION';
+      my $protocol_key = 'GENERIC_COLLECT';
+      my $source_data = $study->{sources}{$source_name} //= {
+                                                             protocols => { $protocol_key => {} },
+                                                             material_type => { value => 'collection',
+                                                                                term_source_ref => 'EUPATH',
+                                                                                term_accession_number => 'OBI_0000659' },
+                                                            };
+      my $already_added_to_investigation_sheet =
+        grep { $_->{study_protocol_name} eq $protocol_key }
+          @{$study->{study_protocols}};
+      unless ($already_added_to_investigation_sheet) {
+        push @{$study->{study_protocols}},
+          {
+           study_protocol_name => $protocol_key,
+           study_protocol_type => 'specimen collection process',
+           study_protocol_type_term_source_ref => 'EUPATH',
+           study_protocol_type_term_accession_number => 'OBI_0000659',
+          };
+      }
     }
     my $samples_data = $study->{sources}{$source_name}{samples} //= ordered_hashref();
 
-    my $projects = $sample->projects->ordered_by_id;
-    my $samples_main_project = $projects->first;
-    my $samples_main_project_id = $samples_main_project->stable_id;
+    my $sample_name = $sample->name;
+    $samples_data->{$sample_name} = $sample->as_isatab($study, $project_id);
 
-    if ($samples_main_project_id eq $project_id) {
-      my $sample_name = $sample->name;
-      $samples_data->{$sample_name} = $sample->as_isatab($study);
-      while (my $dependent_project = $projects->next) {
-	my $dependent_project_id = $dependent_project->stable_id;
-	$schema->defer_exception_once("This project contains samples used in another dependent project $dependent_project_id. You must dump and delete that project first before dumping and deleting this one.");
-      }
-    } else {
-      # this sample belongs to another project
-      # so we dump it very simply
-      my $sample_id = $sample->stable_id;
-      $samples_data->{$sample_id} = $sample->as_isatab($study, $sample_id, $project_id);
-    }
+    # removed all special handling of multi-project samples
   }
 
   # all props are study designs
