@@ -74,6 +74,8 @@ $output_dir //= sprintf "%s-ISA-Tab-%s", $project_id, strftime '%Y-%m-%d-%H%M', 
 # should speed things up
 $schema->storage->_use_join_optimizer(0);
 
+my $usage_license_term = $schema->types->usage_license;
+
 $schema->txn_do_deferred
   ( sub {
 
@@ -84,8 +86,22 @@ $schema->txn_do_deferred
       if (defined $max_samples && $num_samples > $max_samples) {
 	$schema->defer_exception("skipping this project as it has $num_samples samples (more than max_samples option)");
       } else {
+        #
+        # write presenter.xml for VEuPath deployment
+        #
+        my $project_name = $project->name;
+        my $project_description = $project->description;
+        $project_description =~ s/\s+$//; # remove any trailing whitespace
+        # take first sentence
+        my ($project_summary) = $project_description =~ m/^(.+?)(\.\s+[A-Z]|$)/s;
+        my $primary_contact = $project->contacts->first;
+        my $primary_contact_id = $primary_contact ? $primary_contact->name : "TODO"; # this is the email address actually
+
+        my @tag_terms = $project->tags;
+        my @licenses = map { $_->name } grep { $usage_license_term->has_child($_) } @tag_terms;
+
 	my $project_data = $project->as_data_structure;
-	$project->write_to_isatab({ directory=>$output_dir, protocols_first=>$protocols_first });
+	my $isatab = $project->write_to_isatab({ directory=>$output_dir, protocols_first=>$protocols_first });
 	if (not $dump_only) {
 	  $project->delete;
 	  if ($verify) {
@@ -111,6 +127,54 @@ $schema->txn_do_deferred
 
 EOF
         close(DATASET);
+
+        my $study_contacts = $isatab->{studies}[0]{study_contacts};
+        my $primary_contact_name = join ' ', grep { $_ } ($study_contacts->[0]{study_person_first_name},
+                                                          @{$study_contacts->[0]{study_person_mid_initials} // []},
+                                                          $study_contacts->[0]{study_person_last_name});
+
+        open(PRESENTER, ">$output_dir/presenter.xml");
+        print PRESENTER << "EOF";
+  <datasetPresenter name="ISATab_fromChado_${project_id}_RSRC"
+                    projectName="PopBio"
+                    >
+    <displayName><![CDATA[$project_name]]></displayName>
+    <shortDisplayName>$project_id</shortDisplayName>
+    <shortAttribution>$study_contacts->[0]{study_person_last_name} et al.</shortAttribution>
+    <summary><![CDATA[$project_summary]]></summary>
+    <description><![CDATA[$project_description]]></description>
+    <protocol></protocol>
+    <caveat></caveat>
+    <acknowledgement></acknowledgement>
+    <releasePolicy>@licenses</releasePolicy>
+    <primaryContactId>$primary_contact_id</primaryContactId>
+    <link>
+      <text></text>
+      <url></url>
+    </link>
+    <pubmedId></pubmedId>
+  </datasetPresenter>
+
+EOF
+        close(PRESENTER);
+
+        open(CONTACT, ">$output_dir/contact.xml");
+        print CONTACT << "EOF";
+  <contact>
+    <contactId>$primary_contact_id</contactId>
+    <name>$primary_contact_name</name>
+    <institution/>
+    <email>$primary_contact_id</email>
+    <address>$study_contacts->[0]{study_person_address}</address>
+    <city/>
+    <state/>
+    <zip/>
+    <country/>
+  </contact>
+
+EOF
+        close(CONTACT);
+
 
       }
 

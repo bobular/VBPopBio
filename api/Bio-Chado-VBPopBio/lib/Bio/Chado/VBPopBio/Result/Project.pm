@@ -855,6 +855,7 @@ sub write_to_isatab {
   my $writer = Bio::Parser::ISATab->new(%$options);
   $writer->write($isatab);
   write_extra_sheets($writer, $isatab);
+  return $isatab;
 }
 
 
