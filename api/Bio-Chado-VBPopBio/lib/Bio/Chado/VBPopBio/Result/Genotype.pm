@@ -107,13 +107,14 @@ sub as_isatab {
   my ($self, $study) = @_;
 
   my $isa = ordered_hashref;
+  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
   $isa->{description} = $self->description;
   my $type = $self->type;
   my $type_dbxref = $type->dbxref;
-  $isa->{type}{value} = $type->name;
-  $isa->{type}{term_source_ref} = $type_dbxref->db->name;
-  $isa->{type}{term_accession_number} = $type_dbxref->accession;
-  ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+  my $char = $isa->{characteristics}{"Genotype type (EUPATH:OBI_0001305)"} = {};
+  $char->{value} = $type->name;
+  $char->{term_source_ref} = $type_dbxref->db->name;
+  $char->{term_accession_number} = $type_dbxref->accession;
 
   # there is some cut and paste duplication with Phenotype.pm here which
   # could probably be fixed by making Genotype and Phenotype inherit from

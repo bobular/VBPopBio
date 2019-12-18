@@ -124,36 +124,40 @@ sub as_data_structure {
 sub as_isatab {
   my ($self, $study) = @_;
   my $isa = ordered_hashref;
-  my $term;
-  if ($term = $self->observable) {
-    $isa->{observable}{value} = $term->name;
-    my $dbxref = $term->dbxref;
-    $isa->{observable}{term_source_ref} = $dbxref->db->name;
-    $isa->{observable}{term_accession_number} = $dbxref->accession;
-  }
-  if ($term = $self->attr) {
-    $isa->{attribute}{value} = $term->name;
-    my $dbxref = $term->dbxref;
-    $isa->{attribute}{term_source_ref} = $dbxref->db->name;
-    $isa->{attribute}{term_accession_number} = $dbxref->accession;
-  }
-  if ($term = $self->cvalue) {
-    $isa->{value}{value} = $term->name;
-    my $dbxref = $term->dbxref;
-    $isa->{value}{term_source_ref} = $dbxref->db->name;
-    $isa->{value}{term_accession_number} = $dbxref->accession;
-  } else {
-    $isa->{value}{value} = $self->value;
-    # units stored in Chado's assay field
-    if ($term = $self->assay) {
-      $isa->{value}{unit}{value} = $term->name;
-      my $dbxref = $term->dbxref;
-      $isa->{value}{unit}{term_source_ref} = $dbxref->db->name;
-      $isa->{value}{unit}{term_accession_number} = $dbxref->accession;
-    }
-  }
 
   ($isa->{comments}, $isa->{characteristics}) = Multiprops->to_isatab($self);
+
+  my $term;
+  if ($term = $self->observable) {
+    my $char = $isa->{characteristics}{"Phenotype observable (APO:APO_0000017)"} = {};
+    my $dbxref = $term->dbxref;
+    $char->{value} = $term->name;
+    $char->{term_source_ref} = $dbxref->db->name;
+    $char->{term_accession_number} = $dbxref->accession;
+  }
+  if ($term = $self->attr) {
+    my $char = $isa->{characteristics}{"Phenotype attribute (APO:APO_0000001)"} = {};
+    my $dbxref = $term->dbxref;
+    $char->{value} = $term->name;
+    $char->{term_source_ref} = $dbxref->db->name;
+    $char->{term_accession_number} = $dbxref->accession;
+  }
+  my $value_char = $isa->{characteristics}{"Phenotype value (EUPATH:IAO_0000027)"} = {};
+  if ($term = $self->cvalue) {
+    my $dbxref = $term->dbxref;
+    $value_char->{value} = $term->name;
+    $value_char->{term_source_ref} = $dbxref->db->name;
+    $value_char->{term_accession_number} = $dbxref->accession;
+  } else {
+    $value_char->{value} = $self->value;
+    # units stored in Chado's assay field
+    if ($term = $self->assay) {
+      my $dbxref = $term->dbxref;
+      $value_char->{unit}{value} = $term->name;
+      $value_char->{unit}{term_source_ref} = $dbxref->db->name;
+      $value_char->{unit}{term_accession_number} = $dbxref->accession;
+    }
+  }
 
   # there is some cut and paste duplication with Genotype.pm here which
   # could probably be fixed by making Genotype and Phenotype inherit from
