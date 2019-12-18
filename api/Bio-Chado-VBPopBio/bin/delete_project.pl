@@ -100,9 +100,12 @@ $schema->txn_do_deferred
         my @tag_terms = $project->tags;
         my @licenses = map { $_->name } grep { $usage_license_term->has_child($_) } @tag_terms;
 
+        my @publications = $project->publications;
+
 	my $project_data = $project->as_data_structure;
 	my $isatab = $project->write_to_isatab({ directory=>$output_dir, protocols_first=>$protocols_first });
 	if (not $dump_only) {
+          die "shouldn't do an actual delete in the epvb-export branch code";
 	  $project->delete;
 	  if ($verify) {
 	    my $reloaded = $projects->create_from_isatab({ directory=>$output_dir });
@@ -133,6 +136,13 @@ EOF
                                                           @{$study_contacts->[0]{study_person_mid_initials} // []},
                                                           $study_contacts->[0]{study_person_last_name});
 
+
+        my @pubmed_ids = grep { $_ } map { $_->pubmed_id } @publications;
+        my $pubmed_xml = join "\n    ", map { "<pubmedId>$_</pubmedId>" } @pubmed_ids;
+
+        my $url_links_xml = join "\n    ", grep { $_ } map { if ($_->url) { sprintf "<link><text>%s</text><url>%s</url></link>", $_->title, $_->url; } } @publications;
+        my $doi_links_xml = join "\n    ", grep { $_ } map { if ($_->doi) { sprintf "<link><text>DOI:%s</text><url>http://dx.doi.org/%s</url></link>", $_->doi, $_->doi; } } @publications;
+
         open(PRESENTER, ">$output_dir/presenter.xml");
         print PRESENTER << "EOF";
   <datasetPresenter name="ISATab_fromChado_${project_id}_RSRC"
@@ -148,11 +158,9 @@ EOF
     <acknowledgement></acknowledgement>
     <releasePolicy>@licenses</releasePolicy>
     <primaryContactId>$primary_contact_id</primaryContactId>
-    <link>
-      <text></text>
-      <url></url>
-    </link>
-    <pubmedId></pubmedId>
+    $url_links_xml
+    $doi_links_xml
+    $pubmed_xml
   </datasetPresenter>
 
 EOF
