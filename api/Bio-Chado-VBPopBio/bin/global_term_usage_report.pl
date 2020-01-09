@@ -16,6 +16,7 @@ use lib 'lib';
 use Bio::Chado::VBPopBio;
 use JSON;
 use Getopt::Long;
+use utf8::all;
 
 my $fill_cvtermpath;
 my $tab_delim_file;
