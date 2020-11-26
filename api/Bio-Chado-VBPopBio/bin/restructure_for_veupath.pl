@@ -18,6 +18,7 @@ use lib 'lib';
 use Bio::Chado::VBPopBio;
 use Getopt::Long;
 use utf8::all;
+use Data::Dumper;
 
 use Text::CSV::Hashify;
 
@@ -30,13 +31,15 @@ my $dry_run;
 my $project_ids;
 my $verbose;
 my $limit;
-my $mapping_file;
+my $mapping_file = 'popbio-term-usage-VB-2019-08-master.csv';
+my $ir_attr_file = 'popbio-term-usage-VB-2019-08-insecticide-attrs.csv';
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$project_ids,
            "verbose"=>\$verbose,
            "limit=i"=>\$limit,
            "mapping_file|mapping_csv|mapping-file|mapping-csv=s"=>\$mapping_file,
+           "ir_file|ir_csv|ir-attrs|ir-attrs-csv=s"=>\$ir_attr_file,
 	  );
 
 die "need to give --projects PROJ_ID(s) and --mapping CSV_FILE params\n" unless (defined $project_ids && defined $mapping_file);
@@ -53,14 +56,46 @@ my $aoh = $hashify->all();
 # now make a lookup using the underscore-style ID at the first level
 # then the "Object type" as the second level (value: NdProtocol, Genotype, NdExperiment, NdExperimentProp etc)
 # value is the hash of row data from the CSV file
-my $csv_lookup = {};
+my $main_term_lookup = {};
 foreach my $row (@$aoh) {
   my $colon_id = $row->{'Term accession'};
   my $underscore_id = underscore_id($colon_id);
   my ($object_type) = $row->{'Object type'} =~ /(\w+)$/;
-  die "duplicate row for $underscore_id $object_type" if (exists $csv_lookup->{$underscore_id}{$object_type});
-  $csv_lookup->{$underscore_id}{$object_type} = $row;
+  die "duplicate row for $underscore_id $object_type" if (exists $main_term_lookup->{$underscore_id}{$object_type});
+  $main_term_lookup->{$underscore_id}{$object_type} = $row;
 }
+
+
+# Now make a lookup for the second sheet of the spreadsheet workbook
+# first key: attr accession in underscore style (e.g. VBcv_0000732 (LC50))
+# second key: units accession in underscore style (e.g. UO_0000031 (minute))
+# value = hash of row data from the file
+my $hashify_ir = Text::CSV::Hashify->new( {
+                                           file        => $ir_attr_file,
+                                           format      => 'aoh',
+                                           # array of hashes because there is no unique ID column
+                                          } );
+my $aoh_ir = $hashify_ir->all();
+my $ir_attr_lookup = {};
+foreach my $row (@$aoh_ir) {
+  my $attr_id = underscore_id($row->{'Term accession'});
+  my $unit_id = underscore_id($row->{'Units ID'});
+  die "problem with IR attr lookup file" unless ($attr_id && $unit_id);
+  $ir_attr_lookup->{$attr_id}{$unit_id} = $row;
+}
+
+
+
+
+###
+# constant ontology terms used below
+#
+my $ir_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO',
+                                                       term_accession_number => '20000058' }) || die;
+
+my $ir_biochem_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO',
+							       term_accession_number => '20000003' }) || die;
+
 
 # disable buffering of standard output so the progress update is "live"
 $| = 1;
@@ -120,18 +155,31 @@ $schema->txn_do_deferred
             my $phenotypes = $assay->phenotypes;
             while (my $phenotype = $phenotypes->next()) {
               my $object_type = object_type($phenotype);
-              if ($phenotype->observable->name eq 'resistance to single insecticide') {
+
+              #
+              # special treatment of phenotypes for Insecticide resistance assays
+              # (needs special mapping of phenotype.attr+unit to assay_characteristics)
+              #
+              if (is_insecticide_resistance_assay($assay)) {
+
                 my $data = $phenotype->as_data_structure;
+                # die Dumper($data);
                 # get the measured attribute (e.g. LC50 or mortality)
                 my $attr_id = underscore_id($data->{attribute}{accession});
+                my $unit_id = underscore_id($data->{value}{unit}{accession});
+
+                my $unit_lookup_row = $main_term_lookup->{$unit_id}{$object_type};
+                my $new_unit_id = underscore_id($unit_lookup_row->{'OBO ID'});
+                my $new_unit_label = $unit_lookup_row->{'OBO Label'};
+
                 # look up old->new mapping
-                if (my $lookup_row = $csv_lookup->{$attr_id}{$object_type}) {
+                if (my $lookup_row = $ir_attr_lookup->{$attr_id}{$unit_id}) {
                   # is there a new ontology ID
                   if ($lookup_row->{'OBO ID'}) {
                     my $new_attr_id = underscore_id($lookup_row->{'OBO ID'});
                     if ($new_attr_id) {
                       my $label = $lookup_row->{'OBO Label'};
-                      print "going to map from phenotype $attr_id to characteristic $new_attr_id ($label)\n";
+                      print "going to map from IR phenotype $attr_id $unit_id to characteristic $new_attr_id ($label) $new_unit_id ($new_unit_label)\n";
                     } else {
                       die "New ontology term for $object_type $attr_id, '$lookup_row->{OBO ID}', is badly formed\n";
                     }
@@ -139,10 +187,10 @@ $schema->txn_do_deferred
                     die "No 'OBO ID' for $attr_id $lookup_row->{'Term name'}\n";
                   }
                 } else {
-                  die "Nothing is CSV lookup for $object_type attr $attr_id\n";
+                  die "Nothing in CSV lookup for $object_type attr $attr_id\n";
                 }
               } else {
-                print "not yet handled observable=".$phenotype->observable->name."\n";
+                # handle phenotypes from other types of assay (e.g. blood meal, pathogen)
               }
             }
           }
@@ -188,4 +236,18 @@ sub object_type {
   my ($type) = $ref =~ /(\w+)$/;
   die "bad object type '$ref'" unless ($type);
   return $type;
+}
+
+
+
+sub is_insecticide_resistance_assay {
+  my ($assay) = @_;
+  my @protocol_types = map { $_->type } $assay->protocols->all;
+
+  if (grep { $_->id == $ir_assay_base_term->id ||
+	       $ir_assay_base_term->has_child($_) ||
+                 $ir_biochem_assay_base_term->has_child($_)
+               } @protocol_types) {
+    return 1;
+  }
 }
