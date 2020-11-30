@@ -27,7 +27,7 @@ use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
 my $cvterms = $schema->cvterms;
-my $dry_run;
+my $dry_run = 1;  # while in development
 my $project_ids;
 my $verbose;
 my $limit;
@@ -96,6 +96,7 @@ my $ir_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO'
 my $ir_biochem_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '20000003' }) || die;
 
+my $placeholder_term = $schema->types->placeholder;
 
 # disable buffering of standard output so the progress update is "live"
 $| = 1;
@@ -112,7 +113,7 @@ $schema->txn_do_deferred
         foreach my $project_id (split /\W+/, $project_ids) {
           my $project = $schema->projects->find_by_stable_id($project_id);
           unless ($project) {
-            warn "project $project_id not found\n";
+            $schema->defer_exception("couldn't find project '$project_id'");
             next;
           }
           push @projects, $project;
@@ -151,27 +152,31 @@ $schema->txn_do_deferred
             # TO DO: map protocol old->new
             # TO DO: map ontology terms in props
 
-            # loop through phenotypes and convert them to assay props
-            my $phenotypes = $assay->phenotypes;
-            while (my $phenotype = $phenotypes->next()) {
-              my $object_type = object_type($phenotype);
+            if (is_insecticide_resistance_assay($assay)) {
+              #
+              # TO DO
+              # special mapping of insecticide concentration multiprop
+              # but then treat all other props with a standard mapping
+              # how do we partition them or flag some as done and others as not done?
 
               #
               # special treatment of phenotypes for Insecticide resistance assays
               # (needs special mapping of phenotype.attr+unit to assay_characteristics)
               #
-              if (is_insecticide_resistance_assay($assay)) {
+              my $phenotypes = $assay->phenotypes;
+              while (my $phenotype = $phenotypes->next()) {
+                my $object_type = object_type($phenotype);
 
                 my $data = $phenotype->as_data_structure;
                 # die Dumper($data);
                 # get the measured attribute (e.g. LC50 or mortality)
                 my $attr_id = underscore_id($data->{attribute}{accession});
                 my $unit_id = underscore_id($data->{value}{unit}{accession});
-
-                my $unit_lookup_row = $main_term_lookup->{$unit_id}{$object_type};
-                my $new_unit_id = underscore_id($unit_lookup_row->{'OBO ID'});
-                my $new_unit_label = $unit_lookup_row->{'OBO Label'};
-
+                my $new_value = clean_value($data->{value}{text});
+                unless ($attr_id && $unit_id && length($new_value)) {
+                  $schema->defer_exception("Phenotype for ".$assay->stable_id." missing one or more of required attribute, value and unit");
+                  next;
+                }
                 # look up old->new mapping
                 if (my $lookup_row = $ir_attr_lookup->{$attr_id}{$unit_id}) {
                   # is there a new ontology ID
@@ -179,19 +184,41 @@ $schema->txn_do_deferred
                     my $new_attr_id = underscore_id($lookup_row->{'OBO ID'});
                     if ($new_attr_id) {
                       my $label = $lookup_row->{'OBO Label'};
-                      print "going to map from IR phenotype $attr_id $unit_id to characteristic $new_attr_id ($label) $new_unit_id ($new_unit_label)\n";
-                    } else {
-                      die "New ontology term for $object_type $attr_id, '$lookup_row->{OBO ID}', is badly formed\n";
+                      my $unit_lookup_row = $main_term_lookup->{$unit_id}{$object_type};
+                      if ($unit_lookup_row) {
+                        my $new_unit_id = underscore_id($unit_lookup_row->{'OBO ID'});
+                        my $new_unit_label = $unit_lookup_row->{'OBO Label'};
+                        if ($new_unit_id) {
+                          print "going to map from IR phenotype $attr_id '$new_value' $unit_id to characteristic $new_attr_id ($label) $new_unit_id ($new_unit_label)\n";
+                          my $new_attr_term = get_cvterm($new_attr_id);
+                          my $new_unit_term = get_cvterm($new_unit_id);
+                          # add the new assay characteristic, e.g. "LC50 in mass density unit", 1.5, "mg/l"
+                          $assay->add_multiprop(my $p = Multiprop->new(cvterms=>[$new_attr_term, $new_unit_term],
+                                                                       value=>$new_value));
+                          # before removing the phenotype, see if it has any properties that we might be losing
+                          my @props = $phenotype->multiprops;
+                          if (@props) {
+                            my $prop_summary = join "; ", map { $_->as_string } @props;
+                            $schema->defer_exception("Phenotype of ".$assay->stable_id." has prop(s) not dealt with: $prop_summary");
+                          }
+                          # remove the phenotype
+                          $phenotype->delete;
+                        } else {
+                          $schema->defer_exception("No new 'OBO ID' for unit unit_id in main lookup");
+                        }
+                      } else {
+                        $schema->defer_exception("No row in main lookup for '$unit_id' '$object_type'");
+                      }
                     }
                   } else {
-                    die "No 'OBO ID' for $attr_id $lookup_row->{'Term name'}\n";
+                    $schema->defer_exception("IR lookup 'OBO ID' column empty for '$attr_id' '$unit_id'");
                   }
                 } else {
-                  die "Nothing in CSV lookup for $object_type attr $attr_id\n";
+                  $schema->defer_exception("No row in IR lookup for '$attr_id' '$unit_id'");
                 }
-              } else {
-                # handle phenotypes from other types of assay (e.g. blood meal, pathogen)
               }
+            } else {
+              $schema->defer_exception("TO DO: process phenotype assays like ".$assay->stable_id);
             }
           }
 
@@ -226,7 +253,7 @@ sub underscore_id {
     $id =~ s/:/_/;
     return $id;
   } else {
-    die "badly formatted ontology ID '$id'\n";
+    $schema->defer_exception("Badly formed ontology ID given to underscore_id('$id') - likely from a lookup sheet");
   }
 }
 
@@ -250,4 +277,33 @@ sub is_insecticide_resistance_assay {
                } @protocol_types) {
     return 1;
   }
+}
+
+sub clean_value {
+  my ($value) = @_;
+  if (defined $value) {
+    # remove trailing and leading space
+    $value =~ s/\s+$//;
+    $value !~ s/^\s+//;
+  }
+  return $value;
+}
+
+# assume id provided is underscore delimited
+# it will throw an exception and return a dummy placeholder term if term not found
+sub get_cvterm {
+  my ($id) = @_;
+  my ($prefix, $accession) = $id =~ /(\w+?)_(\d+)/;
+  if ($prefix && defined $accession && length($accession)) {
+    my $term = $cvterms->find_by_accession({ term_source_ref => $prefix,
+                                             term_accession_number => $accession });
+    if ($term) {
+      return $term;
+    } else {
+      $schema->defer_exception_once("Term '$id' not in database");
+    }
+  } else {
+    $schema->defer_exception("get_cvterm('$id') provided poorly formed term ID");
+  }
+  return $placeholder_term;
 }
