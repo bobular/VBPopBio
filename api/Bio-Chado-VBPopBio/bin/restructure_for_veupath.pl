@@ -149,16 +149,12 @@ $schema->txn_do_deferred
 
           my $phenotype_assays = $sample->phenotype_assays;
           while (my $assay = $phenotype_assays->next()) {
-            # TO DO: map protocol old->new
-            # TO DO: map ontology terms in props
+
+            # process_assay_protocols($assay); # TO DO
+
+            process_assay_props($assay);
 
             if (is_insecticide_resistance_assay($assay)) {
-              #
-              # TO DO
-              # special mapping of insecticide concentration multiprop
-              # but then treat all other props with a standard mapping
-              # how do we partition them or flag some as done and others as not done?
-
               #
               # special treatment of phenotypes for Insecticide resistance assays
               # (needs special mapping of phenotype.attr+unit to assay_characteristics)
@@ -204,17 +200,17 @@ $schema->txn_do_deferred
                           # remove the phenotype
                           $phenotype->delete;
                         } else {
-                          $schema->defer_exception("No new 'OBO ID' for unit unit_id in main lookup");
+                          $schema->defer_exception_once("No 'OBO ID' for unit '$unit_id' in main lookup");
                         }
                       } else {
-                        $schema->defer_exception("No row in main lookup for '$unit_id' '$object_type'");
+                        $schema->defer_exception_once("No row in main lookup for '$unit_id' '$object_type'");
                       }
                     }
                   } else {
-                    $schema->defer_exception("IR lookup 'OBO ID' column empty for '$attr_id' '$unit_id'");
+                    $schema->defer_exception_once("IR lookup 'OBO ID' column empty for '$attr_id' '$unit_id'");
                   }
                 } else {
-                  $schema->defer_exception("No row in IR lookup for '$attr_id' '$unit_id'");
+                  $schema->defer_exception_once("No row in IR lookup for '$attr_id' '$unit_id'");
                 }
               }
             } else {
@@ -253,7 +249,7 @@ sub underscore_id {
     $id =~ s/:/_/;
     return $id;
   } else {
-    $schema->defer_exception("Badly formed ontology ID given to underscore_id('$id') - likely from a lookup sheet");
+    $schema->defer_exception_once("Badly formed ontology ID given to underscore_id('$id') - likely from a lookup sheet");
   }
 }
 
@@ -284,7 +280,7 @@ sub clean_value {
   if (defined $value) {
     # remove trailing and leading space
     $value =~ s/\s+$//;
-    $value !~ s/^\s+//;
+    $value =~ s/^\s+//;
   }
   return $value;
 }
@@ -303,7 +299,49 @@ sub get_cvterm {
       $schema->defer_exception_once("Term '$id' not in database");
     }
   } else {
-    $schema->defer_exception("get_cvterm('$id') provided poorly formed term ID");
+    $schema->defer_exception_once("get_cvterm('$id') was provided with a poorly formed term ID");
   }
   return $placeholder_term;
+}
+
+#
+# process props (aka characteristics) from all assays
+# and perform specialised transformations where necessary (e.g. insecticide concentrations)
+#
+# works inplace/destructively on assay's multiprops
+#
+
+sub process_assay_props {
+  my ($assay) = @_;
+
+  my @multiprops = $assay->multiprops;
+
+  foreach my $multiprop (@multiprops) {
+    #
+    # regular processing: map all ontology terms, insert new multiprop and delete old one
+    #
+    my $mapped_something;
+    my @new_cvterms = map {
+      my $old_term = $_;
+      my $new_term = $placeholder_term;
+      my $old_term_id = underscore_id($old_term->dbxref->as_string());
+      my $lookup_row = $main_term_lookup->{$old_term_id}{'NdExperimentprop'};
+      if ($lookup_row) {
+        my $new_term_id = underscore_id($lookup_row->{'OBO ID'});
+        $new_term = get_cvterm($new_term_id);
+      } else {
+        $schema->defer_exception_once("No lookup row for $old_term_id NdExperimentprop");
+      }
+      $mapped_something = 1 if ($new_term->id != $old_term->id);
+      $new_term;
+    } $multiprop->cvterms;
+    if ($mapped_something) {
+      my $old_value = $multiprop->value;
+      my $new_multiprop = Multiprop->new(cvterms=>\@new_cvterms, defined $old_value ? (value=>$old_value) : ());
+      warn "going to replace: ".$multiprop->as_string."\nwith:             ".$new_multiprop->as_string."\n";
+    }
+
+  }
+
+
 }
