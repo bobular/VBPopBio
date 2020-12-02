@@ -126,9 +126,9 @@ sub as_isatab {
 
   my $assay_characteristics = $isa->{characteristics};
 
-  my $latitude_heading = 'Collection site latitude (VBcv:VBcv_0000817)';
-  my $longitude_heading = 'Collection site longitude (VBcv:VBcv_0000816)';
-  my $altitude_heading = 'Collection site altitude (VBcv:VBcv_0000832)';
+  my $latitude_heading = 'Collection site latitude (EUPATH:OBI_0001620)';
+  my $longitude_heading = 'Collection site longitude (EUPATH:OBI_0001621)';
+  my $altitude_heading = 'Collection site altitude (TBD_EUPATH_ONTOLOGY_ISSUE_111)';
 
   my $geolocation = $self->geolocation;
   $assay_characteristics->{$latitude_heading}{value} = $geolocation->latitude;
@@ -154,10 +154,11 @@ sub as_isatab {
   }
 
   # fallback for non-ontology site names
-  my $collection_site_heading = 'Collection site (VBcv:VBcv_0000831)';
-  unless ($assay_characteristics->{$collection_site_heading}{value}) {
-    $assay_characteristics->{$collection_site_heading}{value} = $geolocation->description;
-  }
+  #### Not needed for VEuPath export ####
+  # my $collection_site_heading = 'Collection site (VBcv:VBcv_0000831)';
+  # unless ($assay_characteristics->{$collection_site_heading}{value}) {
+  #   $assay_characteristics->{$collection_site_heading}{value} = $geolocation->description;
+  # }
 
   # add a catch-all protocol if none present
   unless (keys %{$isa->{protocols}}) {
