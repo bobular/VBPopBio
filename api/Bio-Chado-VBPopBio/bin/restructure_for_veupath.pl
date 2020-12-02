@@ -144,8 +144,11 @@ $schema->txn_do_deferred
           my $collections = $sample->field_collections;
           while (my $assay = $collections->next()) {
             # TO DO: handle collection protocol old->new and add extra device prop when needed
-
             process_entity_props($assay, 'NdExperimentprop');
+
+            # collection geolocation itself has props but we may want to remove these
+            # and rely instead only on the terms we assign from lat/long lookup
+            process_entity_props($assay->nd_geolocation, 'NdGeolocationprop');
           }
 
           my $species_assays = $sample->species_identification_assays;
