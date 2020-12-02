@@ -10,6 +10,10 @@
 #   --dry-run              : rolls back transaction and doesn't insert into db permanently
 #   --verbose              : show non-error progress logging
 #   --limit N              : process max N samples per project
+#   --dump-isatab          : dump processed project(s) to isatab files in <isatab-prefix>-<projectID> directories
+#   --nodump-isatab        : don't dump (default)
+#   --isatab-prefix        : prefix of optional isatab output directories
+#
 
 use strict;
 use warnings;
@@ -33,6 +37,8 @@ my $verbose;
 my $limit;
 my $mapping_file = 'popbio-term-usage-VB-2019-08-master.csv';
 my $ir_attr_file = 'popbio-term-usage-VB-2019-08-insecticide-attrs.csv';
+my $isatab_prefix = './temp-isatab-';  # will be suffixed with project ID if
+my $dump_isatab = 0;                   # --dump_isatab provided on commandline
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$project_ids,
@@ -40,6 +46,8 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
            "limit=i"=>\$limit,
            "mapping_file|mapping_csv|mapping-file|mapping-csv=s"=>\$mapping_file,
            "ir_file|ir_csv|ir-attrs|ir-attrs-csv=s"=>\$ir_attr_file,
+           "dump_isatab|dump-isatab!"=>\$dump_isatab,
+           "isatab_prefix|isatab-prefix=s"=>\$isatab_prefix,
 	  );
 
 die "need to give --projects PROJ_ID(s) and --mapping CSV_FILE params\n" unless (defined $project_ids && defined $mapping_file);
@@ -59,7 +67,7 @@ my $aoh = $hashify->all();
 my $main_term_lookup = {};
 foreach my $row (@$aoh) {
   my $colon_id = $row->{'Term accession'};
-  my $underscore_id = underscore_id($colon_id);
+  my $underscore_id = underscore_id($colon_id, 'process main lookup');
   my ($object_type) = $row->{'Object type'} =~ /(\w+)$/;
   die "duplicate row for $underscore_id $object_type" if (exists $main_term_lookup->{$underscore_id}{$object_type});
   $main_term_lookup->{$underscore_id}{$object_type} = $row;
@@ -78,8 +86,8 @@ my $hashify_ir = Text::CSV::Hashify->new( {
 my $aoh_ir = $hashify_ir->all();
 my $ir_attr_lookup = {};
 foreach my $row (@$aoh_ir) {
-  my $attr_id = underscore_id($row->{'Term accession'});
-  my $unit_id = underscore_id($row->{'Units ID'});
+  my $attr_id = underscore_id($row->{'Term accession'}, 'process ir lookup attr');
+  my $unit_id = underscore_id($row->{'Units ID'}, 'process ir lookup unit');
   die "problem with IR attr lookup file" unless ($attr_id && $unit_id);
   $ir_attr_lookup->{$attr_id}{$unit_id} = $row;
 }
@@ -130,21 +138,21 @@ $schema->txn_do_deferred
         my $samples = $project->stocks;
 	while (my $sample = $samples->next()) {
 
-          # TO DO: map ontology terms (old->new) in sample props
+          process_entity_props($sample, 'Stockprop');
 
           # loop through all four types of assay
           my $collections = $sample->field_collections;
           while (my $assay = $collections->next()) {
             # TO DO: handle collection protocol old->new and add extra device prop when needed
 
-            # TO DO: map ontology terms in props
+            process_entity_props($assay, 'NdExperimentprop');
           }
 
           my $species_assays = $sample->species_identification_assays;
           while (my $assay = $species_assays->next()) {
             # TO DO: map protocol old->new
 
-            # TO DO: map ontology terms in props
+            process_entity_props($assay, 'NdExperimentprop');
           }
 
           my $phenotype_assays = $sample->phenotype_assays;
@@ -152,7 +160,7 @@ $schema->txn_do_deferred
 
             # process_assay_protocols($assay); # TO DO
 
-            process_assay_props($assay);
+            process_entity_props($assay, 'NdExperimentprop');
 
             if (is_insecticide_resistance_assay($assay)) {
               #
@@ -166,8 +174,8 @@ $schema->txn_do_deferred
                 my $data = $phenotype->as_data_structure;
                 # die Dumper($data);
                 # get the measured attribute (e.g. LC50 or mortality)
-                my $attr_id = underscore_id($data->{attribute}{accession});
-                my $unit_id = underscore_id($data->{value}{unit}{accession});
+                my $attr_id = underscore_id($data->{attribute}{accession}, 'IR phenotype data attr');
+                my $unit_id = underscore_id($data->{value}{unit}{accession}, 'IR phenotype data unit');
                 my $new_value = clean_value($data->{value}{text});
                 unless ($attr_id && $unit_id && length($new_value)) {
                   $schema->defer_exception("Phenotype for ".$assay->stable_id." missing one or more of required attribute, value and unit");
@@ -177,12 +185,12 @@ $schema->txn_do_deferred
                 if (my $lookup_row = $ir_attr_lookup->{$attr_id}{$unit_id}) {
                   # is there a new ontology ID
                   if ($lookup_row->{'OBO ID'}) {
-                    my $new_attr_id = underscore_id($lookup_row->{'OBO ID'});
+                    my $new_attr_id = underscore_id($lookup_row->{'OBO ID'}, "Missing or invalid term ID for '$data->{attribute}{name}' '$data->{value}{unit}{name}' in IR lookup");
                     if ($new_attr_id) {
                       my $label = $lookup_row->{'OBO Label'};
                       my $unit_lookup_row = $main_term_lookup->{$unit_id}{$object_type};
                       if ($unit_lookup_row) {
-                        my $new_unit_id = underscore_id($unit_lookup_row->{'OBO ID'});
+                        my $new_unit_id = underscore_id($unit_lookup_row->{'OBO ID'}, "Missing or invalid term ID for '$data->{value}{unit}{name}' '$object_type' in main lookup");
                         my $new_unit_label = $unit_lookup_row->{'OBO Label'};
                         if ($new_unit_id) {
                           print "going to map from IR phenotype $attr_id '$new_value' $unit_id to characteristic $new_attr_id ($label) $new_unit_id ($new_unit_label)\n";
@@ -222,7 +230,7 @@ $schema->txn_do_deferred
           while (my $assay = $genotype_assays->next()) {
             # TO DO: map protocol old->new
 
-            # TO DO: map ontology terms in props
+            process_entity_props($assay, 'NdExperimentprop');
           }
 
           # TO DO: sample manipulations??
@@ -232,14 +240,19 @@ $schema->txn_do_deferred
           last if ($limit && $done_samples >= $limit);
 	}
 
-	## $project->update_modification_date() if ($count_changed > 0);
+	$project->update_modification_date();
 
+        if ($dump_isatab) {
+          my $output_dir = $isatab_prefix.$project_id;
+          my $isatab = $project->write_to_isatab({ directory=>$output_dir, protocols_first=>1 });
+          warn "wrote $project_id ISA-Tab to $output_dir\n";
+        }
       }
       $schema->defer_exception("dry-run option - rolling back") if ($dry_run);
     } );
 
 sub underscore_id {
-  my ($id) = @_;
+  my ($id, @debug_info) = @_;
   # already underscored and looks like an onto id?
   if ($id =~ /^\w+?_\w+$/) {
     return $id;
@@ -249,7 +262,8 @@ sub underscore_id {
     $id =~ s/:/_/;
     return $id;
   } else {
-    $schema->defer_exception_once("Badly formed ontology ID given to underscore_id('$id') - likely from a lookup sheet");
+    $schema->defer_exception_once("Bad ID '$id' - @debug_info");
+    return 'EUPATH_9999999';
   }
 }
 
@@ -305,16 +319,19 @@ sub get_cvterm {
 }
 
 #
-# process props (aka characteristics) from all assays
+# process props (aka characteristics) from all assays, samples & projects (any others?)
 # and perform specialised transformations where necessary (e.g. insecticide concentrations)
 #
-# works inplace/destructively on assay's multiprops
+# works inplace/destructively on the item's multiprops
+#
+# $proptype would be NdExperimentprop for assays, Stockprop for samples and
+# Projectprop for projects
 #
 
-sub process_assay_props {
-  my ($assay) = @_;
+sub process_entity_props {
+  my ($entity, $proptype) = @_;
 
-  my @multiprops = $assay->multiprops;
+  my @multiprops = $entity->multiprops;
 
   foreach my $multiprop (@multiprops) {
     #
@@ -324,13 +341,13 @@ sub process_assay_props {
     my @new_cvterms = map {
       my $old_term = $_;
       my $new_term = $placeholder_term;
-      my $old_term_id = underscore_id($old_term->dbxref->as_string());
-      my $lookup_row = $main_term_lookup->{$old_term_id}{'NdExperimentprop'};
+      my $old_term_id = underscore_id($old_term->dbxref->as_string(), "process_entity_props() old multiprop term: '".$old_term->name."'");
+      my $lookup_row = $main_term_lookup->{$old_term_id}{$proptype};
       if ($lookup_row) {
-        my $new_term_id = underscore_id($lookup_row->{'OBO ID'});
+        my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "Missing or invalid term ID for '".$old_term->name."' $proptype in main lookup");
         $new_term = get_cvterm($new_term_id);
       } else {
-        $schema->defer_exception_once("No lookup row for $old_term_id NdExperimentprop");
+        $schema->defer_exception_once("No lookup row for $old_term_id $proptype");
       }
       $mapped_something = 1 if ($new_term->id != $old_term->id);
       $new_term;
@@ -338,7 +355,17 @@ sub process_assay_props {
     if ($mapped_something) {
       my $old_value = $multiprop->value;
       my $new_multiprop = Multiprop->new(cvterms=>\@new_cvterms, defined $old_value ? (value=>$old_value) : ());
-      warn "going to replace: ".$multiprop->as_string."\nwith:             ".$new_multiprop->as_string."\n";
+      # warn "going to replace: ".$multiprop->as_string."\nwith:             ".$new_multiprop->as_string."\n";
+      my $ok_deleted = $entity->delete_multiprop($multiprop);
+      if ($ok_deleted) {
+        my $ok_added = $entity->add_multiprop($new_multiprop);
+        unless ($ok_added) {
+          $schema->defer_exception("Problem adding multiprop: (".$new_multiprop->as_string.") for entity ".$entity->stable_id);
+        }
+      } else {
+        $schema->defer_exception("Problem deleting multiprop: (".$multiprop->as_string.") for entity ".$entity->stable_id);
+      }
+
     }
 
   }
