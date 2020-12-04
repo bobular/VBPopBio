@@ -11,7 +11,6 @@
 #   --verbose              : show non-error progress logging
 #   --limit N              : process max N samples per project
 #   --dump-isatab          : dump processed project(s) to isatab files in <isatab-prefix>-<projectID> directories
-#   --nodump-isatab        : don't dump (default)
 #   --isatab-prefix        : prefix of optional isatab output directories
 #
 
@@ -46,9 +45,11 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
            "limit=i"=>\$limit,
            "mapping_file|mapping_csv|mapping-file|mapping-csv=s"=>\$mapping_file,
            "ir_file|ir_csv|ir-attrs|ir-attrs-csv=s"=>\$ir_attr_file,
-           "dump_isatab|dump-isatab!"=>\$dump_isatab,
+           "dump_isatab|dump-isatab"=>\$dump_isatab,
            "isatab_prefix|isatab-prefix=s"=>\$isatab_prefix,
 	  );
+
+die "can't --dump-isatab if --limit X is given\n" if ($dump_isatab && $limit);
 
 die "need to give --projects PROJ_ID(s) and --mapping CSV_FILE params\n" unless (defined $project_ids && defined $mapping_file);
 
@@ -92,7 +93,16 @@ foreach my $row (@$aoh_ir) {
   $ir_attr_lookup->{$attr_id}{$unit_id} = $row;
 }
 
-
+#
+# manual lookup for biochem units
+#
+# attr_id => unit_id => faked row from lookup table
+my $biochem_units_lookup =
+  {
+   'VBcv_0001116' => { 'UO_0000190' => { 'OBO ID' => 'EUPATH_0043140', 'OBO Label' => 'new mean ratio term' } }, # mean ratio
+   'VBcv_0001124' => { 'UO_0000190' => { 'OBO ID' => 'EUPATH_0043141', 'OBO Label' => 'new median ratio term' } }, # median ratio
+   'VBcv_0001111' => { 'UO_0000187' => { 'OBO ID' => 'EUPATH_0043142', 'OBO Label' => 'new fraction greater than 99th percentile term' } }, # percent > 99th percentile
+  };
 
 
 ###
@@ -134,6 +144,8 @@ $schema->txn_do_deferred
         my $project_id = $project->stable_id;
 	my $num_samples = $project->stocks->count;
         print "processing $project_id ($num_samples samples)...\n";
+
+        # TO DO: handle project props
 
         my $samples = $project->stocks;
 	while (my $sample = $samples->next()) {
@@ -191,9 +203,9 @@ $schema->txn_do_deferred
                     my $new_attr_id = underscore_id($lookup_row->{'OBO ID'}, "Missing or invalid term ID for '$data->{attribute}{name}' '$data->{value}{unit}{name}' in IR lookup");
                     if ($new_attr_id) {
                       my $label = $lookup_row->{'OBO Label'};
-                      my $unit_lookup_row = $main_term_lookup->{$unit_id}{$object_type};
+                      my $unit_lookup_row = $biochem_units_lookup->{$attr_id}{$unit_id} || $main_term_lookup->{$unit_id}{$object_type};
                       if ($unit_lookup_row) {
-                        my $new_unit_id = underscore_id($unit_lookup_row->{'OBO ID'}, "Missing or invalid term ID for '$data->{value}{unit}{name}' '$object_type' in main lookup");
+                        my $new_unit_id = underscore_id($unit_lookup_row->{'OBO ID'}, "Missing or invalid term ID for '$data->{value}{unit}{name}' '$object_type' in main (or biochem) lookup");
                         my $new_unit_label = $unit_lookup_row->{'OBO Label'};
                         if ($new_unit_id) {
                           print "going to map from IR phenotype $attr_id '$new_value' $unit_id to characteristic $new_attr_id ($label) $new_unit_id ($new_unit_label)\n";
@@ -214,7 +226,7 @@ $schema->txn_do_deferred
                           $schema->defer_exception_once("No 'OBO ID' for unit '$unit_id' in main lookup");
                         }
                       } else {
-                        $schema->defer_exception_once("No row in main lookup for '$unit_id' '$object_type'");
+                        $schema->defer_exception_once("No row in main (or biochem) lookup for '$unit_id' '$object_type'");
                       }
                     }
                   } else {
@@ -236,7 +248,7 @@ $schema->txn_do_deferred
             process_entity_props($assay, 'NdExperimentprop');
           }
 
-          # TO DO: sample manipulations??
+          # TO DO: sample manipulations?? or at least, remove them
 
 
           $done_samples++;
@@ -337,6 +349,11 @@ sub process_entity_props {
   my @multiprops = $entity->multiprops;
 
   foreach my $multiprop (@multiprops) {
+    #
+    # TO DO: special processing for insecticide-X-concentration-units-Y
+    #
+
+
     #
     # regular processing: map all ontology terms, insert new multiprop and delete old one
     #
