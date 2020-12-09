@@ -30,6 +30,7 @@ use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
 my $cvterms = $schema->cvterms;
+my $dbxrefs = $schema->dbxrefs;
 my $dry_run = 1;  # while in development
 my $project_ids;
 my $verbose;
@@ -114,7 +115,15 @@ my $ir_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO'
 my $ir_biochem_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '20000003' }) || die;
 
-my $placeholder_term = $schema->types->placeholder;
+my $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'NdExperimentprop', 'new_insecticide_heading');
+
+
+### some globals related to placeholder-making and other caches
+my $vbcv = $schema->cvs->find({ name => 'VectorBase miscellaneous CV' });
+my $vbdb = $schema->dbs->find({ name => 'VBcv' });
+my $last_accession_number = 90000001;
+my $processed_entity_props = {};
+
 
 # disable buffering of standard output so the progress update is "live"
 $| = 1;
@@ -278,7 +287,7 @@ sub underscore_id {
     return $id;
   } else {
     $schema->defer_exception_once("Bad ID '$id' - @debug_info");
-    return 'EUPATH_9999999';
+    return $id;
   }
 }
 
@@ -330,8 +339,44 @@ sub get_cvterm {
   } else {
     $schema->defer_exception_once("get_cvterm('$id') was provided with a poorly formed term ID");
   }
-  return $placeholder_term;
+  return make_placeholder_cvterm($id);
 }
+
+#
+# make placeholder term and return it
+#
+sub make_placeholder_cvterm {
+  my ($name, $definition) = @_;
+  my $pname = "Placeholder: $name";
+
+  # first look up by name if already made
+  my $already_made_term = $cvterms->find({ name => $pname,
+                                           cv_id => $vbcv->id });
+  if ($already_made_term) {
+    return $already_made_term;
+  }
+
+  # otherwise make it
+  # don't let these get committed to the database
+  $schema->defer_exception_once("Made at least one placeholder term");
+
+#temp
+  $schema->defer_exception_once("Making placeholder for '$name'");
+
+  my $acc = $last_accession_number++;
+  my $new_cvterm =
+    $dbxrefs->find_or_create( { accession => $acc,
+                                db => $vbdb },
+                              { join => 'db' })->
+                                find_or_create_related('cvterm',
+                                                       { name => $pname,
+                                                         definition => $definition || 'placeholder term',
+                                                         cv => $vbcv
+                                                       });
+
+  return $new_cvterm;
+}
+
 
 #
 # process props (aka characteristics) from all assays, samples & projects (any others?)
@@ -343,16 +388,57 @@ sub get_cvterm {
 # Projectprop for projects
 #
 
+
 sub process_entity_props {
   my ($entity, $proptype) = @_;
+
+  # don't process the same entity more than once
+  # TO DO: handle this between different processes (same geolocation could be shared by different projects)
+  return if ($processed_entity_props->{$entity->id}{$proptype}++);
 
   my @multiprops = $entity->multiprops;
 
   foreach my $multiprop (@multiprops) {
-    #
-    # TO DO: special processing for insecticide-X-concentration-units-Y
-    #
+    my @orig_cvterms = $multiprop->cvterms;
 
+    #
+    # special processing for insecticide-X-concentration-units-Y
+    #
+    # going to do checks by name and not by accession because this is a one-time script
+    # (doesn't matter if the terms change in the future)
+    if ($orig_cvterms[0]->name eq 'insecticidal substance' && $orig_cvterms[2]->name eq 'concentration of') {
+      my ($old_insecticide_heading, $old_insecticide_term, $concentration_of, $old_unit_term) = @orig_cvterms;
+      my $new_insecticide_term = main_map_old_term_to_new_term($old_insecticide_term, $proptype, "insecticide special main");
+      my $new_insecticide_prop = Multiprop->new(cvterms=>[$new_insecticide_heading, $new_insecticide_term]);
+
+      my $old_units_underscore_id = underscore_id($old_unit_term->dbxref->as_string(), "insecticide special units");
+      my $lookup_row = $ir_attr_lookup->{PATO_0000033}{$old_units_underscore_id};
+      if ($lookup_row && $lookup_row->{'OBO ID'}) {
+        my $new_concentration_underscore_id = underscore_id($lookup_row->{'OBO ID'}, "new insecticide concentration term for $old_units_underscore_id") || $old_units_underscore_id;
+        my $new_concentration_term = get_cvterm($new_concentration_underscore_id);
+
+        my $new_unit_term = main_map_old_id_to_new_term($old_units_underscore_id, $proptype, "new insecticide unit term for $old_units_underscore_id");
+
+        my $new_concentration_prop = Multiprop->new(cvterms=>[$new_concentration_term, $new_unit_term], value=>$multiprop->value);
+
+        my $ok_deleted = $entity->delete_multiprop($multiprop);
+        if ($ok_deleted) {
+          my $ok_added1 = $entity->add_multiprop($new_insecticide_prop);
+          unless ($ok_added1) {
+            $schema->defer_exception("Problem adding multiprop: (".$new_insecticide_prop->as_string.") for entity ".$entity->stable_id);
+          }
+          my $ok_added2 = $entity->add_multiprop($new_concentration_prop);
+          unless ($ok_added2) {
+            $schema->defer_exception("Problem adding multiprop: (".$new_concentration_prop->as_string.") for entity ".$entity->stable_id);
+          }
+        } else {
+          $schema->defer_exception_once("problem deleting insecticide conc multiprop");
+        }
+      } else {
+        $schema->defer_exception_once("Nothing in IR lookup for concentration in units '$old_units_underscore_id'");
+      }
+      next;
+    }
 
     #
     # regular processing: map all ontology terms, insert new multiprop and delete old one
@@ -360,18 +446,10 @@ sub process_entity_props {
     my $mapped_something;
     my @new_cvterms = map {
       my $old_term = $_;
-      my $new_term = $placeholder_term;
-      my $old_term_id = underscore_id($old_term->dbxref->as_string(), "process_entity_props() old multiprop term: '".$old_term->name."'");
-      my $lookup_row = $main_term_lookup->{$old_term_id}{$proptype};
-      if ($lookup_row) {
-        my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "Missing or invalid term ID for '".$old_term->name."' $proptype in main lookup");
-        $new_term = get_cvterm($new_term_id);
-      } else {
-        $schema->defer_exception_once("No lookup row for $old_term_id $proptype");
-      }
+      my $new_term = main_map_old_term_to_new_term($old_term, $proptype, "process_entity_props() old multiprop term: '".$old_term->name."'");
       $mapped_something = 1 if ($new_term->id != $old_term->id);
       $new_term;
-    } $multiprop->cvterms;
+    } @orig_cvterms;
     if ($mapped_something) {
       my $old_value = $multiprop->value;
       my $new_multiprop = Multiprop->new(cvterms=>\@new_cvterms, defined $old_value ? (value=>$old_value) : ());
@@ -389,6 +467,30 @@ sub process_entity_props {
     }
 
   }
+}
 
+#
+# map old_term_id (underscore style) to new term object
+#
+sub main_map_old_id_to_new_term {
+  my ($old_term_id, $proptype, @debug_info) = @_;
 
+  my $lookup_row = $main_term_lookup->{$old_term_id}{$proptype};
+  if ($lookup_row) {
+    my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, @debug_info) || $old_term_id;
+    return get_cvterm($new_term_id);
+  } else {
+    $schema->defer_exception_once("No lookup row for $old_term_id $proptype - @debug_info");
+    return make_placeholder_cvterm($old_term_id);
+  }
+}
+
+#
+# map old term object to new term object
+#
+sub main_map_old_term_to_new_term {
+  my ($old_term, $proptype, @debug_info) = @_;
+  my $old_term_id = underscore_id($old_term->dbxref->as_string(), @debug_info);
+  return $old_term_id ? main_map_old_id_to_new_term($old_term_id, $proptype, @debug_info) :
+    make_placeholder_cvterm($old_term->name);
 }
