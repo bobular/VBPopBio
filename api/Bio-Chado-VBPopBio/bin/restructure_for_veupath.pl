@@ -333,8 +333,6 @@ sub get_cvterm {
                                              term_accession_number => $accession });
     if ($term) {
       return $term;
-    } else {
-      $schema->defer_exception_once("Term '$id' not in database");
     }
   } else {
     $schema->defer_exception_once("get_cvterm('$id') was provided with a poorly formed term ID");
@@ -358,9 +356,6 @@ sub make_placeholder_cvterm {
 
   # otherwise make it
   # don't let these get committed to the database
-  $schema->defer_exception_once("Made at least one placeholder term");
-
-#temp
   $schema->defer_exception_once("Making placeholder for '$name'");
 
   my $acc = $last_accession_number++;
@@ -477,7 +472,7 @@ sub main_map_old_id_to_new_term {
 
   my $lookup_row = $main_term_lookup->{$old_term_id}{$proptype};
   if ($lookup_row) {
-    my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, @debug_info) || $old_term_id;
+    my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "main lookup result for '$old_term_id'", @debug_info) || $old_term_id;
     return get_cvterm($new_term_id);
   } else {
     $schema->defer_exception_once("No lookup row for $old_term_id $proptype - @debug_info");
