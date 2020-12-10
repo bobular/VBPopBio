@@ -138,13 +138,15 @@ sub as_isatab {
   my ($geo_comments, $geo_characteristics) = Multiprops->to_isatab($geolocation);
   # fix the names and capitalisation
   # e.g. "Characteristics [city (VBcv:0000844)]" to "Characteristics [Collection site city (VBcv:0000844)]"
-  foreach my $old_key (keys %$geo_characteristics) {
-    my $new_key = $old_key;
-    $new_key = "collection site $new_key" unless ($new_key =~ /collection site/i);
-    $new_key = ucfirst($new_key);
-    $geo_characteristics->{$new_key} = delete $geo_characteristics->{$old_key};
-  }
 
+#### no need for this in VEuPath export
+#  foreach my $old_key (keys %$geo_characteristics) {
+#    my $new_key = $old_key;
+#    $new_key = "collection site $new_key" unless ($new_key =~ /collection site/i);
+#    $new_key = ucfirst($new_key);
+#    $geo_characteristics->{$new_key} = delete $geo_characteristics->{$old_key};
+#  }
+#
   # now copy over into the assay's characteristics
   grep { $assay_characteristics->{$_} = $geo_characteristics->{$_} } keys %$geo_characteristics;
 

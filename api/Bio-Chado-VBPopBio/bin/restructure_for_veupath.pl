@@ -124,7 +124,7 @@ my $ir_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO'
 my $ir_biochem_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '20000003' }) || die;
 
-my $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'NdExperimentprop', 'new_insecticide_heading');
+my $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'insecticidal substance', 'NdExperimentprop', 'new_insecticide_heading');
 
 
 ### some globals related to placeholder-making and other caches
@@ -415,17 +415,17 @@ sub process_entity_props {
     # going to do checks by name and not by accession because this is a one-time script
     # (doesn't matter if the terms change in the future)
     if ($orig_cvterms[0]->name eq 'insecticidal substance' && $orig_cvterms[2]->name eq 'concentration of') {
-      my ($old_insecticide_heading, $old_insecticide_term, $concentration_of, $old_unit_term) = @orig_cvterms;
+      my ($old_insecticide_heading, $old_insecticide_term, $concentration_of, $old_units_term) = @orig_cvterms;
       my $new_insecticide_term = main_map_old_term_to_new_term($old_insecticide_term, $proptype, "insecticide special main");
       my $new_insecticide_prop = Multiprop->new(cvterms=>[$new_insecticide_heading, $new_insecticide_term]);
 
-      my $old_units_underscore_id = underscore_id($old_unit_term->dbxref->as_string(), "insecticide special units");
+      my $old_units_underscore_id = underscore_id($old_units_term->dbxref->as_string(), "insecticide special units");
       my $lookup_row = $ir_attr_lookup->{PATO_0000033}{$old_units_underscore_id};
       if ($lookup_row && $lookup_row->{'OBO ID'}) {
         my $new_concentration_underscore_id = underscore_id($lookup_row->{'OBO ID'}, "new insecticide concentration term for $old_units_underscore_id") || $old_units_underscore_id;
         my $new_concentration_term = get_cvterm($new_concentration_underscore_id);
 
-        my $new_unit_term = main_map_old_id_to_new_term($old_units_underscore_id, $proptype, "new insecticide unit term for $old_units_underscore_id");
+        my $new_unit_term = main_map_old_id_to_new_term($old_units_underscore_id, $old_units_term->name, $proptype, "new insecticide unit term for $old_units_underscore_id");
 
         my $new_concentration_prop = Multiprop->new(cvterms=>[$new_concentration_term, $new_unit_term], value=>$multiprop->value);
 
@@ -481,16 +481,19 @@ sub process_entity_props {
 # map old_term_id (underscore style) to new term object
 #
 sub main_map_old_id_to_new_term {
-  my ($old_term_id, $proptype, @debug_info) = @_;
+  my ($old_term_id, $old_term_name, $proptype, @debug_info) = @_;
 
   my $lookup_row = $main_term_lookup->{$old_term_id}{$proptype};
   if ($lookup_row) {
-    my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "main lookup result for '$old_term_id'", @debug_info) || $old_term_id;
-    return get_cvterm($new_term_id);
+    my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "main lookup result for '$old_term_id'", @debug_info);
+    if ($new_term_id ) {
+      return get_cvterm($new_term_id);
+    }
   } else {
     $schema->defer_exception_once("No lookup row for $old_term_id $proptype - @debug_info");
-    return make_placeholder_cvterm($old_term_id);
+    return make_placeholder_cvterm();
   }
+  return make_placeholder_cvterm($old_term_name);
 }
 
 #
@@ -499,6 +502,6 @@ sub main_map_old_id_to_new_term {
 sub main_map_old_term_to_new_term {
   my ($old_term, $proptype, @debug_info) = @_;
   my $old_term_id = underscore_id($old_term->dbxref->as_string(), @debug_info);
-  return $old_term_id ? main_map_old_id_to_new_term($old_term_id, $proptype, @debug_info) :
+  return $old_term_id ? main_map_old_id_to_new_term($old_term_id, $old_term->name, $proptype, @debug_info) :
     make_placeholder_cvterm($old_term->name);
 }
