@@ -94,7 +94,7 @@ foreach my $row (@$aoh_ir) {
   $ir_attr_lookup->{$attr_id}{$unit_id} = $row;
 }
 
-#
+###
 # manual lookup for biochem units
 #
 # attr_id => unit_id => faked row from lookup table
@@ -105,6 +105,15 @@ my $biochem_units_lookup =
    'VBcv_0001111' => { 'UO_0000187' => { 'OBO ID' => 'EUPATH_0043142', 'OBO Label' => 'new fraction greater than 99th percentile term' } }, # percent > 99th percentile
   };
 
+###
+# special prop terms not to be mapped
+#
+my $do_not_map_terms =
+  {
+   $schema->types->date->id => 1,
+   $schema->types->start_date->id => 1,
+   $schema->types->end_date->id => 1,
+  };
 
 ###
 # constant ontology terms used below
@@ -395,6 +404,10 @@ sub process_entity_props {
 
   foreach my $multiprop (@multiprops) {
     my @orig_cvterms = $multiprop->cvterms;
+
+    # some terms don't need to be mapped because they are treated
+    # specially during ISA-export
+    next if (@orig_cvterms && $do_not_map_terms->{$orig_cvterms[0]->id});
 
     #
     # special processing for insecticide-X-concentration-units-Y
