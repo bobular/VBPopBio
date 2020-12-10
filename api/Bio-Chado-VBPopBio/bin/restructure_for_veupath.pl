@@ -169,6 +169,12 @@ $schema->txn_do_deferred
 	while (my $sample = $samples->next()) {
 
           process_entity_props($sample, 'Stockprop');
+          # map the sample->type
+          my $new_type = main_map_old_term_to_new_term($sample->type, 'Stock', "Sample type");
+          if ($new_type->id ne $sample->type->id) {
+            $sample->type($new_type);
+            $sample->update;
+          }
 
           # loop through all four types of assay
           my $collections = $sample->field_collections;
