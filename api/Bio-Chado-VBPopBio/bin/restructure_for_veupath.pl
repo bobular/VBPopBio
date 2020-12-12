@@ -113,6 +113,8 @@ my $do_not_map_terms =
    $schema->types->date->id => 1,
    $schema->types->start_date->id => 1,
    $schema->types->end_date->id => 1,
+   $schema->types->study_design->id => 1,
+   $schema->types->project_tags->id => 1,
   };
 
 ###
@@ -163,7 +165,7 @@ $schema->txn_do_deferred
 	my $num_samples = $project->stocks->count;
         print "processing $project_id ($num_samples samples)...\n";
 
-        # TO DO: handle project props
+        process_entity_props($project, 'Projectprop');
 
         my $samples = $project->stocks;
 	while (my $sample = $samples->next()) {
@@ -181,6 +183,7 @@ $schema->txn_do_deferred
           while (my $assay = $collections->next()) {
             # TO DO: handle collection protocol old->new and add extra device prop when needed
             process_entity_props($assay, 'NdExperimentprop');
+            process_assay_type($assay);
 
             # collection geolocation itself has props but we may want to remove these
             # and rely instead only on the terms we assign from lat/long lookup
@@ -192,6 +195,7 @@ $schema->txn_do_deferred
             # TO DO: map protocol old->new
 
             process_entity_props($assay, 'NdExperimentprop');
+            process_assay_type($assay);
           }
 
           my $phenotype_assays = $sample->phenotype_assays;
@@ -200,6 +204,7 @@ $schema->txn_do_deferred
             # process_assay_protocols($assay); # TO DO
 
             process_entity_props($assay, 'NdExperimentprop');
+            process_assay_type($assay);
 
             if (is_insecticide_resistance_assay($assay)) {
               #
@@ -270,6 +275,7 @@ $schema->txn_do_deferred
             # TO DO: map protocol old->new
 
             process_entity_props($assay, 'NdExperimentprop');
+            process_assay_type($assay);
           }
 
           # TO DO: sample manipulations?? or at least, remove them
@@ -352,7 +358,7 @@ sub get_cvterm {
   } else {
     $schema->defer_exception_once("get_cvterm('$id') was provided with a poorly formed term ID");
   }
-  return make_placeholder_cvterm($id);
+  return make_placeholder_cvterm($id, "placeholder for $id");
 }
 
 #
@@ -410,11 +416,6 @@ sub process_entity_props {
 
   foreach my $multiprop (@multiprops) {
     my @orig_cvterms = $multiprop->cvterms;
-
-    # some terms don't need to be mapped because they are treated
-    # specially during ISA-export
-    next if (@orig_cvterms && $do_not_map_terms->{$orig_cvterms[0]->id});
-
     #
     # special processing for insecticide-X-concentration-units-Y
     #
@@ -460,8 +461,13 @@ sub process_entity_props {
     my $mapped_something;
     my @new_cvterms = map {
       my $old_term = $_;
-      my $new_term = main_map_old_term_to_new_term($old_term, $proptype, "process_entity_props() old multiprop term: '".$old_term->name."'");
-      $mapped_something = 1 if ($new_term->id != $old_term->id);
+      my $new_term = $old_term;
+      # some terms don't need to be mapped because they are treated
+      # specially during ISA-export
+      unless ($do_not_map_terms->{$old_term->id}) {
+        $new_term = main_map_old_term_to_new_term($old_term, $proptype, "process_entity_props() old multiprop term: '".$old_term->name."'");
+        $mapped_something = 1 if ($new_term->id != $old_term->id);
+      }
       $new_term;
     } @orig_cvterms;
     if ($mapped_something) {
@@ -484,6 +490,21 @@ sub process_entity_props {
 }
 
 #
+# assay->type takes one of 5 forms: field collection, species ID, phenotype assay, genotype assay or sample manipulation
+#
+# just need to map the term (inplace updates $assays)
+sub process_assay_type {
+  my ($assay) = @_;
+  my $old_type = $assay->type;
+  my $new_type = main_map_old_term_to_new_term($old_type, 'NdExperiment', "Assay type");
+  if ($new_type->id ne $old_type->id) {
+    $assay->type($new_type);
+    $assay->update;
+  }
+}
+
+
+#
 # map old_term_id (underscore style) to new term object
 #
 sub main_map_old_id_to_new_term {
@@ -497,9 +518,8 @@ sub main_map_old_id_to_new_term {
     }
   } else {
     $schema->defer_exception_once("No lookup row for $old_term_id $proptype - @debug_info");
-    return make_placeholder_cvterm();
   }
-  return make_placeholder_cvterm($old_term_name);
+  return make_placeholder_cvterm($old_term_name, "placeholder for $old_term_name ($old_term_id)");
 }
 
 #

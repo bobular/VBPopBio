@@ -222,19 +222,20 @@ sub classify {
   my $self = shift;
   # this is what the new (>5.10) Perl switch statement looks like
   given ($self->type->name) {
-    when ('field collection') {
+    # VEuPath export: changed these to regexps because they may get changed to "Placeholder: field collection"
+    when (/field collection/) {
       bless $self, 'Bio::Chado::VBPopBio::Result::Experiment::FieldCollection';
     }
-    when ('phenotype assay') {
+    when (/phenotype assay/) {
       bless $self, 'Bio::Chado::VBPopBio::Result::Experiment::PhenotypeAssay';
     }
-    when ('genotype assay') {
+    when (/genotype assay/) {
       bless $self, 'Bio::Chado::VBPopBio::Result::Experiment::GenotypeAssay';
     }
-    when ('species identification method') {
+    when (/species identification method/) {
       bless $self, 'Bio::Chado::VBPopBio::Result::Experiment::SpeciesIdentificationAssay';
     }
-    when ('sample manipulation') {
+    when (/sample manipulation/) {
       bless $self, 'Bio::Chado::VBPopBio::Result::Experiment::SampleManipulation';
     }
     default {

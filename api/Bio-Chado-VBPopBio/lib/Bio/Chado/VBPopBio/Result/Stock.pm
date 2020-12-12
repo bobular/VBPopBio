@@ -521,7 +521,7 @@ sub as_isatab {
       $study->{study_assay_fingerprint_lookup}{$protocols_fingerprint} //=
 	$study->{study_assays}[$num_existing_assays] =
 	  {
-	   study_assay_measurement_type => $study_assay_measurement_type,
+	   study_assay_measurement_type => $assay->type->name, ### $study_assay_measurement_type,
 	   study_assay_measurement_type_term_source_ref => $assay->type->dbxref->db->name,
 	   study_assay_measurement_type_term_accession_number => $assay->type->dbxref->accession,
 	   study_assay_file_name => $assay_filename,

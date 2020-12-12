@@ -984,6 +984,7 @@ sub as_isatab {
   foreach my $prop ($self->multiprops) {
     my ($type, @cvterms) = $prop->cvterms;
 
+    # for VEuPath export, handle both as study_designs
     if ($type->id == $study_design_type->id && @cvterms == 1) {
       my ($design_type) = @cvterms;
       my $dbxref = $design_type->dbxref;
@@ -996,11 +997,11 @@ sub as_isatab {
     } elsif ($type->id == $project_tags_type->id && @cvterms) {
       foreach my $cvterm (@cvterms) {
 	my $dbxref = $cvterm->dbxref;
-	push @{$study->{study_tags}},
+	push @{$study->{study_designs}},
 	  {
-	   study_tag => $cvterm->name,
-	   study_tag_term_source_ref => $dbxref->db->name,
-	   study_tag_term_accession_number => $dbxref->accession,
+	   study_design_type => $cvterm->name,
+	   study_design_type_term_source_ref => $dbxref->db->name,
+	   study_design_type_term_accession_number => $dbxref->accession,
 	  };
       }
     } else {
