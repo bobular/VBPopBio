@@ -129,12 +129,15 @@ my $ir_biochem_assay_base_term = $cvterms->find_by_accession({ term_source_ref =
 my $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'insecticidal substance', 'NdExperimentprop', 'new_insecticide_heading');
 
 
+my $device_heading_term = get_cvterm('OBI_0000968', 'device');
+my $attractant_heading_term = get_cvterm('EUPATH_0043001', 'attractant');
+
 ### some globals related to placeholder-making and other caches
 my $vbcv = $schema->cvs->find({ name => 'VectorBase miscellaneous CV' });
 my $vbdb = $schema->dbs->find({ name => 'VBcv' });
 my $last_accession_number = 90000001;
 my $processed_entity_props = {};
-
+my $processed_protocol = {};
 
 # disable buffering of standard output so the progress update is "live"
 $| = 1;
@@ -166,6 +169,13 @@ $schema->txn_do_deferred
         print "processing $project_id ($num_samples samples)...\n";
 
         process_entity_props($project, 'Projectprop');
+        map {
+          my $new_status = main_map_old_term_to_new_term($_->type, 'Pub', "Pub type");
+          if ($new_status->id ne $_->type->id) {
+            $_->type($new_status);
+            $_->update;
+          }
+        } $project->publications;
 
         my $samples = $project->stocks;
 	while (my $sample = $samples->next()) {
@@ -184,6 +194,7 @@ $schema->txn_do_deferred
             # TO DO: handle collection protocol old->new and add extra device prop when needed
             process_entity_props($assay, 'NdExperimentprop');
             process_assay_type($assay);
+            process_assay_protocols($assay);
 
             # collection geolocation itself has props but we may want to remove these
             # and rely instead only on the terms we assign from lat/long lookup
@@ -196,6 +207,7 @@ $schema->txn_do_deferred
 
             process_entity_props($assay, 'NdExperimentprop');
             process_assay_type($assay);
+            process_assay_protocols($assay);
           }
 
           my $phenotype_assays = $sample->phenotype_assays;
@@ -237,7 +249,7 @@ $schema->txn_do_deferred
                         my $new_unit_id = underscore_id($unit_lookup_row->{'OBO ID'}, "Missing or invalid term ID for '$data->{value}{unit}{name}' '$object_type' in main (or biochem) lookup");
                         my $new_unit_label = $unit_lookup_row->{'OBO Label'};
                         if ($new_unit_id) {
-                          print "going to map from IR phenotype $attr_id '$new_value' $unit_id to characteristic $new_attr_id ($label) $new_unit_id ($new_unit_label)\n";
+                          # print "going to map from IR phenotype $attr_id '$new_value' $unit_id to characteristic $new_attr_id ($label) $new_unit_id ($new_unit_label)\n";
                           my $new_attr_term = get_cvterm($new_attr_id);
                           my $new_unit_term = get_cvterm($new_unit_id);
                           # add the new assay characteristic, e.g. "LC50 in mass density unit", 1.5, "mg/l"
@@ -268,6 +280,9 @@ $schema->txn_do_deferred
             } else {
               $schema->defer_exception("TO DO: process phenotype assays like ".$assay->stable_id);
             }
+
+            # have to do this after the is_insecticide_resistance_assay call!
+            process_assay_protocols($assay);
           }
 
           my $genotype_assays = $sample->genotype_assays;
@@ -276,6 +291,7 @@ $schema->txn_do_deferred
 
             process_entity_props($assay, 'NdExperimentprop');
             process_assay_type($assay);
+            process_assay_protocols($assay);
           }
 
           # TO DO: sample manipulations?? or at least, remove them
@@ -348,7 +364,7 @@ sub clean_value {
 # assume id provided is underscore delimited
 # it will throw an exception and return a dummy placeholder term if term not found
 sub get_cvterm {
-  my ($id) = @_;
+  my ($id, $placeholder_name) = @_;
   my ($prefix, $accession) = $id =~ /(\w+?)_(\d+)/;
   if ($prefix && defined $accession && length($accession)) {
     my $term = $cvterms->find_by_accession({ term_source_ref => $prefix,
@@ -359,7 +375,7 @@ sub get_cvterm {
   } else {
     $schema->defer_exception_once("get_cvterm('$id') was provided with a poorly formed term ID");
   }
-  return make_placeholder_cvterm($id, "placeholder for $id");
+  return make_placeholder_cvterm($id, $placeholder_name || "placeholder for $id");
 }
 
 #
@@ -504,6 +520,59 @@ sub process_assay_type {
   }
 }
 
+#
+# in-place maps the assay protocol types
+#
+# does special things for collection protocols
+#   - if 'process term ID for device term' column in main lookup is non-empty, use this for the protocol, and move the old term to a device prop.
+#   - if 'attractant term ID' column in main lookup is non-empty, add an attractant prop to the assay
+#
+sub process_assay_protocols {
+  my ($assay) = @_;
+  my @new_protocol_terms;
+  foreach my $protocol ($assay->protocols) {
+    # don't do the same protocol more than once
+    next if ($processed_protocol->{$protocol->id}++);
+    my $old_type = $protocol->type;
+    my $old_type_id = underscore_id($old_type->dbxref->as_string(), 'process_assay_protocols old_type to ID');
+
+    my $lookup_row = $main_term_lookup->{$old_type_id}{'NdProtocol'};
+    if ($lookup_row) {
+
+      my $new_type = main_map_old_id_to_new_term($old_type_id, $old_type->name, 'NdProtocol', 'process_assay_protocols map old term to new');
+
+
+      # the old protocol term may be a device!
+      # so let's look up a possible process term and make some changes
+      if ($lookup_row->{'process term ID for device term'}) {
+        my $process_id = underscore_id($lookup_row->{'process term ID for device term'}, "process term lookup");
+        my $process_term = get_cvterm($process_id);
+
+        # set the protocol type to the process
+        $protocol->type($process_term);
+        $protocol->update;
+        # add an assay prop for the device
+        my $device_prop = Multiprop->new(cvterms=>[ $device_heading_term, $new_type ]);
+        $assay->add_multiprop($device_prop);
+      } else {
+        # simply map the old protocol type to the new one
+        $protocol->type($new_type);
+        $protocol->update;
+      }
+
+      # handle addition of attractant term from main lookup sheet if needed
+      if ($lookup_row->{'attractant term ID'}) {
+        my $attractant_id = underscore_id($lookup_row->{'attractant term ID'}, "attractant term lookup");
+        my $attractant_term = get_cvterm($attractant_id);
+        my $attractant_prop = Multiprop->new(cvterms=>[ $attractant_heading_term, $attractant_term ]);
+        $assay->add_multiprop($attractant_prop);
+      }
+    } else {
+      $schema->defer_exception_once("No row in main lookup for '".$old_type->name."' ($old_type_id) in process_assay_protocols");
+    }
+  }
+}
+
 
 #
 # map old_term_id (underscore style) to new term object
@@ -513,12 +582,12 @@ sub main_map_old_id_to_new_term {
 
   my $lookup_row = $main_term_lookup->{$old_term_id}{$proptype};
   if ($lookup_row) {
-    my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "main lookup result for '$old_term_id'", @debug_info);
+    my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "main lookup result for '$old_term_name' ($old_term_id) $proptype", @debug_info);
     if ($new_term_id ) {
       return get_cvterm($new_term_id);
     }
   } else {
-    $schema->defer_exception_once("No lookup row for $old_term_id $proptype - @debug_info");
+    $schema->defer_exception_once("No lookup row for '$old_term_name' ($old_term_id) $proptype - @debug_info");
   }
   return make_placeholder_cvterm($old_term_name, "placeholder for $old_term_name ($old_term_id)");
 }
