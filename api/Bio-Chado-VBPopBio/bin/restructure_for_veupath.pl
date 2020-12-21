@@ -300,16 +300,17 @@ sub underscore_id {
   my ($id, @debug_info) = @_;
   # already underscored and looks like an onto id?
   if ($id =~ /^\w+?_\w+$/) {
-    return $id;
+    # all good - do nothing
   } elsif ($id =~ /^\w+?:(\w+?_\w+)$/) { # already underscored AND colon prefixed - just return the latter bit
-    return $1;
+    $id = $1;
   } elsif ($id =~ /^\w+?:\w+$/) { # regular ONTO:0012345 style
     $id =~ s/:/_/;
-    return $id;
-  } else {
+  } elsif ($id) {
     $schema->defer_exception_once("Bad ID '$id' - @debug_info");
-    return $id;
+  } else {
+    $schema->defer_exception_once("No ID provided - @debug_info");
   }
+  return $id;
 }
 
 sub object_type {
