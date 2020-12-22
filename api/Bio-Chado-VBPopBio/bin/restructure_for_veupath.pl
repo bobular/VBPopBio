@@ -126,18 +126,16 @@ my $ir_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO'
 my $ir_biochem_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO',
 							       term_accession_number => '20000003' }) || die;
 
-my $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'insecticidal substance', 'NdExperimentprop', 'new_insecticide_heading');
 
 
 my $device_heading_term = get_cvterm('OBI_0000968', 'device');
 my $attractant_heading_term = get_cvterm('EUPATH_0043001', 'attractant');
 
 ### some globals related to placeholder-making and other caches
-my $vbcv = $schema->cvs->find({ name => 'VectorBase miscellaneous CV' });
-my $vbdb = $schema->dbs->find({ name => 'VBcv' });
 my $last_accession_number = 90000001;
 my $processed_entity_props = {};
 my $processed_protocol = {};
+my ($placeholder_cv, $new_insecticide_heading);
 
 # disable buffering of standard output so the progress update is "live"
 $| = 1;
@@ -145,6 +143,10 @@ $| = 1;
 # run everything in a transaction
 $schema->txn_do_deferred
   ( sub {
+
+      # make these in the transaction so they can be rolled back
+      $placeholder_cv = $schema->cvs->find_or_create({ name => 'Placeholder CV' });
+      $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'insecticidal substance', 'NdExperimentprop', 'new_insecticide_heading');
 
       # handle the projects commandline arg
       my @projects = ();
@@ -250,8 +252,8 @@ $schema->txn_do_deferred
                         my $new_unit_label = $unit_lookup_row->{'OBO Label'};
                         if ($new_unit_id) {
                           # print "going to map from IR phenotype $attr_id '$new_value' $unit_id to characteristic $new_attr_id ($label) $new_unit_id ($new_unit_label)\n";
-                          my $new_attr_term = get_cvterm($new_attr_id);
-                          my $new_unit_term = get_cvterm($new_unit_id);
+                          my $new_attr_term = get_cvterm($new_attr_id, $label);
+                          my $new_unit_term = get_cvterm($new_unit_id, $new_unit_label);
                           # add the new assay characteristic, e.g. "LC50 in mass density unit", 1.5, "mg/l"
                           $assay->add_multiprop(my $p = Multiprop->new(cvterms=>[$new_attr_term, $new_unit_term],
                                                                        value=>$new_value));
@@ -382,29 +384,32 @@ sub get_cvterm {
 # make placeholder term and return it
 #
 sub make_placeholder_cvterm {
-  my ($name, $definition) = @_;
-  my $pname = "Placeholder: $name";
-
+  my ($id, $name) = @_;
   # first look up by name if already made
-  my $already_made_term = $cvterms->find({ name => $pname,
-                                           cv_id => $vbcv->id });
+  my $already_made_term = $cvterms->find({ name => $name,
+                                           cv_id => $placeholder_cv->id });
   if ($already_made_term) {
     return $already_made_term;
   }
 
   # otherwise make it
   # don't let these get committed to the database
-  $schema->defer_exception_once("Making placeholder for '$name'");
+  my $nid = $id || 'n/a';
+  $schema->defer_exception_once("Making placeholder for '$name' ($nid)");
 
-  my $acc = $last_accession_number++;
+  my $acc = $id || sprintf "EUPATH_%d", $last_accession_number++;
+
+  my ($prefix, $number) = $acc =~ /^([A-Z_]+)_(\d+)/;
+  my $db = $schema->dbs->find_or_create({ name => $prefix });
+
   my $new_cvterm =
-    $dbxrefs->find_or_create( { accession => $acc,
-                                db => $vbdb },
+    $dbxrefs->find_or_create( { accession => $number,
+                                db => $db },
                               { join => 'db' })->
                                 find_or_create_related('cvterm',
-                                                       { name => $pname,
-                                                         definition => $definition || 'placeholder term',
-                                                         cv => $vbcv
+                                                       { name => $name,
+                                                         definition => "placeholder for term '$name'",
+                                                         cv => $placeholder_cv
                                                        });
 
   return $new_cvterm;
@@ -447,7 +452,7 @@ sub process_entity_props {
       my $lookup_row = $ir_attr_lookup->{PATO_0000033}{$old_units_underscore_id};
       if ($lookup_row && $lookup_row->{'OBO ID'}) {
         my $new_concentration_underscore_id = underscore_id($lookup_row->{'OBO ID'}, "new insecticide concentration term for $old_units_underscore_id") || $old_units_underscore_id;
-        my $new_concentration_term = get_cvterm($new_concentration_underscore_id);
+        my $new_concentration_term = get_cvterm($new_concentration_underscore_id, $lookup_row->{'OBO Label'});
 
         my $new_unit_term = main_map_old_id_to_new_term($old_units_underscore_id, $old_units_term->name, $proptype, "new insecticide unit term for $old_units_underscore_id");
 
@@ -546,7 +551,7 @@ sub process_assay_protocols {
       # so let's look up a possible process term and make some changes
       if ($lookup_row->{'process term ID for device term'}) {
         my $process_id = underscore_id($lookup_row->{'process term ID for device term'}, "process term lookup");
-        my $process_term = get_cvterm($process_id);
+        my $process_term = get_cvterm($process_id, $lookup_row->{'process term for device term'});
 
         # set the protocol type to the process
         $protocol->type($process_term);
@@ -563,7 +568,7 @@ sub process_assay_protocols {
       # handle addition of attractant term from main lookup sheet if needed
       if ($lookup_row->{'attractant term ID'}) {
         my $attractant_id = underscore_id($lookup_row->{'attractant term ID'}, "attractant term lookup");
-        my $attractant_term = get_cvterm($attractant_id);
+        my $attractant_term = get_cvterm($attractant_id, $lookup_row->{'attractant term'});
         my $attractant_prop = Multiprop->new(cvterms=>[ $attractant_heading_term, $attractant_term ]);
         $assay->add_multiprop($attractant_prop);
       }
@@ -584,12 +589,12 @@ sub main_map_old_id_to_new_term {
   if ($lookup_row) {
     my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "main lookup result for '$old_term_name' ($old_term_id) $proptype", @debug_info);
     if ($new_term_id ) {
-      return get_cvterm($new_term_id);
+      return get_cvterm($new_term_id, $lookup_row->{'OBO Label'} || $old_term_name);
     }
   } else {
     $schema->defer_exception_once("No lookup row for '$old_term_name' ($old_term_id) $proptype - @debug_info");
   }
-  return make_placeholder_cvterm($old_term_name, "placeholder for $old_term_name ($old_term_id)");
+  return make_placeholder_cvterm(undef, $old_term_name);
 }
 
 #
@@ -599,5 +604,5 @@ sub main_map_old_term_to_new_term {
   my ($old_term, $proptype, @debug_info) = @_;
   my $old_term_id = underscore_id($old_term->dbxref->as_string(), @debug_info);
   return $old_term_id ? main_map_old_id_to_new_term($old_term_id, $old_term->name, $proptype, @debug_info) :
-    make_placeholder_cvterm($old_term->name);
+    make_placeholder_cvterm(undef, $old_term->name);
 }
