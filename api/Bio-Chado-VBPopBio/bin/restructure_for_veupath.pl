@@ -127,6 +127,12 @@ my $ir_biochem_assay_base_term = $cvterms->find_by_accession({ term_source_ref =
 							       term_accession_number => '20000003' }) || die;
 
 
+my $variant_frequency_term = $cvterms->find_by_accession({ term_source_ref => 'SO',
+                                                           term_accession_number => '0001763' }) || die;
+
+my $count_unit_term = $cvterms->find_by_accession({ term_source_ref => 'UO',
+                                                    term_accession_number => '0000189' }) || die;
+
 
 my $device_heading_term = get_cvterm('OBI_0000968', 'device');
 my $attractant_heading_term = get_cvterm('EUPATH_0043001', 'attractant');
@@ -293,6 +299,38 @@ $schema->txn_do_deferred
 
             process_entity_props($assay, 'NdExperimentprop');
             process_assay_type($assay);
+            foreach my $genotype ($assay->genotypes) {
+              # move $genotype->type and the prevalence value into assay props
+              my $old_type = $genotype->type;
+              my $new_variable = main_map_old_term_to_new_term($old_type, 'Genotype', "genotype to assay variable");
+              my ($genotype_value, $genotype_unit);
+              foreach my $prop ($genotype->multiprops) {
+                my @prop_terms = $prop->cvterms;
+                if ($prop_terms[0]->id == $count_unit_term->id ||
+                    $prop_terms[0]->id == $variant_frequency_term->id) {
+                  $genotype_value = $prop->value;
+                  $genotype_unit = $prop_terms[-1];
+                } else {
+                  $schema->defer_exception_once("genotype has unhandled prop: ".$prop->as_string);
+                }
+              }
+              if (defined $genotype_value && $genotype_unit) {
+                warn sprintf "old type '%s' to new variable '%s' value '%s' unit '%s'\n", $old_type->name, $new_variable->name, $genotype_value, $genotype_unit->name;
+                # map unit to new term if needed
+                my $new_genotype_unit = main_map_old_term_to_new_term($genotype_unit, 'Genotypeprop', "genotype to assay variable, units mapping");
+                my $new_assay_prop = Multiprop->new(cvterms=>[ $new_variable, $new_genotype_unit ], value=>$genotype_value);
+                my $success = $assay->add_multiprop($new_assay_prop);
+                if ($success) {
+                  $genotype->delete;
+                } else {
+                  $schema->defer_exception("Error adding genotype as assay variable for ".$assay->stable_id);
+                }
+              } else {
+                $schema->defer_exception(sprintf "incomplete genotype information for %s's genotype '%s'", $assay->stable_id, $genotype->name);
+              }
+            }
+
+
             process_assay_protocols($assay);
           }
 
@@ -399,7 +437,7 @@ sub make_placeholder_cvterm {
 
   my $acc = $id || sprintf "EUPATH_%d", $last_accession_number++;
 
-  my ($prefix, $number) = $acc =~ /^([A-Z_]+)_(\d+)/;
+  my ($prefix, $number) = $acc =~ /^([A-Z_]+|NCBITaxon)_(\d+)/;
   my $db = $schema->dbs->find_or_create({ name => $prefix });
 
   my $new_cvterm =
