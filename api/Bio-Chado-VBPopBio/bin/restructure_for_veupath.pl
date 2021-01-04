@@ -134,14 +134,21 @@ my $count_unit_term = $cvterms->find_by_accession({ term_source_ref => 'UO',
                                                     term_accession_number => '0000189' }) || die;
 
 
-my $device_heading_term = get_cvterm('OBI_0000968', 'device');
-my $attractant_heading_term = get_cvterm('EUPATH_0043001', 'attractant');
+my $arthropod_infection_status_term = $cvterms->find_by_accession({ term_source_ref => 'VSMO',
+                                                                    term_accession_number => '0000009' }) || die;
+
+
+my $parent_term_of_present_absent = $cvterms->find_by_accession({ term_source_ref => 'PATO',
+                                                                  term_accession_number => '0000070' }) || die;
+
+
+
 
 ### some globals related to placeholder-making and other caches
 my $last_accession_number = 90000001;
 my $processed_entity_props = {};
 my $processed_protocol = {};
-my ($placeholder_cv, $new_insecticide_heading);
+my ($placeholder_cv, $new_insecticide_heading, $attractant_heading_term, $device_heading_term);
 
 # disable buffering of standard output so the progress update is "live"
 $| = 1;
@@ -151,8 +158,13 @@ $schema->txn_do_deferred
   ( sub {
 
       # make these in the transaction so they can be rolled back
+      my $assayed_pathogen_term = get_cvterm('EUPATH_0000756', 'assayed pathogen term');
+
+      # and some, cough, globals...
       $placeholder_cv = $schema->cvs->find_or_create({ name => 'Placeholder CV' });
       $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'insecticidal substance', 'NdExperimentprop', 'new_insecticide_heading');
+      $attractant_heading_term = get_cvterm('EUPATH_0043001', 'attractant');
+      $device_heading_term = get_cvterm('OBI_0000968', 'device');
 
       # handle the projects commandline arg
       my @projects = ();
@@ -285,12 +297,44 @@ $schema->txn_do_deferred
                   $schema->defer_exception_once("No row in IR lookup for '$attr_id' '$unit_id'");
                 }
               }
+              # have to do this after the is_insecticide_resistance_assay call!
+              process_assay_protocols($assay);
             } else {
-              $schema->defer_exception("TO DO: process phenotype assays like ".$assay->stable_id);
-            }
+              process_assay_protocols($assay);
 
-            # have to do this after the is_insecticide_resistance_assay call!
-            process_assay_protocols($assay);
+              # process remaining phenotype assays - phenotype-wise (as in create_json_for_solr.pl)
+
+              # process each phenotype into a new assay (which will require a modified external_id - hence the counter)
+              my $counter = 1;
+              foreach my $phenotype ($assay->phenotypes) {
+                my $new_assay = $assay->copy();
+                # make a (presumably) new external_id (.1, .2 etc)
+                $new_assay->external_id($assay->external_id.'.'.$counter);
+                # link it back to the sample
+                $new_assay->add_to_stocks($sample, { type_id => $schema->types->assay_uses_sample->id });
+                # link to the protocol(s) of the original assay
+                map {
+                  my $linker = $new_assay->find_or_create_related('nd_experiment_protocols', {  nd_protocol => $_ } );
+                } $assay->protocols;
+
+                # now process the phenotype into new_assay props
+                if (is_pathogen_infecton_phenotype($phenotype)) {
+                  # assayed pathogen (value = species term)
+                  # TO DO : MAP THE TERMS <<<<<<<<<<<<
+                  my $new_pathogen_term = main_map_old_term_to_new_term($phenotype->attr, 'Phenotype', 'Pathogen infection assay');
+                  my $assayed_pathogen_prop = Multiprop->new(cvterms => [ $assayed_pathogen_term, $new_pathogen_term ]);
+                  my $added_ok = $new_assay->add_multiprop($assayed_pathogen_prop);
+                  $schema->defer_exception_once("Couldn't add assayed_pathogen_prop to new assay") unless ($added_ok);
+
+die "TO DO - prevalence props";
+
+                } else {
+                  $schema->defer_exception_once("Unhandled phenotype '".$phenotype->name."' for assay ".$assay->stable_id);
+                }
+                $counter++;
+              }
+              $assay->delete;
+            }
           }
 
           my $genotype_assays = $sample->genotype_assays;
@@ -389,6 +433,13 @@ sub is_insecticide_resistance_assay {
                } @protocol_types) {
     return 1;
   }
+}
+
+sub is_pathogen_infecton_phenotype {
+  my ($phenotype) = @_;
+  return (defined $phenotype->observable && $phenotype->observable->id == $arthropod_infection_status_term->id &&
+          defined $phenotype->attr && # no further tests here but expecting a species term
+          defined $phenotype->cvalue && $parent_term_of_present_absent->has_child($phenotype->cvalue));
 }
 
 sub clean_value {
