@@ -158,7 +158,10 @@ $schema->txn_do_deferred
   ( sub {
 
       # make these in the transaction so they can be rolled back
-      my $assayed_pathogen_term = get_cvterm('EUPATH_0000756', 'assayed pathogen term');
+      my $assayed_pathogen_term = get_cvterm('EUPATH_0000756', 'assayed pathogen');
+      $do_not_map_terms->{$assayed_pathogen_term->id} = 1;
+      my $pathogen_presence_term = get_cvterm('EUPATH_0010889', 'pathogen presence');
+      $do_not_map_terms->{$pathogen_presence_term->id} = 1;
 
       # and some, cough, globals...
       $placeholder_cv = $schema->cvs->find_or_create({ name => 'Placeholder CV' });
@@ -309,7 +312,7 @@ $schema->txn_do_deferred
               foreach my $phenotype ($assay->phenotypes) {
                 my $new_assay = $assay->copy();
                 # make a (presumably) new external_id (.1, .2 etc)
-                $new_assay->external_id($assay->external_id.'.'.$counter);
+                $new_assay->external_id($assay->external_id.'.'.$counter++);
                 # link it back to the sample
                 $new_assay->add_to_stocks($sample, { type_id => $schema->types->assay_uses_sample->id });
                 # link to the protocol(s) of the original assay
@@ -318,20 +321,25 @@ $schema->txn_do_deferred
                 } $assay->protocols;
 
                 # now process the phenotype into new_assay props
+                # don't map old terms to new terms yet (do at end with process_entity_props)
                 if (is_pathogen_infecton_phenotype($phenotype)) {
                   # assayed pathogen (value = species term)
-                  # TO DO : MAP THE TERMS <<<<<<<<<<<<
-                  my $new_pathogen_term = main_map_old_term_to_new_term($phenotype->attr, 'Phenotype', 'Pathogen infection assay');
-                  my $assayed_pathogen_prop = Multiprop->new(cvterms => [ $assayed_pathogen_term, $new_pathogen_term ]);
+                  my $assayed_pathogen_prop = Multiprop->new(cvterms => [ $assayed_pathogen_term, $phenotype->attr ]);
                   my $added_ok = $new_assay->add_multiprop($assayed_pathogen_prop);
+
+                  my $pathogen_presence_prop = Multiprop->new(cvterms => [ $pathogen_presence_term, $phenotype->cvalue ]);
+                  my $added_ok2 = $new_assay->add_multiprop($pathogen_presence_prop);
+
                   $schema->defer_exception_once("Couldn't add assayed_pathogen_prop to new assay") unless ($added_ok);
-
-die "TO DO - prevalence props";
-
                 } else {
                   $schema->defer_exception_once("Unhandled phenotype '".$phenotype->name."' for assay ".$assay->stable_id);
                 }
-                $counter++;
+
+                # and then move them to the new assay
+                map { $new_assay->add_multiprop(Multiprop->new(cvterms=>[$_->cvterms], value=>$_->value)) } $phenotype->multiprops;
+
+                # map any old terms to new terms
+                process_entity_props($new_assay, 'NdExperimentprop');
               }
               $assay->delete;
             }
