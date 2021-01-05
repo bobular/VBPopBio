@@ -141,6 +141,16 @@ my $arthropod_infection_status_term = $cvterms->find_by_accession({ term_source_
 my $parent_term_of_present_absent = $cvterms->find_by_accession({ term_source_ref => 'PATO',
                                                                   term_accession_number => '0000070' }) || die;
 
+my $blood_meal_term = $cvterms->find_by_accession({ term_source_ref => 'VBcv',
+                                                    term_accession_number => '0001003' }) || die;
+
+my $blood_meal_source_term = $cvterms->find_by_accession({ term_source_ref => 'VBcv',
+                                                           term_accession_number => '0001004' }) || die;
+
+my $equivocal_term = $schema->cvterms->find_by_accession({ term_source_ref => 'VBcv',
+                                                           term_accession_number => '0001127' }) || die;
+
+
 
 
 
@@ -156,18 +166,22 @@ $| = 1;
 # run everything in a transaction
 $schema->txn_do_deferred
   ( sub {
+      # some, cough, globals...
+      $placeholder_cv = $schema->cvs->find_or_create({ name => 'Placeholder CV' });
+      $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'insecticidal substance', 'NdExperimentprop', 'new_insecticide_heading');
+      $attractant_heading_term = get_cvterm('EUPATH_0043001', 'attractant');
+      $device_heading_term = get_cvterm('OBI_0000968', 'device');
 
       # make these in the transaction so they can be rolled back
       my $assayed_pathogen_term = get_cvterm('EUPATH_0000756', 'assayed pathogen');
       $do_not_map_terms->{$assayed_pathogen_term->id} = 1;
       my $pathogen_presence_term = get_cvterm('EUPATH_0010889', 'pathogen presence');
       $do_not_map_terms->{$pathogen_presence_term->id} = 1;
+      my $assayed_bm_host_term = make_placeholder_cvterm(undef, 'blood meal host organism');
+      $do_not_map_terms->{$assayed_bm_host_term->id} = 1;
+      my $bm_host_presence_term = make_placeholder_cvterm(undef, 'blood meal host presence');
+      $do_not_map_terms->{$bm_host_presence_term->id} = 1;
 
-      # and some, cough, globals...
-      $placeholder_cv = $schema->cvs->find_or_create({ name => 'Placeholder CV' });
-      $new_insecticide_heading = main_map_old_id_to_new_term('MIRO_10000239', 'insecticidal substance', 'NdExperimentprop', 'new_insecticide_heading');
-      $attractant_heading_term = get_cvterm('EUPATH_0043001', 'attractant');
-      $device_heading_term = get_cvterm('OBI_0000968', 'device');
 
       # handle the projects commandline arg
       my @projects = ();
@@ -331,11 +345,18 @@ $schema->txn_do_deferred
                   my $added_ok2 = $new_assay->add_multiprop($pathogen_presence_prop);
 
                   $schema->defer_exception_once("Couldn't add assayed_pathogen_prop to new assay") unless ($added_ok);
+                } elsif (is_blood_meal_host_id_phenotype($phenotype)) {
+                  my $assayed_bm_host_prop = Multiprop->new(cvterms => [ $assayed_bm_host_term, $phenotype->attr ]);
+                  my $added_ok = $new_assay->add_multiprop($assayed_bm_host_prop);
+
+                  my $bm_host_presence_prop = Multiprop->new(cvterms => [ $bm_host_presence_term, $phenotype->cvalue ]);
+                  my $added_ok2 = $new_assay->add_multiprop($bm_host_presence_prop);
                 } else {
                   $schema->defer_exception_once("Unhandled phenotype '".$phenotype->name."' for assay ".$assay->stable_id);
                 }
 
                 # and then move them to the new assay
+                # (need to 'clone' the multiprop to remove the rank property)
                 map { $new_assay->add_multiprop(Multiprop->new(cvterms=>[$_->cvterms], value=>$_->value)) } $phenotype->multiprops;
 
                 # map any old terms to new terms
@@ -367,7 +388,7 @@ $schema->txn_do_deferred
                 }
               }
               if (defined $genotype_value && $genotype_unit) {
-                warn sprintf "old type '%s' to new variable '%s' value '%s' unit '%s'\n", $old_type->name, $new_variable->name, $genotype_value, $genotype_unit->name;
+                # warn sprintf "old type '%s' to new variable '%s' value '%s' unit '%s'\n", $old_type->name, $new_variable->name, $genotype_value, $genotype_unit->name;
                 # map unit to new term if needed
                 my $new_genotype_unit = main_map_old_term_to_new_term($genotype_unit, 'Genotypeprop', "genotype to assay variable, units mapping");
                 my $new_assay_prop = Multiprop->new(cvterms=>[ $new_variable, $new_genotype_unit ], value=>$genotype_value);
@@ -445,10 +466,22 @@ sub is_insecticide_resistance_assay {
 
 sub is_pathogen_infecton_phenotype {
   my ($phenotype) = @_;
-  return (defined $phenotype->observable && $phenotype->observable->id == $arthropod_infection_status_term->id &&
-          defined $phenotype->attr && # no further tests here but expecting a species term
-          defined $phenotype->cvalue && $parent_term_of_present_absent->has_child($phenotype->cvalue));
+  my ($observable, $attribute, $cvalue) = ($phenotype->observable, $phenotype->attr, $phenotype->cvalue);
+  return (defined $observable && $observable->id == $arthropod_infection_status_term->id &&
+          defined $attribute && # no further tests here but expecting a species term
+          defined $cvalue &&
+          ($parent_term_of_present_absent->has_child($cvalue) || $cvalue->id == $equivocal_term->id));
+
 }
+
+sub is_blood_meal_host_id_phenotype {
+  my ($phenotype) = @_;
+  my ($observable, $attribute, $cvalue) = ($phenotype->observable, $phenotype->attr, $phenotype->cvalue);
+  return (defined $observable && ($observable->id == $blood_meal_term->id || $observable->id == $blood_meal_source_term->id) &&
+          defined $attribute && $blood_meal_source_term->has_child($attribute) &&
+          defined $cvalue && $parent_term_of_present_absent->has_child($cvalue));
+}
+
 
 sub clean_value {
   my ($value) = @_;
