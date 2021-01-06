@@ -156,6 +156,8 @@ my $mutated_protein_term = $cvterms->find_by_accession({ term_source_ref => 'IDO
 my $wild_type_allele_term = $cvterms->find_by_accession({ term_source_ref => 'IRO',
                                                           term_accession_number => '0000001' }) || die;
 
+my $simple_sequence_length_polymorphism_term = $cvterms->find_by_accession({ term_source_ref => 'SO',
+                                                                             term_accession_number => '0000207' }) || die;
 
 ### some globals related to placeholder-making and other caches
 my $last_accession_number = 90000001;
@@ -371,14 +373,14 @@ $schema->txn_do_deferred
 
           my $genotype_assays = $sample->genotype_assays;
           while (my $assay = $genotype_assays->next()) {
-            # TO DO: map protocol old->new
 
-            process_entity_props($assay, 'NdExperimentprop');
-            process_assay_type($assay);
-            foreach my $genotype ($assay->genotypes) {
-              # move $genotype->type and the prevalence value into assay props
-              my $old_type = $genotype->type;
-              if ($mutated_protein_term->has_child($old_type) || $wild_type_allele_term->has_child($old_type)) {
+            if (is_kdr_like_genotype_assay($assay)) {
+              process_entity_props($assay, 'NdExperimentprop');
+              process_assay_type($assay);
+              process_assay_protocols($assay);
+              foreach my $genotype ($assay->genotypes) {
+                # move $genotype->type and the prevalence value into assay props
+                my $old_type = $genotype->type;
                 my $new_variable = main_map_old_term_to_new_term($old_type, 'Genotype', "genotype to assay variable");
                 my ($genotype_value, $genotype_unit);
                 foreach my $prop ($genotype->multiprops) {
@@ -406,9 +408,24 @@ $schema->txn_do_deferred
                   $schema->defer_exception(sprintf "incomplete genotype information for %s's genotype '%s'", $assay->stable_id, $genotype->name);
                 }
               }
-            }
 
-            process_assay_protocols($assay);
+            } elsif (is_microsatellite_assay($assay)) {
+              #
+              # do the same assay cloning as with blood meal/pathogen assays
+              #
+
+              # do we store the two polymorphism length results (one for each chromosome of diploid genome) in ONE assay or TWO?
+              # one assay would be something like microsat_length1 microsat_length2
+
+            } elsif (is_chromosomal_inversion_assay($assay)) {
+
+              #
+              # store all the individual inversion counts in ONE assay - but this needs quite a few NEW TERMS
+              # (get unique terms, e.g. 2Rj 2Rd etc, from legacy site site search downloads)
+              #
+            } else {
+              $schema->defer_exception(sprintf "Unknown genotype assay %s", $assay->stable_id);
+            }
           }
 
           # TO DO: sample manipulations?? or at least, remove them
@@ -455,6 +472,28 @@ sub object_type {
 }
 
 
+sub is_kdr_like_genotype_assay {
+  my ($assay) = @_;
+  my ($count_positive, $count_total) = (0, 0);
+  foreach my $genotype ($assay->genotypes) {
+    my $genotype_type = $genotype->type;
+    $count_total++;
+    $count_positive++ if ($mutated_protein_term->has_child($genotype_type) || $wild_type_allele_term->has_child($genotype_type));
+  }
+  return $count_positive > 0 && $count_positive == $count_total;
+}
+
+sub is_microsatellite_assay {
+  my ($assay) = @_;
+  my ($count_positive, $count_total) = (0, 0);
+  foreach my $genotype ($assay->genotypes) {
+    my $genotype_type = $genotype->type;
+    $count_total++;
+    $count_positive++ if ($genotype_type->id == $simple_sequence_length_polymorphism_term->id ||
+                          $simple_sequence_length_polymorphism_term->has_child($genotype_type));
+  }
+  return $count_positive > 0 && $count_positive == $count_total;
+}
 
 sub is_insecticide_resistance_assay {
   my ($assay) = @_;
