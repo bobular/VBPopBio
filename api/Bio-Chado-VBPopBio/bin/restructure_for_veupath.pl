@@ -137,7 +137,6 @@ my $count_unit_term = $cvterms->find_by_accession({ term_source_ref => 'UO',
 my $arthropod_infection_status_term = $cvterms->find_by_accession({ term_source_ref => 'VSMO',
                                                                     term_accession_number => '0000009' }) || die;
 
-
 my $parent_term_of_present_absent = $cvterms->find_by_accession({ term_source_ref => 'PATO',
                                                                   term_accession_number => '0000070' }) || die;
 
@@ -158,6 +157,25 @@ my $wild_type_allele_term = $cvterms->find_by_accession({ term_source_ref => 'IR
 
 my $simple_sequence_length_polymorphism_term = $cvterms->find_by_accession({ term_source_ref => 'SO',
                                                                              term_accession_number => '0000207' }) || die;
+
+my $chromosomal_inversion_term = $cvterms->find_by_accession({ term_source_ref => 'SO', 
+                                                               term_accession_number => '1000030' }) || die;
+
+my $genotyping_by_sequencing = $cvterms->find_by_accession({ term_source_ref => 'EFO',
+                                                                     term_accession_number => '0002771' }) || die;
+
+my $genotyping_by_array = $cvterms->find_by_accession({ term_source_ref => 'EFO',
+                                                        term_accession_number => '0002767' }) || die;
+
+my $DNA_barcode_assay = $cvterms->find_by_accession({ term_source_ref => 'VBcv',
+                                                      term_accession_number => '0001025' }) || die;
+
+my $microsatellite_term = $cvterms->find_by_accession({ term_source_ref => 'SO',
+                                                        term_accession_number => '0000289' }) || die;
+
+my $length_term = $cvterms->find_by_accession({ term_source_ref => 'PATO',
+                                                term_accession_number => '0000122' }) || die;
+
 
 ### some globals related to placeholder-making and other caches
 my $last_accession_number = 90000001;
@@ -325,17 +343,7 @@ $schema->txn_do_deferred
               # process each phenotype into a new assay (which will require a modified external_id - hence the counter)
               my $counter = 1;
               foreach my $phenotype ($assay->phenotypes) {
-                my $new_assay = $assay->copy();
-                # make a (presumably) new external_id (.1, .2 etc)
-                $new_assay->external_id($assay->external_id.'.'.$counter++);
-                # link it back to the sample
-                $new_assay->add_to_stocks($sample, { type_id => $schema->types->assay_uses_sample->id });
-                # link to the protocol(s) of the original assay
-                map {
-                  my $linker = $new_assay->find_or_create_related('nd_experiment_protocols', {  nd_protocol => $_ } );
-                } $assay->protocols;
-                # copy assay props over
-                map { $new_assay->add_multiprop(Multiprop->new(cvterms=>[$_->cvterms], value=>$_->value)) } $assay->multiprops;
+                my $new_assay = copy_assay($assay, $sample, $counter++);
 
                 # now process the phenotype into new_assay props
                 # don't map old terms to new terms yet (do at end with process_entity_props)
@@ -416,15 +424,68 @@ $schema->txn_do_deferred
 
               # do we store the two polymorphism length results (one for each chromosome of diploid genome) in ONE assay or TWO?
               # one assay would be something like microsat_length1 microsat_length2
+              # DECISION: going to store both lengths in one Characteristic - semicolon delimited
+              
+
+              # go through all genotypes (microsat name + length pairs)
+              # and store all the lengths (up to two) per name
+
+              my %locus2lengths;  #  locus_name => [ 123, 126 ]
+              foreach my $genotype ($assay->genotypes) {
+                if ($genotype->type->name eq 'simple_sequence_length_variation') {
+                  my ($mname, $mlen);
+                  foreach my $prop ($genotype->multiprops) {
+                    if (($prop->cvterms)[0]->name eq 'microsatellite') {
+                      $mname = $prop->value;
+                    } elsif (($prop->cvterms)[0]->name eq 'length') {
+                      $mlen = $prop->value;
+                    } else {
+                      $schema->defer_exception_once("Unexpected genotype props in microsatellite assay");
+                    }
+                  }
+                  if ($mname && defined $mlen) {
+                    push @{$locus2lengths{$mname}}, $mlen;
+                  } else {
+                    $schema->defer_exception_once("Missing name+length genotype props in microsatellite assay");
+                  }
+                } else {
+                  $schema->defer_exception_once("Unexpected genotype type in microsatellite assay");
+                }
+
+              }
+              foreach my $mname (sort keys %locus2lengths) {
+                my $new_assay = copy_assay($assay, $sample, $mname);
+                # add a microsatellite property and length property
+                my $microsat_prop = Multiprop->new(cvterms=>[$microsatellite_term], value=>$mname);
+                $new_assay->add_multiprop($microsat_prop);
+                my $length_prop = Multiprop->new(cvterms=>[$length_term], value=>join(';', @{$locus2lengths{$mname}}));
+                $new_assay->add_multiprop($length_prop);
+              }
+
+              $assay->delete;
 
             } elsif (is_chromosomal_inversion_assay($assay)) {
-
               #
               # store all the individual inversion counts in ONE assay - but this needs quite a few NEW TERMS
               # (get unique terms, e.g. 2Rj 2Rd etc, from legacy site site search downloads)
               #
+              $schema->defer_exception_once("TO DO chromosomal inversion handling");
+
+            } elsif (is_this_kind_of_assay($assay, $genotyping_by_sequencing) || is_this_kind_of_assay($assay, $genotyping_by_array)) {
+              # do nothing special - these assays don't have child Genotype objects
+              process_entity_props($assay, 'NdExperimentprop');
+              process_assay_type($assay);
+              process_assay_protocols($assay);
+
+            } elsif (is_this_kind_of_assay($assay, $DNA_barcode_assay)) {
+              # for now, delete the genotype object (there should only be one per assay)
+              # could copy over the genotype props but we'll wait to see what is happening in VEuPathDB as a whole
+              map { $_->delete } $assay->genotypes;
+              process_entity_props($assay, 'NdExperimentprop');
+              process_assay_type($assay);
+              process_assay_protocols($assay);
             } else {
-              $schema->defer_exception(sprintf "Unknown genotype assay %s", $assay->stable_id);
+              $schema->defer_exception(sprintf "Unhandled genotype assay %s", $assay->stable_id);
             }
           }
 
@@ -472,6 +533,44 @@ sub object_type {
 }
 
 
+#
+# makes a shallow-ish copy of an assay
+#
+# copied: protocols, props
+# not copied: genotypes or phenotypes
+#
+# new assay is linked back to the provided sample
+# the suffix is appended to the external_id to make it unique (in case a stable_id is required)
+#
+sub copy_assay {
+  my ($assay, $sample, $suffix) = @_;
+  my $new_assay = $assay->copy();
+  # make a (presumably) new external_id (.1, .2 etc)
+  $new_assay->external_id($assay->external_id.'.'.$suffix);
+  # link it back to the sample
+  $new_assay->add_to_stocks($sample, { type_id => $schema->types->assay_uses_sample->id });
+  # link to the protocol(s) of the original assay
+  map {
+    my $linker = $new_assay->find_or_create_related('nd_experiment_protocols', {  nd_protocol => $_ } );
+  } $assay->protocols;
+  # copy assay props over
+  map { $new_assay->add_multiprop(Multiprop->new(cvterms=>[$_->cvterms], value=>$_->value)) } $assay->multiprops;
+
+  return $new_assay;
+}
+
+
+sub is_this_kind_of_assay {
+  my ($assay, $protocol_term) = @_;
+
+  my @protocol_types = map { $_->type } $assay->protocols->all;
+  if (grep { $_->id == $protocol_term->id || $protocol_term->has_child($_) } @protocol_types) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
 sub is_kdr_like_genotype_assay {
   my ($assay) = @_;
   my ($count_positive, $count_total) = (0, 0);
@@ -491,6 +590,18 @@ sub is_microsatellite_assay {
     $count_total++;
     $count_positive++ if ($genotype_type->id == $simple_sequence_length_polymorphism_term->id ||
                           $simple_sequence_length_polymorphism_term->has_child($genotype_type));
+  }
+  return $count_positive > 0 && $count_positive == $count_total;
+}
+
+sub is_chromosomal_inversion_assay {
+  my ($assay) = @_;
+  my ($count_positive, $count_total) = (0, 0);
+  foreach my $genotype ($assay->genotypes) {
+    my $genotype_type = $genotype->type;
+    $count_total++;
+    $count_positive++ if ($genotype_type->id == $chromosomal_inversion_term->id ||
+                          $chromosomal_inversion_term->has_child($genotype_type));
   }
   return $count_positive > 0 && $count_positive == $count_total;
 }
