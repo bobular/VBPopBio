@@ -24,6 +24,7 @@ use utf8::all;
 use Data::Dumper;
 
 use Text::CSV::Hashify;
+use PerlIO::Util;
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 
@@ -39,6 +40,7 @@ my $mapping_file = 'popbio-term-usage-VB-2019-08-master.csv';
 my $ir_attr_file = 'popbio-term-usage-VB-2019-08-insecticide-attrs.csv';
 my $isatab_prefix = './temp-isatab-';  # will be suffixed with project ID if
 my $dump_isatab = 0;                   # --dump_isatab provided on commandline
+my $error_file;                        # ALSO send STDERR to this file (clobbered not appended)
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$project_ids,
@@ -48,11 +50,16 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
            "ir_file|ir_csv|ir-attrs|ir-attrs-csv=s"=>\$ir_attr_file,
            "dump_isatab|dump-isatab"=>\$dump_isatab,
            "isatab_prefix|isatab-prefix=s"=>\$isatab_prefix,
+           "error_file|error-file=s"=>\$error_file,
 	  );
 
 die "can't --dump-isatab if --limit X is given\n" if ($dump_isatab && $limit);
 
 die "need to give --projects PROJ_ID(s) and --mapping CSV_FILE params\n" unless (defined $project_ids && defined $mapping_file);
+
+if ($error_file) {
+  *STDERR->push_layer(tee => $error_file);
+}
 
 die "mapping file ($mapping_file) doesn't exist\n" unless (-s $mapping_file);
 my $hashify = Text::CSV::Hashify->new( {

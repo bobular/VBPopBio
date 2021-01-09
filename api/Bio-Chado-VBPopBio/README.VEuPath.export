@@ -1,0 +1,17 @@
+echo 4 > .jobs
+
+mkdir dry-run-errors
+
+
+# trailing slash important
+bin/split_restructure_commands.pl --limit 10 --prefix dry-run-errors/ | sort -R | parallel --jobs .jobs
+
+
+problem is that the separate threads can't INSERT in parallel
+
+see 
+
+    ps auxw| grep restructure
+
+(If Chado database name includes 'restructure')
+
