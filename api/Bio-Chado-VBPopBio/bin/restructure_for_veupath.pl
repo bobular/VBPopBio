@@ -253,7 +253,7 @@ $schema->txn_do_deferred
           while (my $assay = $collections->next()) {
             # TO DO: handle collection protocol old->new and add extra device prop when needed
             process_entity_props($assay, 'NdExperimentprop');
-            process_assay_type($assay);
+            # don't process assay type because it kills project->field_collections() ### process_assay_type($assay);
             process_assay_protocols($assay);
 
             # collection geolocation itself has props but we may want to remove these
