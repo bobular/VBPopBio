@@ -1,6 +1,11 @@
 #!/usr/bin/env perl
 # -*- mode: cperl -*-
 #
+# TO DO:
+# 1. make a drop-list for certain prop terms, such as age => F1, age => F0 adults etc
+# 2. Process Iowa 2013-2014 (VBP0000194) to split mixed_sex samples into male and female
+#    This will require copying ALL assays over to new samples
+#
 #
 # usage: bin/restructure_for_veupath.pl [ --dry-run ] [ --verbose ] [ --limit 20 ] --projects VBP0000nnn,VBP0000mmm --mapping_csv popbio-term-usage-XXX.csv
 #
