@@ -128,7 +128,7 @@ sub as_isatab {
 
   my $latitude_heading = 'Collection site latitude (EUPATH:OBI_0001620)';
   my $longitude_heading = 'Collection site longitude (EUPATH:OBI_0001621)';
-  my $altitude_heading = 'Collection site altitude (TBD_EUPATH_ONTOLOGY_ISSUE_111)';
+  my $altitude_heading = 'Collection site altitude (EUPATH:OBI_0002983)';
 
   my $geolocation = $self->geolocation;
   $assay_characteristics->{$latitude_heading}{value} = $geolocation->latitude;
