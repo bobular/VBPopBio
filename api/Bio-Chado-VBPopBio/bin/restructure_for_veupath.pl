@@ -130,6 +130,17 @@ my $do_not_map_terms =
   };
 
 ###
+# prop terms to be retired
+#
+my $retire_me_terms =
+  {
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0000701' })->id => 1, # country
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001129' })->id => 1, # ADM1
+   $cvterms->find_by_accession({ term_source_ref => 'VBcv', term_accession_number => '0001130' })->id => 1, # ADM2
+  };
+
+
+###
 # constant ontology terms used below
 #
 my $ir_assay_base_term = $cvterms->find_by_accession({ term_source_ref => 'MIRO',
@@ -777,6 +788,7 @@ sub process_entity_props {
     # regular processing: map all ontology terms, insert new multiprop and delete old one
     #
     my $mapped_something;
+    my $retire_me;
     my @new_cvterms = map {
       my $old_term = $_;
       my $new_term = $old_term;
@@ -786,9 +798,17 @@ sub process_entity_props {
         $new_term = main_map_old_term_to_new_term($old_term, $proptype, "process_entity_props() old multiprop term: '".$old_term->name."'");
         $mapped_something = 1 if ($new_term->id != $old_term->id);
       }
+      if ($retire_me_terms->{$old_term->id}) {
+        $retire_me = 1;
+      }
       $new_term;
     } @orig_cvterms;
-    if ($mapped_something) {
+    if ($retire_me) {
+      my $ok_deleted = $entity->delete_multiprop($multiprop);
+      unless ($ok_deleted) {
+        $schema->defer_exception("Problem retiring multiprop: (".$multiprop->as_string.") for entity ".$entity->stable_id);
+      }
+    } elsif ($mapped_something) {
       my $old_value = $multiprop->value;
       my $new_multiprop = Multiprop->new(cvterms=>\@new_cvterms, defined $old_value ? (value=>$old_value) : ());
       # warn "going to replace: ".$multiprop->as_string."\nwith:             ".$new_multiprop->as_string."\n";
