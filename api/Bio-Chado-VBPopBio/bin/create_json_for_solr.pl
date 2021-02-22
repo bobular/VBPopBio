@@ -827,7 +827,7 @@ while (my $stock = $stocks->next) {
 	} elsif (defined $observable && $observable->id == $arthropod_infection_status_term->id &&
 		 defined $attribute && # no further tests here but expecting a species term
 		 defined $cvalue &&
-                 ($parent_term_of_present_absent->has_child($cvalue) | $cvalue->id == $equivocal_term->id)
+                 ($parent_term_of_present_absent->has_child($cvalue) || $cvalue->id == $equivocal_term->id)
                 ) {
 	  my $doc = clone($document);
 
