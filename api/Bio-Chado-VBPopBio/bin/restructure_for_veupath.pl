@@ -706,7 +706,8 @@ sub make_placeholder_cvterm {
 
   my $acc = $id || sprintf "EUPATH_%d", $last_accession_number++;
 
-  my ($prefix, $number) = $acc =~ /^([A-Z_]+|NCBITaxon)_(\d+)/;
+  my ($prefix, $number) = $acc =~ /^([A-Z_]+|VEuGEO|NCBITaxon)_(\d+)/;
+  die "No parseable prefix for $acc" unless ($prefix);
   my $db = $schema->dbs->find_or_create({ name => $prefix });
 
   my $new_cvterm =

@@ -1,10 +1,10 @@
 echo 4 > .jobs
 
-mkdir dry-run-errors
+mkdir dry-run-errors-50
 
 
 # trailing slash important
-bin/split_restructure_commands.pl --limit 10 --prefix dry-run-errors/ | sort -R | parallel --jobs .jobs
+bin/split_restructure_commands.pl --limit 50 --prefix dry-run-errors-50/ | sort -R | parallel --jobs .jobs
 
 
 problem is that the separate threads can't INSERT in parallel
@@ -15,3 +15,14 @@ see
 
 (If Chado database name includes 'restructure')
 
+So this can't be run intensively in parallel :-(
+
+
+
+
+# Analysis
+
+
+## unmapped terms excluding VBGEO, in order of number of datasets affected
+
+cat dry-run-errors-50/* | grep "No ID" | grep -v VBGEO | sort | uniq -c | sort -nr | perl -npe 's/^\s+//; s/\s+No ID provided - main lookup result for /\t/; s/ \(/\t/; s/\) /\t/;' | less -S > dry-run-errors-50-No-ID.tsv
