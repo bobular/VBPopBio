@@ -176,7 +176,7 @@ $schema->txn_do_deferred
             }
 
             if ($heading_term->id == $geoloc_precision_term->id) {
-              if (defined $default_precision) {
+              if (defined $default_precision || $remove_precision) {
                 push @RIP_props, $prop;
               } elsif (!$remove_precision) {
                 my $collection_id = $collection->stable_id;
