@@ -409,6 +409,7 @@ $schema->txn_do_deferred
               process_entity_props($assay, 'NdExperimentprop');
               process_assay_type($assay);
               process_assay_protocols($assay);
+              my $num_genotypes_processed = 0;
               foreach my $genotype ($assay->genotypes) {
                 # move $genotype->type and the prevalence value into assay props
                 my $old_type = $genotype->type;
@@ -425,19 +426,31 @@ $schema->txn_do_deferred
                   }
                 }
                 if (defined $genotype_value && $genotype_unit) {
-                  # warn sprintf "old type '%s' to new variable '%s' value '%s' unit '%s'\n", $old_type->name, $new_variable->name, $genotype_value, $genotype_unit->name;
-                  # map unit to new term if needed
-                  my $new_genotype_unit = main_map_old_term_to_new_term($genotype_unit, 'Genotypeprop', "genotype to assay variable, units mapping");
-                  my $new_assay_prop = Multiprop->new(cvterms=>[ $new_variable, $new_genotype_unit ], value=>$genotype_value);
-                  my $success = $assay->add_multiprop($new_assay_prop);
-                  if ($success) {
-                    $genotype->delete;
-                  } else {
-                    $schema->defer_exception("Error adding genotype as assay variable for ".$assay->stable_id);
+                  if ($new_variable->definition !~ /^id-less/) {
+                    # warn sprintf "old type '%s' to new variable '%s' value '%s' unit '%s'\n", $old_type->name, $new_variable->name, $genotype_value, $genotype_unit->name;
+                    # map unit to new term if needed
+                    my $new_genotype_unit = main_map_old_term_to_new_term($genotype_unit, 'Genotypeprop', "genotype to assay variable, units mapping");
+                    my $new_assay_prop = Multiprop->new(cvterms=>[ $new_variable, $new_genotype_unit ], value=>$genotype_value);
+                    my $success = $assay->add_multiprop($new_assay_prop);
+                    if ($success) {
+                      $genotype->delete;
+                      $num_genotypes_processed++;
+                    } else {
+                      $schema->defer_exception("Error adding genotype as assay variable for ".$assay->stable_id);
+                    }
                   }
                 } else {
                   $schema->defer_exception(sprintf "incomplete genotype information for %s's genotype '%s'", $assay->stable_id, $genotype->name);
                 }
+              }
+              if ($num_genotypes_processed == 0) {
+                # discard whole assays where the genotypes did not have new terms mapped to them
+                # (the $new_variable has a definition starting with 'id-less')
+                $assay->delete;
+                $schema->defer_exception(sprintf "INFO: removed genotype assay %s which only had unmapped genotypes", $assay->stable_id);
+              } elsif ($assay->genotypes->count > 0) {
+                # sanity check that there are no genotypes remaining on the assay
+                $schema->defer_exception(sprintf "ERROR: unexpected incomplete genotype processing for %s", $assay->stable_id);
               }
 
             } elsif (is_microsatellite_assay($assay)) {
@@ -705,6 +718,7 @@ sub make_placeholder_cvterm {
   $schema->defer_exception_once("Making placeholder for '$name' ($nid)");
 
   my $acc = $id || sprintf "EUPATH_%d", $last_accession_number++;
+  my $definition_prefix = $id ? '' : 'id-less ';
 
   my ($prefix, $number) = $acc =~ /^([A-Z_]+|VEuGEO|NCBITaxon)_(\d+)/;
   die "No parseable prefix for $acc" unless ($prefix);
@@ -716,7 +730,7 @@ sub make_placeholder_cvterm {
                               { join => 'db' })->
                                 find_or_create_related('cvterm',
                                                        { name => $name,
-                                                         definition => "placeholder for term '$name'",
+                                                         definition => $definition_prefix."placeholder for term '$name'",
                                                          cv => $placeholder_cv
                                                        });
 
