@@ -27,6 +27,8 @@ use Bio::Chado::VBPopBio;
 use Getopt::Long;
 use utf8::all;
 use Data::Dumper;
+use JSON;
+use File::Slurp;
 
 use Text::CSV::Hashify;
 use PerlIO::Util;
@@ -223,9 +225,9 @@ $schema->txn_do_deferred
       $do_not_map_terms->{$assayed_pathogen_term->id} = 1;
       my $pathogen_presence_term = get_cvterm('EUPATH_0010889', 'pathogen presence');
       $do_not_map_terms->{$pathogen_presence_term->id} = 1;
-      my $assayed_bm_host_term = make_placeholder_cvterm(undef, 'blood meal host organism');
+      my $assayed_bm_host_term = make_placeholder_cvterm('OBI_0002995', 'blood meal host organism');
       $do_not_map_terms->{$assayed_bm_host_term->id} = 1;
-      my $bm_host_presence_term = make_placeholder_cvterm(undef, 'blood meal host presence');
+      my $bm_host_presence_term = make_placeholder_cvterm('OBI_0002994', 'blood meal host presence');
       $do_not_map_terms->{$bm_host_presence_term->id} = 1;
 
 
@@ -534,10 +536,12 @@ $schema->txn_do_deferred
 
 	$project->update_modification_date();
 
-        if ($dump_isatab) {
+        if ($dump_isatab && (!$limit || $done_samples < $limit)) {
           my $output_dir = $isatab_prefix.$project_id;
           my $isatab = $project->write_to_isatab({ directory=>$output_dir, protocols_first=>1 });
           warn "wrote $project_id ISA-Tab to $output_dir\n";
+          my $isatab_json = encode_json($isatab);
+          write_file("$output_dir/isatab.json", $isatab_json);
         }
       }
       $schema->defer_exception("dry-run option - rolling back") if ($dry_run);

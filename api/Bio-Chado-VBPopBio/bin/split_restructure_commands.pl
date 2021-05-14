@@ -22,9 +22,11 @@ use Getopt::Long;
 
 my $limit_samples = 0;
 my $error_file_prefix = "TEMP-stderr-";
+my $isatab_prefix = "TEMP-isatab-";
 
 GetOptions("limit_samples=i"=>\$limit_samples,
            "error_file_prefix|prefix=s"=>\$error_file_prefix,
+           "isatab-prefix|isatab_prefix=s"=>\$isatab_prefix,
 	  );
 
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
@@ -42,5 +44,5 @@ my $done_projects = 0;
 my @commands;
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
-  printf "bin/restructure_for_veupath.pl --projects %s --limit %d --error $error_file_prefix%s\n", $stable_id, $limit_samples, $stable_id;
+  printf "bin/restructure_for_veupath.pl --projects %s --limit %d --error $error_file_prefix%s --isatab-prefix %s\n", $stable_id, $limit_samples, $stable_id, $isatab_prefix;
 }
