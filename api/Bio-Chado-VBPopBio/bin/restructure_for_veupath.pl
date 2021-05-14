@@ -6,6 +6,7 @@
 # 2. Process Iowa 2013-2014 (VBP0000194) to split mixed_sex samples into male and female
 #    This will require copying ALL assays over to new samples
 # 3. handle multiple values for attractants
+# 4. Add units=day for Source Characteristic "duration of specimen collection (OBI:OBI_0002988)"
 #
 # usage: bin/restructure_for_veupath.pl [ --dry-run ] [ --verbose ] [ --limit 20 ] --projects VBP0000nnn,VBP0000mmm --mapping_csv popbio-term-usage-XXX.csv
 #
