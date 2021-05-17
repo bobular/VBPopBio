@@ -550,6 +550,7 @@ $schema->txn_do_deferred
 
           # now do checks for mixed units
 
+
         } else {
           $schema->defer_exception("WARNING: ISA-Tab not dumped or checked for mixed units because number of samples processed reached --limit $limit");
         }
