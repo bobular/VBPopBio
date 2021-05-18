@@ -40,6 +40,9 @@ use Text::CSV::Hashify;
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 
+# use PerlIO::Util;  # not compiling in Perl 5.16
+use File::Tee qw(tee);
+
 
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
@@ -70,9 +73,15 @@ die "can't --dump-isatab if --limit X is given\n" if ($dump_isatab && $limit);
 
 die "need to give --projects PROJ_ID(s) and --mapping CSV_FILE params\n" unless (defined $project_ids && defined $mapping_file);
 
+
 if ($error_file) {
-  *STDERR->push_layer(tee => $error_file);
+  # PerlIO::Util version
+  #*STDERR->push_layer(tee => $error_file);
+
+  # File::Tee version
+  tee(STDERR, '>', $error_file);
 }
+
 
 die "mapping file ($mapping_file) doesn't exist\n" unless (-s $mapping_file);
 my $hashify = Text::CSV::Hashify->new( {
@@ -267,7 +276,7 @@ $schema->txn_do_deferred
       foreach my $project (@projects) {
         my $project_id = $project->stable_id;
 	my $num_samples = $project->stocks->count;
-        print "processing $project_id ($num_samples samples)...\n";
+        warn "Processing $project_id ($num_samples samples)...\n";
 
         process_entity_props($project, 'Projectprop');
         map {
