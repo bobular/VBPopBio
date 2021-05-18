@@ -37,7 +37,6 @@ use List::MoreUtils qw(uniq);
 use File::Temp qw(tempdir);
 
 use Text::CSV::Hashify;
-use PerlIO::Util;
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
 
@@ -1028,8 +1027,9 @@ sub warn_units {
   my ($unit_summary, $message, $schema) = @_;
   foreach my $characteristic (keys %$unit_summary) {
     if (scalar @{$unit_summary->{$characteristic}} > 1) {
-      $schema->defer_exception_once(sprintf "MIXED UNITS in '%s': (%s)",
+      $schema->defer_exception_once(sprintf "MIXED UNITS in '%s':'%s' => (%s)",
                                     $message,
+                                    $characteristic,
                                     join ',', map "'$_'", @{$unit_summary->{$characteristic}});
     }
   }
