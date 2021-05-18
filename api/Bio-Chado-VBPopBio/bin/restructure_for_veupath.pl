@@ -236,6 +236,16 @@ $schema->txn_do_deferred
       my $bm_host_presence_term = make_placeholder_cvterm('OBI_0002994', 'blood meal host presence');
       $do_not_map_terms->{$bm_host_presence_term->id} = 1;
 
+      # general assay types
+      my $insecticide_resistance_assay_term = get_cvterm('OBI_0002695', 'insecticide resistance assay');
+      $do_not_map_terms->{$insecticide_resistance_assay_term->id} = 1;
+      my $blood_meal_assay_term = get_cvterm('OBI_0002732', 'blood meal assay');
+      $do_not_map_terms->{$blood_meal_assay_term->id} = 1;
+      my $pathogen_detection_assay_term = get_cvterm('OBI_0002728', 'pathogen detection assay');
+      $do_not_map_terms->{$pathogen_detection_assay_term->id} = 1;
+
+
+
 
       # handle the projects commandline arg
       my @projects = ();
@@ -365,7 +375,7 @@ $schema->txn_do_deferred
               }
               # do some generic old->new mapping (last one has to be done after is_insecticide_resistance_assay() call)
               process_entity_props($assay, 'NdExperimentprop');
-              process_assay_type($assay);
+              process_assay_type($assay, $insecticide_resistance_assay_term);
               process_assay_protocols($assay);
             } else {
 
@@ -376,6 +386,7 @@ $schema->txn_do_deferred
               foreach my $phenotype ($assay->phenotypes) {
                 my $new_assay = copy_assay($assay, $sample, $counter++);
 
+                my $new_assay_type = $assay->type;
                 # now process the phenotype into new_assay props
                 # don't map old terms to new terms yet (do at end with process_entity_props)
                 if (is_pathogen_infecton_phenotype($phenotype)) {
@@ -386,13 +397,16 @@ $schema->txn_do_deferred
                   my $pathogen_presence_prop = Multiprop->new(cvterms => [ $pathogen_presence_term, $phenotype->cvalue ]);
                   my $added_ok2 = $new_assay->add_multiprop($pathogen_presence_prop);
 
-                  $schema->defer_exception_once("Couldn't add assayed_pathogen_prop to new assay") unless ($added_ok);
+                  $schema->defer_exception_once("Problem addding props to new pathogen detection assay") unless ($added_ok && $added_ok2);
+                  $new_assay_type = $pathogen_detection_assay_term;
                 } elsif (is_blood_meal_host_id_phenotype($phenotype)) {
                   my $assayed_bm_host_prop = Multiprop->new(cvterms => [ $assayed_bm_host_term, $phenotype->attr ]);
                   my $added_ok = $new_assay->add_multiprop($assayed_bm_host_prop);
 
                   my $bm_host_presence_prop = Multiprop->new(cvterms => [ $bm_host_presence_term, $phenotype->cvalue ]);
                   my $added_ok2 = $new_assay->add_multiprop($bm_host_presence_prop);
+                  $schema->defer_exception_once("Problem addding props to new blood meal assay") unless ($added_ok && $added_ok2);
+                  $new_assay_type = $blood_meal_assay_term;
                 } else {
                   $schema->defer_exception_once("Unhandled phenotype '".$phenotype->name."' for assay ".$assay->stable_id);
                 }
@@ -403,7 +417,7 @@ $schema->txn_do_deferred
 
                 # map any old terms to new terms
                 process_entity_props($new_assay, 'NdExperimentprop');
-                process_assay_type($new_assay);
+                process_assay_type($new_assay, $new_assay_type);
                 process_assay_protocols($new_assay);
               }
               $assay->delete;
@@ -886,11 +900,19 @@ sub process_entity_props {
 # assay->type takes one of 5 forms: field collection, species ID, phenotype assay, genotype assay or sample manipulation
 #
 # just need to map the term (inplace updates $assays)
+#
+# 2021 update: upon export for VEuPath, this will be more fine grained:
+# phenotypes will be subdivided:
+# - insecticide resistance assay
+# - blood meal assay
+# - pathogen detection assay
+# TBD if genotype assays will be subdivided (targeted locus, inversions, microsats, barcoding, sequencing...)
+#
 sub process_assay_type {
-  my ($assay) = @_;
-  my $old_type = $assay->type;
+  my ($assay, $new_term) = @_;
+  my $old_type = $new_term // $assay->type;
   my $new_type = main_map_old_term_to_new_term($old_type, 'NdExperiment', "Assay type");
-  if ($new_type->id ne $old_type->id) {
+  if ($new_type->id ne $assay->type->id) {
     $assay->type($new_type);
     $assay->update;
   }
