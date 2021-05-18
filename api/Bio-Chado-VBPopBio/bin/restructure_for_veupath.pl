@@ -32,6 +32,7 @@ use Data::Dumper;
 use JSON;
 use File::Slurp;
 use JSON::Path;
+$JSON::Path::Safe = 0;  # needed for sub-expressions only foo[?(expr)]
 use List::MoreUtils qw(uniq);
 use File::Temp qw(tempdir);
 
@@ -39,6 +40,7 @@ use Text::CSV::Hashify;
 use PerlIO::Util;
 
 use aliased 'Bio::Chado::VBPopBio::Util::Multiprop';
+
 
 my $dsn = "dbi:Pg:dbname=$ENV{CHADO_DB_NAME}";
 my $schema = Bio::Chado::VBPopBio->connect($dsn, $ENV{USER}, undef, { AutoCommit => 1 });
@@ -549,7 +551,31 @@ $schema->txn_do_deferred
           write_file("$output_dir/isatab.json", $isatab_json);
 
           # now do checks for mixed units
+          my $source_chars = JSON::Path->new('$.studies[0].sources[*].characteristics');
+          my @source_chars = $source_chars->values($isatab);
+          my $source_units = summarise_units(@source_chars);
+          warn_units($source_units, "Collections", $schema);
 
+          my $sample_chars = JSON::Path->new('$.studies[0].sources[*].samples[*].characteristics');
+          my @sample_chars = $sample_chars->values($isatab);
+          my $sample_units = summarise_units(@sample_chars);
+          warn_units($sample_units, "Samples", $schema);
+
+          my $study_assay_measurement_types = JSON::Path->new('$.studies[0].study_assays[*].study_assay_measurement_type');
+          my @study_assay_measurement_types = $study_assay_measurement_types->values($isatab);
+
+          my $study_assays = JSON::Path->new('$.studies[0].study_assays');
+          my $assay_chars = JSON::Path->new('$.[*].samples[*].assays[*].characteristics');
+
+          my @study_assays = $study_assays->values($isatab);
+
+          foreach my $study_assay_measurement_type (uniq(@study_assay_measurement_types)) {
+            # filter without using JSON::Path subexpressions, due to a colon-related bug in JSON::Path
+            my @this_type_assays = grep { $_->{study_assay_measurement_type} eq $study_assay_measurement_type } @{$study_assays[0]};
+            my @assay_chars = $assay_chars->values(\@this_type_assays);
+            my $units_summary = summarise_units(@assay_chars);
+            warn_units($units_summary, $study_assay_measurement_type, $schema);
+          }
 
         } else {
           $schema->defer_exception("WARNING: ISA-Tab not dumped or checked for mixed units because number of samples processed reached --limit $limit");
@@ -951,4 +977,60 @@ sub main_map_old_term_to_new_term {
   my $old_term_id = underscore_id($old_term->dbxref->as_string(), @debug_info);
   return $old_term_id ? main_map_old_id_to_new_term($old_term_id, $old_term->name, $proptype, @debug_info) :
     make_placeholder_cvterm(undef, $old_term->name);
+}
+
+
+#
+# units audit routines:
+#
+
+#
+# takes an array of objects: [ { characteristics_headingN => characteristics_object } ]
+#
+# and returns an object { characteristics_heading1 => [ 'minute', 'hour' ], characteristics_heading2 => [ 'mg/l', 'mg/ml' ] }
+# that lists the different units used (if any)
+#
+sub summarise_units {
+  my @characteristics = @_;
+  my $result = {};  # {$characteristic_heading} => [ unit_names, ... ]
+
+  my @char_keys = characteristic_keys(@characteristics);
+  foreach my $characteristic (@char_keys) {
+    ### the following would work if there wasn't a bug in JSON::Path where
+    ### JSON keys ('$characteristic') with colons in them cause a problem
+    # my $units_jpath = JSON::Path->new(qq|\$.[*].['$characteristic'].unit.value|);
+    # my @units = uniq($units_jpath->values(\@characteristics));
+
+    # instead, filter with Perl
+    my @these_chars = grep { defined $_ } map { $_->{$characteristic} } @characteristics;
+    my $units_jpath = JSON::Path->new(qq|\$.[*].unit.value|);
+    my @units = uniq($units_jpath->values(\@these_chars));
+    $result->{$characteristic} = \@units;
+  }
+  return $result;
+}
+
+
+#
+# takes an arrayref of 'assay_chars' from above
+# returns an array of characteristics keys (aka headings)
+#
+sub characteristic_keys {
+  my @characteristics = @_;
+  return uniq(map { keys %{$_} } @characteristics);
+}
+
+
+#
+# creates a deferred exception if there are multiple units for any characteristics
+#
+sub warn_units {
+  my ($unit_summary, $message, $schema) = @_;
+  foreach my $characteristic (keys %$unit_summary) {
+    if (scalar @{$unit_summary->{$characteristic}} > 1) {
+      $schema->defer_exception_once(sprintf "MIXED UNITS in '%s': (%s)",
+                                    $message,
+                                    join ',', map "'$_'", @{$unit_summary->{$characteristic}});
+    }
+  }
 }
