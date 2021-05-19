@@ -56,6 +56,7 @@ my @relationships;
 printf "OLD cvterm %s %s\n", $old_cvterm->name, $old_cvterm->dbxref->as_string;
 foreach my $relationship ($old_cvterm->result_source->relationships) {
   # ignore cvtermpaths, cvtermprops and cvterm_relationship_*
+  next if ($opt_relationship && $relationship ne $opt_relationship);
   next if ($relationship =~ /^cvterm/);
   # some DBIx relationships are not actually available
   my $count = eval { $old_cvterm->$relationship->count };
@@ -68,6 +69,7 @@ foreach my $relationship ($old_cvterm->result_source->relationships) {
 printf "NEW cvterm %s %s\n", $new_cvterm->name, $new_cvterm->dbxref->as_string;
 foreach my $relationship ($new_cvterm->result_source->relationships) {
   # ignore cvtermpaths, cvtermprops and cvterm_relationship_*
+  next if ($opt_relationship && $relationship ne $opt_relationship);
   next if ($relationship =~ /^cvterm/);
   # some DBIx relationships are not actually available
   my $count = eval { $new_cvterm->$relationship->count };
