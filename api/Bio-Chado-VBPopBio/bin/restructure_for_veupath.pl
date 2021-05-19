@@ -328,6 +328,7 @@ $schema->txn_do_deferred
               # special treatment of phenotypes for Insecticide resistance assays
               # (needs special mapping of phenotype.attr+unit to assay_characteristics)
               #
+              process_entity_props($assay, 'NdExperimentprop');  # do this first to avoid double-processing
               my $phenotypes = $assay->phenotypes;
               while (my $phenotype = $phenotypes->next()) {
                 my $object_type = object_type($phenotype);
@@ -383,7 +384,6 @@ $schema->txn_do_deferred
                 }
               }
               # do some generic old->new mapping (last one has to be done after is_insecticide_resistance_assay() call)
-              process_entity_props($assay, 'NdExperimentprop');
               process_assay_type($assay, $insecticide_resistance_assay_term);
               process_assay_protocols($assay);
             } else {
@@ -538,6 +538,8 @@ $schema->txn_do_deferred
               #
 
               # also investigate why VBA0045254 from VBP0000006 isn't detected as a chromosomal inversion
+              # also same issue with VBP0000003
+
               $schema->defer_exception_once("TO DO chromosomal inversion handling");
 
             } elsif (is_this_kind_of_assay($assay, $genotyping_by_sequencing) || is_this_kind_of_assay($assay, $genotyping_by_array)) {
@@ -611,16 +613,16 @@ $schema->txn_do_deferred
 sub underscore_id {
   my ($id, @debug_info) = @_;
   # already underscored and looks like an onto id?
-  if ($id =~ /^\w+?_\w+$/) {
+  if (!$id) {
+    $schema->defer_exception_once("No ID provided - @debug_info");
+  } elsif ($id =~ /^\w+?_\w+$/) {
     # all good - do nothing
   } elsif ($id =~ /^\w+?:(\w+?_\w+)$/) { # already underscored AND colon prefixed - just return the latter bit
     $id = $1;
   } elsif ($id =~ /^\w+?:\w+$/) { # regular ONTO:0012345 style
     $id =~ s/:/_/;
-  } elsif ($id) {
-    $schema->defer_exception_once("Bad ID '$id' - @debug_info");
   } else {
-    $schema->defer_exception_once("No ID provided - @debug_info");
+    $schema->defer_exception_once("Bad ID '$id' - @debug_info");
   }
   return $id;
 }
@@ -831,7 +833,8 @@ sub process_entity_props {
     #
     # going to do checks by name and not by accession because this is a one-time script
     # (doesn't matter if the terms change in the future)
-    if ($orig_cvterms[0]->name eq 'insecticidal substance' && $orig_cvterms[2]->name eq 'concentration of') {
+    if (@orig_cvterms == 4 &&
+        $orig_cvterms[0]->name eq 'insecticidal substance' && $orig_cvterms[2]->name eq 'concentration of') {
       my ($old_insecticide_heading, $old_insecticide_term, $concentration_of, $old_units_term) = @orig_cvterms;
       my $new_insecticide_term = main_map_old_term_to_new_term($old_insecticide_term, $proptype, "insecticide special main");
       my $new_insecticide_prop = Multiprop->new(cvterms=>[$new_insecticide_heading, $new_insecticide_term]);
@@ -920,10 +923,12 @@ sub process_entity_props {
 # - pathogen detection assay
 # TBD if genotype assays will be subdivided (targeted locus, inversions, microsats, barcoding, sequencing...)
 #
+# $new_term_override must be a term that doesn't need mapping
+#
 sub process_assay_type {
-  my ($assay, $new_term) = @_;
-  my $old_type = $new_term // $assay->type;
-  my $new_type = main_map_old_term_to_new_term($old_type, 'NdExperiment', "Assay type");
+  my ($assay, $new_term_override) = @_;
+  my $old_type = $assay->type;
+  my $new_type = $new_term_override ? $new_term_override : main_map_old_term_to_new_term($old_type, 'NdExperiment', "Assay type");
   if ($new_type->id ne $assay->type->id) {
     $assay->type($new_type);
     $assay->update;
