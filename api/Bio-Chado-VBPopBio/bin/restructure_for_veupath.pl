@@ -536,6 +536,8 @@ $schema->txn_do_deferred
               # store all the individual inversion counts in ONE assay - but this needs quite a few NEW TERMS
               # (get unique terms, e.g. 2Rj 2Rd etc, from legacy site site search downloads)
               #
+
+              # also investigate why VBA0045254 from VBP0000006 isn't detected as a chromosomal inversion
               $schema->defer_exception_once("TO DO chromosomal inversion handling");
 
             } elsif (is_this_kind_of_assay($assay, $genotyping_by_sequencing) || is_this_kind_of_assay($assay, $genotyping_by_array)) {
@@ -817,6 +819,7 @@ sub process_entity_props {
 
   # don't process the same entity more than once
   # TO DO: handle this between different processes (same geolocation could be shared by different projects)
+  # UPDATE: if running all projects as separate rolled-back transactions, no need :-)
   return if ($processed_entity_props->{$entity->id}{$proptype}++);
 
   my @multiprops = $entity->multiprops;
