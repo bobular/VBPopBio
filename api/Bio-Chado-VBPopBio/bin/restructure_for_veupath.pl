@@ -69,8 +69,6 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
            "error_file|error-file=s"=>\$error_file,
 	  );
 
-die "can't --dump-isatab if --limit X is given\n" if ($dump_isatab && $limit);
-
 die "need to give --projects PROJ_ID(s) and --mapping CSV_FILE params\n" unless (defined $project_ids && defined $mapping_file);
 
 
