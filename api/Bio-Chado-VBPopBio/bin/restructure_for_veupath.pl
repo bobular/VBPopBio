@@ -201,6 +201,9 @@ my $simple_sequence_length_polymorphism_term = $cvterms->find_by_accession({ ter
 my $chromosomal_inversion_term = $cvterms->find_by_accession({ term_source_ref => 'SO', 
                                                                term_accession_number => '1000030' }) || die;
 
+my $karyotype_term = $cvterms->find_by_accession({ term_source_ref => 'EFO',
+                                                   term_accession_number => '0004426' }) || die;
+
 my $genotyping_by_sequencing = $cvterms->find_by_accession({ term_source_ref => 'EFO',
                                                                      term_accession_number => '0002771' }) || die;
 
@@ -425,7 +428,7 @@ $schema->txn_do_deferred
                 map { $new_assay->add_multiprop(Multiprop->new(cvterms=>[$_->cvterms], value=>$_->value)) } $phenotype->multiprops;
 
                 # map any old terms to new terms
-                process_entity_props($new_assay, 'NdExperimentprop');
+                process_entity_props($new_assay, 'NdExperimentprop|Phenotype');
                 process_assay_type($new_assay, $new_assay_type);
                 process_assay_protocols($new_assay);
               }
@@ -497,6 +500,11 @@ $schema->txn_do_deferred
               # go through all genotypes (microsat name + length pairs)
               # and store all the lengths (up to two) per name
 
+              # map the assay's props/types/protocols before potentially cloning it for each genotype
+              process_entity_props($assay, 'NdExperimentprop');
+              process_assay_type($assay);
+              process_assay_protocols($assay);
+
               my %locus2lengths;  #  locus_name => [ 123, 126 ]
               foreach my $genotype ($assay->genotypes) {
                 if ($genotype->type->name eq 'simple_sequence_length_variation') {
@@ -551,8 +559,9 @@ $schema->txn_do_deferred
             } elsif (is_this_kind_of_assay($assay, $DNA_barcode_assay)) {
               # for now, delete the genotype object (there should only be one per assay)
               # could copy over the genotype props but we'll wait to see what is happening in VEuPathDB as a whole
+              $schema->defer_exception_once("TO DO handle barcode assays");
               map { $_->delete } $assay->genotypes;
-              process_entity_props($assay, 'NdExperimentprop');
+              process_entity_props($assay, 'NdExperimentprop'); # potentially 'NdExperimentprop|Genotype'
               process_assay_type($assay);
               process_assay_protocols($assay);
             } else {
@@ -704,7 +713,8 @@ sub is_chromosomal_inversion_assay {
     my $genotype_type = $genotype->type;
     $count_total++;
     $count_positive++ if ($genotype_type->id == $chromosomal_inversion_term->id ||
-                          $chromosomal_inversion_term->has_child($genotype_type));
+                          $chromosomal_inversion_term->has_child($genotype_type) ||
+                          $genotype_type->id == $karyotype_term->id);
   }
   return $count_positive > 0 && $count_positive == $count_total;
 }
@@ -992,10 +1002,12 @@ sub process_assay_protocols {
 #
 # map old_term_id (underscore style) to new term object
 #
+# proptype can be NdExperimentprop or 'NdExperimentprop|Phenotype'
+#
 sub main_map_old_id_to_new_term {
   my ($old_term_id, $old_term_name, $proptype, @debug_info) = @_;
 
-  my $lookup_row = $main_term_lookup->{$old_term_id}{$proptype};
+  my $lookup_row = grep { defined $_ } map { $main_term_lookup->{$old_term_id}{$_} } split /\|/, $proptype;
   if ($lookup_row) {
     my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "main lookup result for '$old_term_name' ($old_term_id) $proptype", @debug_info);
     if ($new_term_id ) {
