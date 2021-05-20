@@ -44,5 +44,5 @@ my $done_projects = 0;
 my @commands;
 while (my $project = $projects->next) {
   my $stable_id = $project->stable_id;
-  printf "bin/restructure_for_veupath.pl --projects %s --limit %d --error $error_file_prefix%s --isatab-prefix %s\n", $stable_id, $limit_samples, $stable_id, $isatab_prefix;
+  printf "bin/restructure_for_veupath.pl --projects %s --limit %d --error $error_file_prefix%s --dump-isatab --isatab-prefix %s\n", $stable_id, $limit_samples, $stable_id, $isatab_prefix;
 }
