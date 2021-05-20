@@ -1007,7 +1007,7 @@ sub process_assay_protocols {
 sub main_map_old_id_to_new_term {
   my ($old_term_id, $old_term_name, $proptype, @debug_info) = @_;
 
-  my $lookup_row = grep { defined $_ } map { $main_term_lookup->{$old_term_id}{$_} } split /\|/, $proptype;
+  my ($lookup_row) = grep { defined $_ } map { $main_term_lookup->{$old_term_id}{$_} } split /\|/, $proptype;
   if ($lookup_row) {
     my $new_term_id = underscore_id($lookup_row->{'OBO ID'}, "main lookup result for '$old_term_name' ($old_term_id) $proptype", @debug_info);
     if ($new_term_id ) {
