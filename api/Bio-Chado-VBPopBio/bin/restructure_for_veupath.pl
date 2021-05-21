@@ -426,7 +426,7 @@ $schema->txn_do_deferred
                 map { $new_assay->add_multiprop(Multiprop->new(cvterms=>[$_->cvterms], value=>$_->value)) } $phenotype->multiprops;
 
                 # map any old terms to new terms
-                process_entity_props($new_assay, 'NdExperimentprop|Phenotype');
+                process_entity_props($new_assay, 'NdExperimentprop|Phenotype|Phenotypeprop');
                 process_assay_type($new_assay, $new_assay_type);
                 process_assay_protocols($new_assay);
               }
