@@ -18,7 +18,7 @@
 #   --limit N              : process max N samples per project
 #   --dump-isatab          : dump processed project(s) to isatab files in <isatab-prefix>-<projectID> directories
 #   --isatab-prefix        : prefix of optional isatab output directories
-#
+#   --hours-to-minutes     : convert ANY values with units of hour into minutes
 
 use 5.016; # for JSON::Path
 use strict;
@@ -57,6 +57,7 @@ my $ir_attr_file = 'popbio-term-usage-VB-2019-08-insecticide-attrs.csv';
 my $isatab_prefix = './temp-isatab-';  # will be suffixed with project ID if
 my $dump_isatab = 0;                   # --dump_isatab provided on commandline
 my $error_file;                        # ALSO send STDERR to this file (clobbered not appended)
+my $hours_to_minutes = 0;
 
 GetOptions("dry-run|dryrun"=>\$dry_run,
 	   "projects=s"=>\$project_ids,
@@ -67,6 +68,7 @@ GetOptions("dry-run|dryrun"=>\$dry_run,
            "dump_isatab|dump-isatab"=>\$dump_isatab,
            "isatab_prefix|isatab-prefix=s"=>\$isatab_prefix,
            "error_file|error-file=s"=>\$error_file,
+           "hours-to-minutes|hours-to-mins"=>\$hours_to_minutes,
 	  );
 
 die "need to give --projects PROJ_ID(s) and --mapping CSV_FILE params\n" unless (defined $project_ids && defined $mapping_file);
@@ -217,6 +219,13 @@ my $microsatellite_term = $cvterms->find_by_accession({ term_source_ref => 'SO',
 my $length_term = $cvterms->find_by_accession({ term_source_ref => 'PATO',
                                                 term_accession_number => '0000122' }) || die;
 
+my $minutes_term = $cvterms->find_by_accession({ term_source_ref => 'UO',
+                                                 term_accession_number => '0000031' }) || die;
+my $hours_term = $cvterms->find_by_accession({ term_source_ref => 'UO',
+                                               term_accession_number => '0000032' }) || die;
+
+
+
 
 ### some globals related to placeholder-making and other caches
 my $last_accession_number = 90000001;
@@ -360,6 +369,9 @@ $schema->txn_do_deferred
                           my $new_attr_term = get_cvterm($new_attr_id, $label);
                           my $new_unit_term = get_cvterm($new_unit_id, $new_unit_label);
                           # add the new assay characteristic, e.g. "LC50 in mass density unit", 1.5, "mg/l"
+                          if ($hours_to_minutes) {
+                            ($new_value, $new_unit_term) = convert_hours_to_minutes($new_value, $new_unit_term);
+                          }
                           $assay->add_multiprop(my $p = Multiprop->new(cvterms=>[$new_attr_term, $new_unit_term],
                                                                        value=>$new_value));
                           # before removing the phenotype, see if it has any properties that we might be losing
@@ -902,6 +914,9 @@ sub process_entity_props {
       }
     } elsif ($mapped_something) {
       my $old_value = $multiprop->value;
+      if ($hours_to_minutes) {
+        ($old_value, $new_cvterms[-1]) = convert_hours_to_minutes($old_value, $new_cvterms[-1]);
+      }
       my $new_multiprop = Multiprop->new(cvterms=>\@new_cvterms, defined $old_value ? (value=>$old_value) : ());
       # warn "going to replace: ".$multiprop->as_string."\nwith:             ".$new_multiprop->as_string."\n";
       my $ok_deleted = $entity->delete_multiprop($multiprop);
@@ -1081,5 +1096,19 @@ sub warn_units {
                                     $characteristic,
                                     join ',', map "'$_'", @{$unit_summary->{$characteristic}});
     }
+  }
+}
+
+
+#
+# converts hours to minutes if needed
+#
+sub convert_hours_to_minutes {
+  my ($value, $term) = @_;
+
+  if ($term->id == $hours_term->id) {
+    return ($value*60, $minutes_term);
+  } else {
+    return ($value, $term);
   }
 }
