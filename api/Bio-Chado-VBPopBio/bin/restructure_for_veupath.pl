@@ -490,8 +490,8 @@ $schema->txn_do_deferred
               if ($num_genotypes_processed == 0) {
                 # discard whole assays where the genotypes did not have new terms mapped to them
                 # (the $new_variable has a definition starting with 'id-less')
-                $assay->delete;
                 $schema->defer_exception(sprintf "INFO: removed genotype assay %s which only had unmapped genotypes", $assay->stable_id);
+                $assay->delete;
               } elsif ($assay->genotypes->count > 0) {
                 # sanity check that there are no genotypes remaining on the assay
                 $schema->defer_exception(sprintf "ERROR: unexpected incomplete genotype processing for %s", $assay->stable_id);
