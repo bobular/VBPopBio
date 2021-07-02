@@ -224,7 +224,8 @@ my $minutes_term = $cvterms->find_by_accession({ term_source_ref => 'UO',
 my $hours_term = $cvterms->find_by_accession({ term_source_ref => 'UO',
                                                term_accession_number => '0000032' }) || die;
 
-
+my $paracentric_inversion_term = $cvterms->find_by_accession({ term_source_ref => 'SO',
+                                                               term_accession_number => '1000047' }) || die;
 
 
 ### some globals related to placeholder-making and other caches
@@ -246,25 +247,25 @@ $schema->txn_do_deferred
       $device_heading_term = get_cvterm('OBI_0000968', 'device');
 
       # make these in the transaction so they can be rolled back
-      my $assayed_pathogen_term = get_cvterm('EUPATH_0000756', 'assayed pathogen');
-      $do_not_map_terms->{$assayed_pathogen_term->id} = 1;
-      my $pathogen_presence_term = get_cvterm('EUPATH_0010889', 'pathogen presence');
-      $do_not_map_terms->{$pathogen_presence_term->id} = 1;
-      my $assayed_bm_host_term = make_placeholder_cvterm('OBI_0002995', 'blood meal host organism');
-      $do_not_map_terms->{$assayed_bm_host_term->id} = 1;
-      my $bm_host_presence_term = make_placeholder_cvterm('OBI_0002994', 'blood meal host presence');
-      $do_not_map_terms->{$bm_host_presence_term->id} = 1;
+      my $assayed_pathogen_term = get_cvterm('EUPATH_0000756', 'assayed pathogen', $do_not_map_terms);
+      my $pathogen_presence_term = get_cvterm('EUPATH_0010889', 'pathogen presence', $do_not_map_terms);
+      my $assayed_bm_host_term = make_placeholder_cvterm('OBI_0002995', 'blood meal host organism', $do_not_map_terms);
+      my $bm_host_presence_term = make_placeholder_cvterm('OBI_0002994', 'blood meal host presence', $do_not_map_terms);
 
       # general assay types
-      my $insecticide_resistance_assay_term = get_cvterm('OBI_0002695', 'insecticide resistance assay');
-      $do_not_map_terms->{$insecticide_resistance_assay_term->id} = 1;
-      my $blood_meal_assay_term = get_cvterm('OBI_0002732', 'blood meal assay');
-      $do_not_map_terms->{$blood_meal_assay_term->id} = 1;
-      my $pathogen_detection_assay_term = get_cvterm('OBI_0002728', 'pathogen detection assay');
-      $do_not_map_terms->{$pathogen_detection_assay_term->id} = 1;
+      my $insecticide_resistance_assay_term = get_cvterm('OBI_0002695', 'insecticide resistance assay', $do_not_map_terms);
+      my $blood_meal_assay_term = get_cvterm('OBI_0002732', 'blood meal assay', $do_not_map_terms);
+      my $pathogen_detection_assay_term = get_cvterm('OBI_0002728', 'pathogen detection assay', $do_not_map_terms);
 
-
-
+      my $inversion_variables = {
+                                 '2La' => get_cvterm('EUPATH_0043212', 'count of 2La inversion', $do_not_map_terms),
+                                 '2Rj' => get_cvterm('EUPATH_0043213', 'count of 2Rj inversion', $do_not_map_terms),
+                                 '2Rb' => get_cvterm('EUPATH_0043214', 'count of 2Rb inversion', $do_not_map_terms),
+                                 '2Rc' => get_cvterm('EUPATH_0043215', 'count of 2Rc inversion', $do_not_map_terms),
+                                 '2Ru' => get_cvterm('EUPATH_0043216', 'count of 2Ru inversion', $do_not_map_terms),
+                                 '2Rd' => get_cvterm('EUPATH_0043217', 'count of 2Rd inversion', $do_not_map_terms),
+                                 '2Rk' => get_cvterm('EUPATH_0043218', 'count of 2Rk inversion', $do_not_map_terms),
+                                };
 
       # handle the projects commandline arg
       my @projects = ();
@@ -551,14 +552,41 @@ $schema->txn_do_deferred
 
             } elsif (is_chromosomal_inversion_assay($assay)) {
               #
-              # store all the individual inversion counts in ONE assay - but this needs quite a few NEW TERMS
-              # (get unique terms, e.g. 2Rj 2Rd etc, from legacy site site search downloads)
+              # store all the individual inversion counts in its parent assay using inversion-specific count variables
               #
 
-              # also investigate why VBA0045254 from VBP0000006 isn't detected as a chromosomal inversion
-              # also same issue with VBP0000003
-
-              $schema->defer_exception_once("TO DO chromosomal inversion handling");
+              foreach my $genotype ($assay->genotypes) {
+                # process only the individual inversion genotypes (not the chromosome arm arrangements)
+                my ($inversion_name, $inversion_count, $count_unit);
+                if ($genotype->type->id == $paracentric_inversion_term->id) {
+                  foreach my $multiprop ($genotype->multiprops) {
+                    my @prop_terms = $multiprop->cvterms;
+                    $inversion_name = $multiprop->value if ($prop_terms[0]->name eq 'inversion');
+                    if ($prop_terms[0]->name eq 'genotype' && $prop_terms[1]->name eq 'count unit') {
+                      $inversion_count = $multiprop->value;
+                      $count_unit = $prop_terms[1];
+                    }
+                  }
+                  if ($inversion_name && defined $inversion_count) {
+                    my $inversion_variable_term = $inversion_variables->{$inversion_name};
+                    if ($inversion_variable_term) {
+                      my $new_prop = Multiprop->new(cvterms=>[ $inversion_variable_term, $count_unit_term ], value=>$inversion_count);
+                      my $added_ok = $assay->add_multiprop($new_prop);
+                      if (!$added_ok) {
+                        $schema->defer_exception_once("ERROR: Couldn't add new inversion variable to ".$assay->stable_id);
+                      }
+                    } else {
+                      $schema->defer_exception_once("ERROR: no inversion variable term for $inversion_name");
+                    }
+                  } else {
+                    $schema->defer_exception_once("ERROR: Couldn't extract inversion and count from genotype of ".$assay->stable_id);
+                  }
+                }
+              }
+              map { $_->delete } $assay->genotypes;
+              process_entity_props($assay, 'NdExperimentprop|Genotype|Genotypeprop');
+              process_assay_type($assay);
+              process_assay_protocols($assay);
 
             } elsif (is_this_kind_of_assay($assay, $genotyping_by_sequencing) || is_this_kind_of_assay($assay, $genotyping_by_array)) {
               # do nothing special - these assays don't have child Genotype objects
@@ -773,29 +801,31 @@ sub clean_value {
 # assume id provided is underscore delimited
 # it will throw an exception and return a dummy placeholder term if term not found
 sub get_cvterm {
-  my ($id, $placeholder_name) = @_;
+  my ($id, $placeholder_name, $do_not_map) = @_;
   my ($prefix, $accession) = $id =~ /(\w+?)_(\d+)/;
   if ($prefix && defined $accession && length($accession)) {
     my $term = $cvterms->find_by_accession({ term_source_ref => $prefix,
                                              term_accession_number => $accession });
     if ($term) {
+      $do_not_map->{$term->id} = 1 if ($do_not_map);
       return $term;
     }
   } else {
     $schema->defer_exception_once("get_cvterm('$id') was provided with a poorly formed term ID");
   }
-  return make_placeholder_cvterm($id, $placeholder_name || "placeholder for $id");
+  return make_placeholder_cvterm($id, $placeholder_name || "placeholder for $id", $do_not_map);
 }
 
 #
 # make placeholder term and return it
 #
 sub make_placeholder_cvterm {
-  my ($id, $name) = @_;
+  my ($id, $name, $do_not_map) = @_;
   # first look up by name if already made
   my $already_made_term = $cvterms->find({ name => $name,
                                            cv_id => $placeholder_cv->id });
   if ($already_made_term) {
+    $do_not_map->{$already_made_term->id} = 1 if ($do_not_map);
     return $already_made_term;
   }
 
@@ -821,6 +851,7 @@ sub make_placeholder_cvterm {
                                                          cv => $placeholder_cv
                                                        });
 
+  $do_not_map->{$new_cvterm->id} = 1 if ($do_not_map);
   return $new_cvterm;
 }
 
